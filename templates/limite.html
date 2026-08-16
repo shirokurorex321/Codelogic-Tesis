@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Demasiadas solicitudes — CodeLogic IUP{% endblock %}
+{% block content %}
+<div class="auth-container" style="max-width:480px;margin:4rem auto;text-align:center;">
+    <div class="card">
+        <p style="font-size:2.6rem;margin:0 0 .4rem;">⏳</p>
+        <div class="card-header" style="justify-content:center;">
+            <span class="card-title">Vas demasiado rápido</span>
+        </div>
+        <p style="line-height:1.7;opacity:.9;">
+            Hiciste muchas solicitudes seguidas y activaste el límite de
+            seguridad. Espera unos minutos y vuelve a intentarlo.
+        </p>
+        <p style="line-height:1.7;opacity:.75;font-size:.9rem;">
+            Este límite protege la plataforma y la cuota de la inteligencia
+            artificial que comparten todos los estudiantes.
+        </p>
+        <div style="display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap;margin-top:1.2rem;">
+            <a href="{{ url_for('index') }}" class="btn btn-outline btn-sm">Ir al inicio</a>
+            <a href="{{ url_for('login') }}" class="btn btn-primary btn-sm">Iniciar sesión</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Ejercicios — CodeLogic IUP{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <h1>Ejercicios</h1>
+    <p>Selecciona un tema para ver los ejercicios disponibles.</p>
+</div>
+
+<div class="topic-grid">
+    {% for topic in topics %}
+    <a href="{{ url_for('topic_exercises', topic_id=topic.id) }}" class="topic-card">
+        <span class="topic-icon">{{ topic.icon }}</span>
+        <h3>{{ topic.name }}</h3>
+        <p>{{ topic.description }}</p>
+        <div class="topic-meta">
+            <span>{{ topic.exercises.filter_by(is_active=True).count() }} ejercicios</span>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% set nice_name = 'Escala de autoeficacia (inicial)' if scale_type == 'pre' else 'Escala de autoeficacia (final)' %}
+{% block title %}{{ nice_name }} — CodeLogic IUP{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <h1>💪 {{ nice_name }}</h1>
+    <p>No hay respuestas correctas ni incorrectas: indica qué tan seguro/a te sientes
+       de poder hacer cada cosa <strong>hoy</strong>. Escala de 1 ({{ likert_labels[0] | lower }})
+       a 5 ({{ likert_labels[4] | lower }}). Solo se responde una vez.</p>
+</div>
+
+{% if existing %}
+<div class="card" style="text-align:center;">
+    <span style="font-size:3rem; display:block; margin-bottom:0.5rem;">✅</span>
+    <h2>Ya respondiste esta escala</h2>
+    <p style="color:var(--text-light); margin:0.75rem 0;">
+        Tu puntaje total: <strong>{{ existing.total_score | int }}</strong> / {{ 5 * items|length }}
+    </p>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-primary">Volver al panel</a>
+</div>
+{% else %}
+
+<form id="scale-form" onsubmit="return false;">
+    {% for it in items %}
+    <div class="card mb-3">
+        <div style="font-weight:600; margin-bottom:0.75rem;">
+            {{ loop.index }}. ¿Qué tan seguro/a te sientes de poder…
+            <span style="color:var(--primary, #89b4fa);">{{ it.text | lower }}</span>
+        </div>
+        <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+            {% for n in range(1, 6) %}
+            <label style="flex:1; min-width:110px; text-align:center; padding:0.55rem 0.4rem; border:1px solid rgba(128,128,128,0.25); border-radius:10px; cursor:pointer; font-size:0.78rem;"
+                   onmouseover="this.style.background='rgba(128,128,128,0.08)'" onmouseout="if(!this.querySelector('input').checked) this.style.background='transparent'">
+                <input type="radio" name="{{ it.id }}" value="{{ n }}" style="display:block; margin:0 auto 0.3rem;">
+                <strong>{{ n }}</strong><br>
+                <span style="color:var(--text-light);">{{ likert_labels[n-1] }}</span>
+            </label>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+
+    <div class="card" style="text-align:center;">
+        <div id="scale-progress" style="margin-bottom:0.75rem; color:var(--text-light); font-size:0.9rem;">
+            0 de {{ items|length }} respondidas
+        </div>
+        <button class="btn btn-primary" id="btn-send-scale" onclick="submitScale()">✅ Enviar respuestas</button>
+        <div id="scale-error" style="color:#f38ba8; margin-top:0.6rem; display:none;"></div>
+    </div>
+</form>
+
+<div class="card" id="scale-result" style="display:none; text-align:center;"></div>
+
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if not existing %}
+<script>
+    const totalItems = {{ items | length }};
+
+    document.querySelectorAll('#scale-form input[type=radio]').forEach(r => {
+        r.addEventListener('change', () => {
+            const answered = new Set(
+                Array.from(document.querySelectorAll('#scale-form input[type=radio]:checked'))
+                    .map(el => el.name)
+            ).size;
+            document.getElementById('scale-progress').textContent =
+                answered + ' de ' + totalItems + ' respondidas';
+        });
+    });
+
+    async function submitScale() {
+        const responses = {};
+        document.querySelectorAll('#scale-form input[type=radio]:checked').forEach(el => {
+            responses[el.name] = parseInt(el.value, 10);
+        });
+
+        const errBox = document.getElementById('scale-error');
+        if (Object.keys(responses).length < totalItems) {
+            errBox.textContent = 'Te faltan ítems por responder.';
+            errBox.style.display = 'block';
+            return;
+        }
+
+        const btn = document.getElementById('btn-send-scale');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Enviando...';
+
+        try {
+            const res = await fetch('/api/escala/{{ scale_type }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ responses })
+            });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('scale-form').style.display = 'none';
+                const box = document.getElementById('scale-result');
+                box.innerHTML = '<span style="font-size:3rem; display:block; margin-bottom:0.5rem;">🙌</span>'
+                    + '<h2>¡Gracias por responder!</h2>'
+                    + '<p style="color:var(--text-light); margin:0.75rem 0;">Puntaje total: <strong>'
+                    + data.total_score + '</strong> / ' + data.max_score + '</p>'
+                    + '<a href="/dashboard" class="btn btn-primary">Volver al panel</a>';
+                box.style.display = 'block';
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else {
+                errBox.textContent = data.error || 'No se pudo enviar.';
+                errBox.style.display = 'block';
+                btn.disabled = false;
+                btn.innerHTML = '✅ Enviar respuestas';
+            }
+        } catch (e) {
+            errBox.textContent = 'Error de conexión.';
+            errBox.style.display = 'block';
+            btn.disabled = false;
+            btn.innerHTML = '✅ Enviar respuestas';
+        }
+    }
+</script>
+{% endif %}
+{% endblock %}

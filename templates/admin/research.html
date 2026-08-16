@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Investigación — CodeLogic IUP{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <div class="flex-between">
+        <div>
+            <h1>🔬 Panel de investigación</h1>
+            <p>Resultados de pretest, postest y escalas de autoeficacia por estudiante.</p>
+        </div>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <a href="{{ url_for('export_research_csv') }}" class="btn btn-primary btn-sm">⬇ Investigación (CSV)</a>
+            <a href="{{ url_for('export_submissions_csv') }}" class="btn btn-outline btn-sm">⬇ Envíos (CSV)</a>
+            <a href="{{ url_for('export_logs_csv') }}" class="btn btn-outline btn-sm">⬇ Logs (CSV)</a>
+        </div>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ done.pretest }}/{{ total_students }}</div>
+        <div class="stat-label">Pretest presentado</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ done.postest }}/{{ total_students }}</div>
+        <div class="stat-label">Postest presentado</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ done.escala_pre }}/{{ total_students }}</div>
+        <div class="stat-label">Escala inicial</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ done.escala_post }}/{{ total_students }}</div>
+        <div class="stat-label">Escala final</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">Resultados por estudiante</span>
+    </div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Estudiante</th>
+                    <th>Grupo</th>
+                    <th>Pretest</th>
+                    <th>Postest</th>
+                    <th>Ganancia</th>
+                    <th>Autoefic. pre</th>
+                    <th>Autoefic. post</th>
+                    <th>Envíos</th>
+                    <th>Prom. ejercicios</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in rows %}
+                <tr>
+                    <td>
+                        {{ r.student.name }}<br>
+                        <span style="font-size:0.75rem; color:var(--text-muted);">{{ r.student.email }}</span>
+                    </td>
+                    <td>
+                        {% if r.group %}<strong>{{ r.group }}</strong>{% else %}<span style="color:var(--text-muted);">—</span>{% endif %}
+                    </td>
+                    <td>{% if r.pretest %}{{ r.pretest.score }}{% else %}<span style="color:var(--text-muted);">—</span>{% endif %}</td>
+                    <td>{% if r.postest %}{{ r.postest.score }}{% else %}<span style="color:var(--text-muted);">—</span>{% endif %}</td>
+                    <td>
+                        {% if r.gain is not none %}
+                            <strong style="color:{{ '#a6e3a1' if r.gain >= 0 else '#f38ba8' }};">
+                                {{ '+' if r.gain >= 0 }}{{ r.gain | round(1) }}
+                            </strong>
+                        {% else %}<span style="color:var(--text-muted);">—</span>{% endif %}
+                    </td>
+                    <td>{% if r.escala_pre %}{{ r.escala_pre.total_score | int }}/50{% else %}<span style="color:var(--text-muted);">—</span>{% endif %}</td>
+                    <td>{% if r.escala_post %}{{ r.escala_post.total_score | int }}/50{% else %}<span style="color:var(--text-muted);">—</span>{% endif %}</td>
+                    <td>{{ r.submissions }}</td>
+                    <td>{% if r.avg_score is not none %}{{ r.avg_score | round(1) }}{% else %}<span style="color:var(--text-muted);">—</span>{% endif %}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="9" style="text-align:center; color:var(--text-muted);">Aún no hay estudiantes registrados.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<p style="margin-top:1rem; font-size:0.8rem; color:var(--text-muted);">
+    💡 El CSV de investigación incluye una fila por estudiante con todas las variables del estudio
+    (grupo, pretest, postest, ganancia, autoeficacia, envíos) listo para importar en R o SPSS.
+    Los estudiantes presentan las evaluaciones desde su panel: <em>Pretest</em>, <em>Postest</em>,
+    <em>Escala inicial</em> y <em>Escala final</em>.
+</p>
+{% endblock %}

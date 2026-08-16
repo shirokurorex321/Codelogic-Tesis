@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Estudiantes — CodeLogic IUP{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <h1>Estudiantes</h1>
+    <p>Gestiona los grupos experimentales y revisa la información de los estudiantes.</p>
+</div>
+
+<div class="card">
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Correo</th>
+                    <th>Grupo</th>
+                    <th>Envíos</th>
+                    <th>Estado</th>
+                    <th>Registro</th>
+                    <th>Asignar Grupo</th>
+                    {% if current_user.role == 'admin' %}<th>Acciones</th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for student in students %}
+                <tr>
+                    <td><strong>{{ student.name }}</strong></td>
+                    <td style="font-size:0.85rem; color:var(--text-light);">{{ student.email }}</td>
+                    <td>
+                        {% if student.group %}
+                        <span class="diff-badge {% if student.group == 'A' %}diff-basico{% else %}diff-intermedio{% endif %}">
+                            Grupo {{ student.group }}
+                        </span>
+                        {% else %}
+                        <span style="color:var(--text-muted); font-size:0.85rem;">Sin asignar</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ student.submissions.count() }}</td>
+                    <td>
+                        {% if student.is_active %}
+                        <span class="diff-badge diff-basico">activo</span>
+                        {% else %}
+                        <span class="diff-badge diff-avanzado">inactivo</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-size:0.8rem; color:var(--text-light);">
+                        {{ student.created_at.strftime('%d/%m/%Y') }}
+                    </td>
+                    <td>
+                        <form method="POST" action="{{ url_for('assign_group', user_id=student.id) }}" style="display:flex; gap:0.25rem;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <select name="group" class="form-select" style="width:auto; padding:0.3rem 0.5rem; font-size:0.8rem;">
+                                <option value="A" {% if student.group == 'A' %}selected{% endif %}>Grupo A</option>
+                                <option value="B" {% if student.group == 'B' %}selected{% endif %}>Grupo B</option>
+                            </select>
+                            <button type="submit" class="btn btn-primary btn-sm">Asignar</button>
+                        </form>
+                    </td>
+                    {% if current_user.role == 'admin' %}
+                    <td style="display:flex; gap:0.3rem; flex-wrap:wrap;">
+                        <form method="POST" action="{{ url_for('admin_toggle_active', user_id=student.id) }}"
+                              onsubmit="return confirm('¿{{ 'Desactivar' if student.is_active else 'Activar' }} a {{ student.name }}?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button class="btn btn-outline btn-sm" title="{{ 'Desactivar' if student.is_active else 'Activar' }} usuario">
+                                {% if student.is_active %}🔒{% else %}🔓{% endif %}
+                            </button>
+                        </form>
+                        <details style="display:inline-block;">
+                            <summary class="btn btn-outline btn-sm" style="cursor:pointer;" title="Reset password">🔑</summary>
+                            <form method="POST" action="{{ url_for('admin_reset_password', user_id=student.id) }}"
+                                  style="position:absolute; background:var(--bg-card); padding:0.5rem; border:1px solid var(--border); border-radius:6px; box-shadow:var(--shadow-md); margin-top:0.3rem; z-index:10;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="text" name="new_password" placeholder="Nueva contraseña" required minlength="6"
+                                       class="form-input" style="width:160px; padding:0.3rem 0.5rem; font-size:0.8rem; margin-bottom:0.3rem;">
+                                <button class="btn btn-primary btn-sm" style="display:block; width:100%;">Cambiar</button>
+                            </form>
+                        </details>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" style="text-align:center; color:var(--text-muted); padding:2rem;">
+                        No hay estudiantes registrados aún.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

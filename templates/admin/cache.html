@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Caché IA — Admin{% endblock %}
+
+{% block content %}
+<div class="dash-header" style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap;">
+    <div>
+        <h1>🧠 Caché de respuestas IA</h1>
+        <p>Top entradas más usadas. Cada hit es una llamada al modelo que se ahorró.</p>
+    </div>
+    {% if current_user.role == 'admin' %}
+    <form method="POST" action="{{ url_for('admin_cache_clear') }}"
+          onsubmit="return confirm('¿Borrar TODA la caché? Las próximas conversiones llamarán a la API y consumirán tokens.');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-danger">🗑️ Vaciar caché</button>
+    </form>
+    {% endif %}
+</div>
+
+<div class="card mt-2">
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Endpoint</th>
+                    <th>Hash (8 chars)</th>
+                    <th>Hits</th>
+                    <th>Creada</th>
+                    <th>Último uso</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in entries %}
+                <tr>
+                    <td>
+                        <span class="diff-badge diff-{{ 'basico' if e.endpoint=='convert' else ('avanzado' if e.endpoint=='explain' else 'intermedio') }}">
+                            {{ e.endpoint }}
+                        </span>
+                    </td>
+                    <td><code style="font-size:0.78rem;">{{ e.cache_key[:8] }}…</code></td>
+                    <td><strong style="color:#86efac;">⚡ {{ e.hit_count }}</strong></td>
+                    <td style="font-size:0.8rem; color:var(--text-light);">{{ e.created_at.strftime('%d/%m %H:%M') if e.created_at else '—' }}</td>
+                    <td style="font-size:0.8rem; color:var(--text-light);">{{ e.last_used_at.strftime('%d/%m %H:%M') if e.last_used_at else '—' }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" style="text-align:center; color:var(--text-muted);">Caché vacía.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

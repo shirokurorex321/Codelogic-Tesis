@@ -1,0 +1,32 @@
+# ── Secretos ────────────────────────────────────────────────────────
+# El .env lleva la clave de la API, la de la base de datos y la del
+# correo institucional. Nunca entra al repositorio. Se respalda aparte,
+# cifrado y con permisos cerrados.
+.env
+.env.*
+!.env.example
+
+# ── Cosas que se regeneran ──────────────────────────────────────────
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+instance/
+.pytest_cache/
+
+# ── Respaldos y restos ──────────────────────────────────────────────
+# Las copias con marca de tiempo que se dejan antes de cada cambio no
+# son historia: para eso está git. Fuera del repositorio.
+*.antes-*
+*.respaldo-*
+*.roto-*
+*.bak
+*.orig
+backups/
+*.sql
+*.sql.gz
+
+# ── Sistema ─────────────────────────────────────────────────────────
+.DS_Store
+*.swp
+*~

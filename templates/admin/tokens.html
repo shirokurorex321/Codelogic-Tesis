@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}Uso de Tokens IA — Admin{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <h1>🔢 Uso de Tokens IA</h1>
+    <p>Consumo del plan free de OpenCode Zen (200 reqs / 5h). Solo visible para docentes/admin.</p>
+</div>
+
+<!-- ── Stats globales ── -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ stats_5h.real }}/200</div>
+        <div class="stat-label">últimas 5 horas (cupo OpenCode)</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ stats_24h.tokens|int }}</div>
+        <div class="stat-label">tokens últimas 24h</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ stats_7d.tokens|int }}</div>
+        <div class="stat-label">tokens últimos 7 días</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ stats_7d.cached }}</div>
+        <div class="stat-label">hits de caché en 7d</div>
+    </div>
+</div>
+
+<!-- ── Récords / máximos ── -->
+<div class="admin-grid">
+    <div class="card">
+        <div class="card-header"><span class="card-title">🏆 Récords de uso</span></div>
+        <div style="padding:1rem;">
+            {% if max_user %}
+            <p><strong>Usuario con más tokens:</strong><br>
+                {{ max_user.name }}
+                <span style="color:var(--text-muted);">({{ max_user.email }})</span><br>
+                <span style="color:var(--primary-light); font-weight:700;">
+                    {{ max_user.total_tokens|int }} tokens · {{ max_user.real_calls }} llamadas reales
+                </span>
+            </p>
+            {% endif %}
+            {% if max_calls_user and max_calls_user.user_id != (max_user.user_id if max_user else 0) %}
+            <p style="margin-top:0.8rem;"><strong>Usuario con más llamadas:</strong><br>
+                {{ max_calls_user.name }}
+                <span style="color:var(--text-muted);">({{ max_calls_user.real_calls }} reales · {{ max_calls_user.cached_calls }} caché)</span>
+            </p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><span class="card-title">⚙️ Configuración actual de modelos</span></div>
+        <div style="padding:1rem; font-size:0.88rem;">
+            <p><strong>Convertir:</strong> <code>{{ models_config.convert }}</code></p>
+            <p><strong>Feedback + Explain:</strong> <code>{{ models_config.tutor }}</code></p>
+            <p><strong>Fallback general:</strong> <code>{{ models_config.fallback }}</code></p>
+            <p style="margin-top:0.5rem; color:var(--text-muted); font-size:0.8rem;">
+                Para cambiar editar <code>.env</code> y reiniciar el servicio.
+            </p>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><span class="card-title">🧠 Caché IA</span></div>
+        <div style="padding:1rem;">
+            <p><strong>{{ cache_entries }}</strong> entradas guardadas</p>
+            <p><strong>{{ cache_hits_total }}</strong> hits acumulados (tokens ahorrados)</p>
+            <a href="{{ url_for('admin_cache') }}" class="btn btn-outline btn-sm" style="margin-top:0.5rem;">Ver caché →</a>
+        </div>
+    </div>
+</div>
+
+<!-- ── Por modelo ── -->
+<div class="card mt-2">
+    <div class="card-header"><span class="card-title">📊 Consumo por modelo</span></div>
+    <div class="table-container">
+        <table>
+            <thead><tr><th>Modelo</th><th>Llamadas reales</th><th>Total tokens</th><th>Promedio / llamada</th></tr></thead>
+            <tbody>
+                {% for m in by_model %}
+                <tr>
+                    <td><code>{{ m.model }}</code></td>
+                    <td>{{ m.calls }}</td>
+                    <td><strong>{{ m.tokens }}</strong></td>
+                    <td style="color:var(--text-light);">{{ (m.tokens / m.calls)|round|int if m.calls else 0 }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Sin datos aún.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ── Por usuario ── -->
+<div class="card mt-2">
+    <div class="card-header">
+        <span class="card-title">👥 Tokens por usuario (ordenado por consumo)</span>
+    </div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Usuario</th>
+                    <th>Rol</th>
+                    <th>Reales</th>
+                    <th>Caché</th>
+                    <th>Convert / Feedback / Explain</th>
+                    <th>Total tokens</th>
+                    <th>Última actividad</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in rows %}
+                <tr>
+                    <td>
+                        <strong>{{ r.name }}</strong><br>
+                        <span style="font-size:0.78rem; color:var(--text-muted);">{{ r.email }}</span>
+                    </td>
+                    <td>
+                        <span class="diff-badge diff-{{ 'basico' if r.role == 'estudiante' else 'avanzado' }}">{{ r.role }}</span>
+                    </td>
+                    <td>{{ r.real_calls }}</td>
+                    <td style="color:#86efac;">⚡ {{ r.cached_calls }}</td>
+                    <td style="font-size:0.85rem; color:var(--text-light);">
+                        {{ r.by_action.convert }} / {{ r.by_action.feedback }} / {{ r.by_action.explain }}
+                    </td>
+                    <td><strong style="color:var(--primary-light);">{{ r.total_tokens|int }}</strong></td>
+                    <td style="font-size:0.8rem; color:var(--text-light);">
+                        {{ r.last_used.strftime('%d/%m %H:%M') if r.last_used else '—' }}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" style="text-align:center; color:var(--text-muted);">Sin actividad IA registrada aún.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}Mi Panel — CodeLogic IUP{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <h1>¡Hola, {{ current_user.name.split()[0] }}!</h1>
+    <p>Continúa aprendiendo a tu ritmo. Aquí puedes ver tu progreso.</p>
+</div>
+
+<!-- Estadísticas rápidas -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ total_submissions }}</div>
+        <div class="stat-label">Envíos totales</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ topic_progress | selectattr('percent', 'ge', 100) | list | length }}</div>
+        <div class="stat-label">Temas completados</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ topics | length }}</div>
+        <div class="stat-label">Temas disponibles</div>
+    </div>
+</div>
+
+<!-- Acciones rápidas -->
+<div class="grid-2 mb-3">
+    <a href="{{ url_for('editor') }}" class="card" style="text-align:center; text-decoration:none; color:var(--text);">
+        <span style="font-size:2.5rem; display:block; margin-bottom:0.5rem;">✏️</span>
+        <strong>Editor Libre</strong>
+        <p style="font-size:0.85rem; color:var(--text-light); margin-top:0.25rem;">
+            Practica pseudocódigo sin restricciones
+        </p>
+    </a>
+    <a href="{{ url_for('exercises') }}" class="card" style="text-align:center; text-decoration:none; color:var(--text);">
+        <span style="font-size:2.5rem; display:block; margin-bottom:0.5rem;">🎯</span>
+        <strong>Ejercicios</strong>
+        <p style="font-size:0.85rem; color:var(--text-light); margin-top:0.25rem;">
+            Resuelve ejercicios guiados por tema
+        </p>
+    </a>
+</div>
+
+<!-- Evaluaciones del estudio -->
+<div class="card mb-3">
+    <div class="card-header">
+        <span class="card-title">📋 Evaluaciones del estudio</span>
+    </div>
+    <p style="font-size:0.85rem; color:var(--text-light); margin-bottom:1rem;">
+        Estas evaluaciones hacen parte del estudio de la plataforma. Cada una se responde una sola vez,
+        cuando tu docente lo indique.
+    </p>
+    <div class="grid-2" style="gap:0.75rem;">
+        {% for key, label, icon, url in [
+            ('pretest', 'Pretest de conocimientos', '📝', url_for('take_test', test_type='pretest')),
+            ('escala_pre', 'Escala de autoeficacia (inicial)', '💪', url_for('take_scale', scale_type='pre')),
+            ('postest', 'Postest de conocimientos', '🎓', url_for('take_test', test_type='postest')),
+            ('escala_post', 'Escala de autoeficacia (final)', '🌟', url_for('take_scale', scale_type='post')),
+        ] %}
+        <a href="{{ url }}" class="card" style="text-decoration:none; color:var(--text); display:flex; align-items:center; gap:0.75rem; padding:0.9rem; margin:0; {% if research_status[key] %}opacity:0.65;{% endif %}">
+            <span style="font-size:1.6rem;">{{ icon }}</span>
+            <span style="flex:1;">
+                <strong style="font-size:0.9rem;">{{ label }}</strong><br>
+                {% if research_status[key] %}
+                <span style="font-size:0.78rem; color:#a6e3a1;">✓ Completada</span>
+                {% else %}
+                <span style="font-size:0.78rem; color:var(--text-light);">Pendiente</span>
+                {% endif %}
+            </span>
+            <span style="color:var(--text-muted);">→</span>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Progreso por tema -->
+{% if topic_progress %}
+<div class="card mb-3">
+    <div class="card-header">
+        <span class="card-title">Progreso por tema</span>
+    </div>
+    {% for tp in topic_progress %}
+    <div style="margin-bottom: 1rem;">
+        <div class="flex-between mb-1">
+            <span style="font-weight:600; font-size:0.9rem;">
+                {{ tp.topic.icon }} {{ tp.topic.name }}
+            </span>
+            <span style="font-size:0.8rem; color:var(--text-light);">
+                {{ tp.completed }}/{{ tp.total }} ejercicios
+            </span>
+        </div>
+        <div class="progress-bar-container">
+            <div class="progress-bar-fill" style="width: {{ tp.percent }}%"></div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Actividad reciente -->
+{% if recent_submissions %}
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">Actividad reciente</span>
+    </div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Ejercicio</th>
+                    <th>Intento</th>
+                    <th>Fecha</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sub in recent_submissions %}
+                <tr>
+                    <td>
+                        {% if sub.exercise %}
+                            {{ sub.exercise.title }}
+                        {% else %}
+                            <span style="color:var(--text-muted);">Práctica libre</span>
+                        {% endif %}
+                    </td>
+                    <td>#{{ sub.attempt_number }}</td>
+                    <td style="color:var(--text-light); font-size:0.85rem;">
+                        {{ sub.created_at.strftime('%d/%m/%Y %H:%M') }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

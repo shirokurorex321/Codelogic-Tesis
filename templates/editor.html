@@ -1,0 +1,864 @@
+{% extends "base.html" %}
+{% block title %}Editor — CodeLogic IUP
+{% endblock %}
+
+{% block content %}
+{% if exercise %}
+<div class="exercise-header">
+    <div class="flex-between">
+        <div>
+            <span class="diff-badge diff-{{ exercise.difficulty }}">{{ exercise.difficulty }}</span>
+            <h2 style="margin-top:0.3rem;">{{ exercise.title }}</h2>
+            <p>{{ exercise.description }}</p>
+        </div>
+        <a href="{{ url_for('exercises') }}" class="btn btn-outline btn-sm">Volver</a>
+    </div>
+    {% if exercise.concepto or exercise.pasos or exercise.ejemplo_resuelto or exercise.hints %}
+    <div class="ayudas">
+        <button type="button" class="ayudas-toggle" onclick="alternarAyudas()" id="btn-ayudas">
+            🆘 Me trabé, mostrar ayudas
+        </button>
+
+        <div id="caja-ayudas" hidden>
+            <p class="ayudas-nota">
+                Inténtalo primero por tu cuenta: se aprende más resolviendo que leyendo.
+            </p>
+
+            {% if exercise.concepto %}
+            <div class="guia-bloque">
+                <h4 class="guia-titulo">🎯 Qué vas a practicar</h4>
+                <div class="guia-texto">{{ exercise.concepto|parrafos }}</div>
+            </div>
+            {% endif %}
+
+            {% if exercise.pasos %}
+            <div class="guia-bloque">
+                <h4 class="guia-titulo">🪜 Pasos sugeridos</h4>
+                <ol class="guia-pasos">
+                    {% for paso in exercise.pasos.split('\n') %}
+                        {% if paso.strip() %}<li>{{ paso.strip() }}</li>{% endif %}
+                    {% endfor %}
+                </ol>
+            </div>
+            {% endif %}
+
+            {% if exercise.ejemplo_resuelto %}
+            <div class="guia-bloque">
+                <h4 class="guia-titulo">📖 Ejemplo parecido resuelto</h4>
+                <pre class="leccion-codigo">{{ exercise.ejemplo_resuelto }}</pre>
+            </div>
+            {% endif %}
+
+            {% if exercise.hints %}
+            <div class="guia-bloque">
+                <h4 class="guia-titulo">💡 Pista</h4>
+                <p class="guia-texto">{{ exercise.hints }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<div class="editor-layout">
+    <!-- IZQUIERDA: editor de pseudocódigo -->
+    <div class="editor-panel">
+        <div class="panel-header">
+            <span>📝 Pseudocódigo</span>
+            <span id="char-count" style="font-size:0.75rem; opacity:0.6;">0 caracteres</span>
+        </div>
+        <div class="panel-body">
+            <textarea id="pseudocode-editor" spellcheck="false"
+                placeholder="Algoritmo MiAlgoritmo
+    Definir num1, num2, suma Como Entero
+    Escribir 'Ingrese el primer número:'
+    Leer num1
+    Escribir 'Ingrese el segundo número:'
+    Leer num2
+    suma <- num1 + num2
+    Escribir 'La suma es: ', suma
+FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %}</textarea>
+        </div>
+        <div class="editor-toolbar">
+            <button class="btn btn-primary" onclick="convertCode()" id="btn-convert">🔄 Convertir</button>
+            <button class="btn btn-accent" onclick="getFeedback()" id="btn-feedback">🤖 Retroalimentación IA</button>
+            <button class="btn btn-outline" onclick="convertAll()" id="btn-convert-all">📋 Convertir a todos</button>
+            {% if exercise %}
+            <button class="btn btn-primary" onclick="submitSolution()" id="btn-submit" style="margin-left:auto;">✅ Enviar solución</button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- DERECHA: salida con tabs por lenguaje -->
+    <div class="editor-panel">
+        <div class="panel-header">
+            <div class="tabs">
+                <button class="tab active" data-tab="python" onclick="switchTab('python')">Python</button>
+                <button class="tab" data-tab="cpp" onclick="switchTab('cpp')">C++</button>
+                <button class="tab" data-tab="php" onclick="switchTab('php')">PHP</button>
+                <button class="tab" data-tab="feedback" onclick="switchTab('feedback')">IA</button>
+            </div>
+        </div>
+        <div class="panel-body">
+
+            {% for lang, label in [('python','Python'), ('cpp','C++'), ('php','PHP')] %}
+            <div id="tab-{{ lang }}" class="tab-content lang-pane{% if loop.first %} active{% endif %}"
+                 {% if not loop.first %}style="display:none;"{% endif %}>
+
+                <!-- Sección 1: CÓDIGO (arriba) -->
+                <section class="lang-section">
+                    <header class="lang-section-header">
+                        <span>📄 Código {{ label }}</span>
+                        <div class="lang-actions">
+                            <button class="btn-mini btn-mini-primary" onclick="runCode('{{ lang }}')" id="btn-run-{{ lang }}">▶ Ejecutar</button>
+                            <button class="btn-mini btn-mini-accent" onclick="explainCode('{{ lang }}')" id="btn-explain-{{ lang }}">💬 Explicar</button>
+                            <button class="btn-mini" onclick="copyCode('{{ lang }}')" title="Copiar código">📋</button>
+                        </div>
+                    </header>
+                    <pre class="code-output" id="code-{{ lang }}"><span style="color:#585b70;">// El código convertido aparecerá aquí. Pulsa "🔄 Convertir" en el panel izquierdo.</span></pre>
+                </section>
+
+                <!-- Sección 2: SALIDA (medio) -->
+                <section class="lang-section">
+                    <header class="lang-section-header">
+                        <span>▶ Salida</span>
+                        <details class="stdin-details">
+                            <summary>📥 stdin (opcional)</summary>
+                            <textarea class="stdin-input" id="stdin-{{ lang }}" rows="3" placeholder="Datos que el programa leerá con input()/cin/fgets, una línea por cada Leer."></textarea>
+                        </details>
+                    </header>
+                    <div class="output-block" id="output-{{ lang }}"><span style="color:var(--text-muted);">(Pulsa ▶ Ejecutar para ver la salida)</span></div>
+                </section>
+
+                <!-- Sección 3: EXPLICACIÓN (abajo) -->
+                <section class="lang-section">
+                    <header class="lang-section-header">
+                        <span>💬 Explicación detallada</span>
+                    </header>
+                    <div class="explain-block" id="explain-{{ lang }}"><span style="color:var(--text-muted);">(Pulsa 💬 Explicar para una explicación paso a paso del código)</span></div>
+                </section>
+
+            </div>
+            {% endfor %}
+
+            <!-- Tab IA: feedback global del pseudocódigo (sin cambios funcionales) -->
+            <div id="tab-feedback" class="tab-content feedback-output" style="display:none;">
+                <span style="color:var(--text-muted);">Haz clic en "Retroalimentación IA" para recibir ayuda sobre tu pseudocódigo.</span>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Banner de uso del plan FREE (200 / 5h) -->
+<div class="usage-banner" id="usageBanner" style="display:none;">
+    <span class="usage-icon">⚡</span>
+    <span class="usage-text">
+        Tokens IA en últimas 5h: <strong id="usageReal">0</strong>/<strong id="usageLimit">200</strong>
+        <span class="usage-cached">· ahorrados por caché: <strong id="usageCached">0</strong></span>
+    </span>
+    <div class="usage-bar"><div class="usage-bar-fill" id="usageBarFill"></div></div>
+</div>
+<!-- ── Escala de carga cognitiva (Paas, 1-9) ─────────────────────
+     Cuarta variable dependiente del estudio. Se aplica después de cada
+     actividad práctica, según la metodología de la tesis. -->
+<div id="cc-overlay" class="cc-overlay" hidden>
+  <div class="cc-modal" role="dialog" aria-modal="true" aria-labelledby="cc-title">
+    <h3 id="cc-title">Antes de continuar</h3>
+    <p class="cc-sub">Tres preguntas rápidas sobre cómo te sentiste con esta actividad.
+       No hay respuestas correctas y no afecta tu calificación.</p>
+    <form id="cc-form">
+      {% for item in cc_items %}
+      <div class="cc-item">
+        <label for="{{ item.id }}">{{ item.text }}</label>
+        <div class="cc-scale">
+          <span class="cc-end">Muy bajo</span>
+          <div class="cc-radios">
+            {% for n in range(1, 10) %}
+            <label class="cc-radio">
+              <input type="radio" name="{{ item.id }}" value="{{ n }}" required>
+              <span>{{ n }}</span>
+            </label>
+            {% endfor %}
+          </div>
+          <span class="cc-end">Muy alto</span>
+        </div>
+      </div>
+      {% endfor %}
+      <div class="cc-actions">
+        <button type="button" class="btn btn-outline btn-sm" onclick="skipCognitiveLoad()">Ahora no</button>
+        <button type="submit" class="btn btn-primary btn-sm">Enviar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const exerciseId = {{ exercise.id if exercise else 'null' }};
+    const startTime = Date.now();
+    let convertedCode = { python: '', cpp: '', php: '' };
+    // Tracking del input usado en la última conversión exitosa por lenguaje
+    // → si el usuario clica Convertir sin cambiar el pseudocódigo, no llamamos a la API.
+    let lastConvertedInput = { python: null, cpp: null, php: null };
+    let lastExplainedInput = { python: null, cpp: null, php: null };
+    let lastFeedbackInput = null;
+    let currentFeedback = '';
+    let activeTab = 'python';
+
+    const editor = document.getElementById('pseudocode-editor');
+    const charCount = document.getElementById('char-count');
+
+    editor.addEventListener('input', () => {
+        charCount.textContent = editor.value.length + ' caracteres';
+    });
+
+    editor.addEventListener('keydown', (e) => {
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            const start = editor.selectionStart;
+            const end = editor.selectionEnd;
+            editor.value = editor.value.substring(0, start) + '    ' + editor.value.substring(end);
+            editor.selectionStart = editor.selectionEnd = start + 4;
+        }
+        // Ctrl+Enter (o Cmd+Enter) = Convertir
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            convertCode();
+        }
+    });
+
+    // ─── Borrador automático (localStorage, por ejercicio) ───
+    const draftKey = 'codelogic-draft-' + (exerciseId || 'libre');
+    if (!editor.value.trim()) {
+        const saved = localStorage.getItem(draftKey);
+        if (saved) editor.value = saved;
+    }
+    editor.addEventListener('input', () => {
+        localStorage.setItem(draftKey, editor.value);
+    });
+
+    function switchTab(tab) {
+        activeTab = tab;
+        document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+        document.getElementById('tab-' + tab).style.display = (tab === 'feedback') ? 'block' : 'flex';
+        document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+    }
+
+    // ─── CONVERTIR ─────────────────────────────
+    async function convertCode() {
+        const pseudocode = editor.value.trim();
+        if (!pseudocode) return alert('Escribe algo de pseudocódigo primero.');
+
+        const lang = activeTab === 'feedback' ? 'python' : activeTab;
+
+        // ─── Cortocircuito: input no cambió desde la última conversión ───
+        if (lastConvertedInput[lang] === pseudocode && convertedCode[lang]) {
+            flashCacheBadge(lang, 'code', 'sin cambios');
+            return;
+        }
+
+        const btn = document.getElementById('btn-convert');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Convirtiendo...';
+
+        document.getElementById('code-' + lang).innerHTML =
+            '<div class="loading"><span class="spinner"></span> Convirtiendo a ' + lang + '...</div>';
+
+        try {
+            const res = await fetch('/api/convert', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pseudocode, language: lang })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                convertedCode[lang] = data.code;
+                lastConvertedInput[lang] = pseudocode;
+                document.getElementById('code-' + lang).textContent = data.code;
+                resetExecOutput(lang);
+                if (data.cached) flashCacheBadge(lang, 'code', 'desde caché');
+                if (activeTab === 'feedback') switchTab(lang);
+                refreshUsage();
+            } else {
+                document.getElementById('code-' + lang).innerHTML =
+                    '<span style="color:#f38ba8;">Error: ' + escapeHtml(data.error) + '</span>';
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Error de conexión.');
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '🔄 Convertir';
+    }
+
+    async function convertAll() {
+        const pseudocode = editor.value.trim();
+        if (!pseudocode) return alert('Escribe algo de pseudocódigo primero.');
+
+        const btn = document.getElementById('btn-convert-all');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Convirtiendo...';
+
+        ['python', 'cpp', 'php'].forEach(lang => {
+            document.getElementById('code-' + lang).innerHTML =
+                '<div class="loading"><span class="spinner"></span> Convirtiendo a ' + lang + '...</div>';
+        });
+
+        try {
+            const res = await fetch('/api/convert-all', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pseudocode })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                for (const lang of ['python', 'cpp', 'php']) {
+                    const sub = data.results[lang];
+                    if (sub.success) {
+                        convertedCode[lang] = sub.code;
+                        lastConvertedInput[lang] = pseudocode;
+                        document.getElementById('code-' + lang).textContent = sub.code;
+                        resetExecOutput(lang);
+                        if (sub.cached) flashCacheBadge(lang, 'code', 'desde caché');
+                    } else {
+                        document.getElementById('code-' + lang).innerHTML =
+                            '<span style="color:#f38ba8;">Error: ' + escapeHtml(sub.error) + '</span>';
+                    }
+                }
+                refreshUsage();
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Error de conexión.');
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '📋 Convertir a todos';
+    }
+
+    // ─── DETECTAR si el código pide datos por stdin ───────
+    function detectStdinPrompts(code, lang) {
+        const prompts = [];
+        if (lang === 'python') {
+            const re = /input\s*\(\s*(?:["']([^"']*)["'])?\s*\)/g;
+            let m;
+            while ((m = re.exec(code)) !== null) prompts.push(m[1] || '');
+        } else if (lang === 'cpp') {
+            // cada `cin >> var` consume un valor. Cuento variables encadenadas también.
+            const re = /cin\s*(?:>>\s*\w+\s*)+/g;
+            let m;
+            while ((m = re.exec(code)) !== null) {
+                const count = (m[0].match(/>>/g) || []).length;
+                for (let i = 0; i < count; i++) prompts.push('');
+            }
+            const re2 = /getline\s*\(\s*cin\s*,/g;
+            while ((m = re2.exec(code)) !== null) prompts.push('');
+        } else if (lang === 'php') {
+            const re = /fgets\s*\(\s*STDIN/g;
+            let m;
+            while ((m = re.exec(code)) !== null) prompts.push('');
+            const re2 = /readline\s*\(\s*(?:["']([^"']*)["'])?\s*\)/g;
+            while ((m = re2.exec(code)) !== null) prompts.push(m[1] || '');
+        }
+        return prompts;
+    }
+
+    // Muestra un mini-formulario con un input por cada dato que pide el programa
+    function showStdinForm(lang, prompts) {
+        const target = document.getElementById('output-' + lang);
+        let html = '<div class="stdin-form">'
+            + '<div class="stdin-form-title">📥 Tu programa pide '
+            + prompts.length + ' dato' + (prompts.length > 1 ? 's' : '')
+            + '. Escríbelo' + (prompts.length > 1 ? 's' : '') + ' y vuelve a darle ▶ Ejecutar:</div>';
+        prompts.forEach((p, i) => {
+            const label = p && p.trim() ? escapeHtml(p) : 'Valor ' + (i + 1);
+            html += '<label class="stdin-form-row">'
+                + '<span class="stdin-form-label">' + label + '</span>'
+                + '<input class="stdin-form-input" data-idx="' + i + '" type="text" '
+                + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();submitStdinAndRun(\'' + lang + '\');}">'
+                + '</label>';
+        });
+        html += '<button class="btn btn-primary btn-sm stdin-form-go" '
+            + 'onclick="submitStdinAndRun(\'' + lang + '\')">▶ Ejecutar con estos datos</button>';
+        html += '<div class="stdin-form-hint">o pulsa <kbd>Enter</kbd> en cualquier campo</div>';
+        html += '</div>';
+        target.innerHTML = html;
+        // Foco al primer input
+        const first = target.querySelector('.stdin-form-input');
+        if (first) first.focus();
+    }
+
+    function submitStdinAndRun(lang) {
+        const inputs = document.querySelectorAll('#output-' + lang + ' .stdin-form-input');
+        if (!inputs.length) return runCode(lang);
+        const values = Array.from(inputs).map(el => el.value).join('\n') + '\n';
+        document.getElementById('stdin-' + lang).value = values;
+        runCode(lang, /*skipPromptCheck=*/true);
+    }
+
+    // ─── EJECUTAR ──────────────────────────────
+    async function runCode(lang, skipPromptCheck) {
+        const code = convertedCode[lang] || document.getElementById('code-' + lang).textContent;
+        if (!code || !code.trim() || code.trim().startsWith('//')) {
+            return alert('Primero convierte el pseudocódigo a ' + lang + '.');
+        }
+        const stdin = document.getElementById('stdin-' + lang).value || '';
+
+        // Si el código pide datos y aún no hay stdin → mostrar formulario inline
+        if (!skipPromptCheck && !stdin.trim()) {
+            const prompts = detectStdinPrompts(code, lang);
+            if (prompts.length > 0) {
+                showStdinForm(lang, prompts);
+                return;
+            }
+        }
+
+        const btn = document.getElementById('btn-run-' + lang);
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Ejecutando...';
+
+        document.getElementById('output-' + lang).innerHTML =
+            '<div class="loading"><span class="spinner"></span> Ejecutando en sandbox...</div>';
+
+        try {
+            const res = await fetch('/api/execute', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ language: lang, code, stdin })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                renderExecResult(lang, data);
+            } else {
+                document.getElementById('output-' + lang).innerHTML =
+                    '<span style="color:#f38ba8;">Error: ' + escapeHtml(data.error) + '</span>';
+            }
+        } catch (err) {
+            console.error(err);
+            document.getElementById('output-' + lang).innerHTML =
+                '<span style="color:#f38ba8;">Error de conexión.</span>';
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '▶ Ejecutar';
+    }
+
+    function renderExecResult(lang, data) {
+        const target = document.getElementById('output-' + lang);
+        let html = '';
+        const status = data.timed_out
+            ? '<span class="exec-pill exec-timeout">⏱ Timeout</span>'
+            : (data.exit_code === 0 ? '<span class="exec-pill exec-ok">✓ exit 0</span>'
+                                    : `<span class="exec-pill exec-err">✗ exit ${data.exit_code}</span>`);
+        html += `<div class="exec-status">${status}${data.truncated ? ' <span class="exec-pill">salida truncada</span>' : ''}</div>`;
+
+        if (data.stdout) {
+            html += `<div class="exec-block-label">stdout</div><pre class="exec-stdout">${escapeHtml(data.stdout)}</pre>`;
+        }
+        if (data.stderr) {
+            html += `<div class="exec-block-label">stderr</div><pre class="exec-stderr">${escapeHtml(data.stderr)}</pre>`;
+        }
+        if (!data.stdout && !data.stderr) {
+            html += '<div style="color:var(--text-muted); font-style:italic;">(sin salida)</div>';
+        }
+
+        // Si el código pide datos, ofrecer re-ejecutar con otros valores
+        const code = convertedCode[lang] || '';
+        if (detectStdinPrompts(code, lang).length > 0) {
+            const stdinEl = document.getElementById('stdin-' + lang);
+            const used = (stdinEl && stdinEl.value || '').trim().replace(/\n/g, ' · ');
+            html += `<div class="exec-rerun">
+                <span class="exec-rerun-label">Ejecutado con:</span>
+                <code class="exec-rerun-values">${escapeHtml(used) || '(sin datos)'}</code>
+                <button class="btn-mini" onclick="rerunWithNewInputs('${lang}')">🔁 Otros datos</button>
+            </div>`;
+        }
+        target.innerHTML = html;
+    }
+
+    function rerunWithNewInputs(lang) {
+        document.getElementById('stdin-' + lang).value = '';
+        runCode(lang);
+    }
+
+    function resetExecOutput(lang) {
+        document.getElementById('output-' + lang).innerHTML =
+            '<span style="color:var(--text-muted);">(Pulsa ▶ Ejecutar para ver la salida)</span>';
+        document.getElementById('explain-' + lang).innerHTML =
+            '<span style="color:var(--text-muted);">(Pulsa 💬 Explicar para una explicación paso a paso del código)</span>';
+        // stdin viejo seguro ya no aplica al código nuevo
+        const stdinEl = document.getElementById('stdin-' + lang);
+        if (stdinEl) stdinEl.value = '';
+    }
+
+    // ─── EXPLICAR ──────────────────────────────
+    async function explainCode(lang) {
+        const code = convertedCode[lang] || document.getElementById('code-' + lang).textContent;
+        if (!code || !code.trim() || code.trim().startsWith('//')) {
+            return alert('Primero convierte el pseudocódigo a ' + lang + '.');
+        }
+
+        // Cortocircuito: ya explicado este código exacto
+        if (lastExplainedInput[lang] === code) {
+            flashCacheBadge(lang, 'explain', 'sin cambios');
+            return;
+        }
+
+        const btn = document.getElementById('btn-explain-' + lang);
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Pensando...';
+
+        document.getElementById('explain-' + lang).innerHTML =
+            '<div class="loading"><span class="spinner"></span> La IA está preparando la explicación...</div>';
+
+        try {
+            const res = await fetch('/api/explain', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ language: lang, code })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                lastExplainedInput[lang] = code;
+                document.getElementById('explain-' + lang).innerHTML = formatFeedback(data.explanation);
+                if (data.cached) flashCacheBadge(lang, 'explain', 'desde caché');
+                refreshUsage();
+            } else {
+                document.getElementById('explain-' + lang).innerHTML =
+                    '<span style="color:#f38ba8;">Error: ' + escapeHtml(data.error) + '</span>';
+            }
+        } catch (err) {
+            console.error(err);
+            document.getElementById('explain-' + lang).innerHTML =
+                '<span style="color:#f38ba8;">Error de conexión.</span>';
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '💬 Explicar';
+    }
+
+    // ─── FEEDBACK GLOBAL ───────────────────────
+    async function getFeedback() {
+        const pseudocode = editor.value.trim();
+        if (!pseudocode) return alert('Escribe algo de pseudocódigo primero.');
+
+        // Cortocircuito: ya pedimos feedback de este mismo pseudocódigo
+        if (lastFeedbackInput === pseudocode && currentFeedback) {
+            switchTab('feedback');
+            document.getElementById('tab-feedback').innerHTML =
+                '<div style="margin-bottom:0.5rem; font-size:0.78rem; color:var(--text-muted);">⚡ Sin cambios — feedback anterior</div>' +
+                formatFeedback(currentFeedback);
+            return;
+        }
+
+        const btn = document.getElementById('btn-feedback');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Analizando...';
+
+        switchTab('feedback');
+        document.getElementById('tab-feedback').innerHTML =
+            '<div class="loading"><span class="spinner"></span> La IA está analizando tu pseudocódigo...</div>';
+
+        try {
+            const res = await fetch('/api/feedback', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pseudocode, exercise_id: exerciseId })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                currentFeedback = data.feedback;
+                lastFeedbackInput = pseudocode;
+                const cacheNote = data.cached
+                    ? '<div style="margin-bottom:0.5rem; font-size:0.78rem; color:var(--text-muted);">⚡ Servido desde caché (0 tokens)</div>'
+                    : '';
+                document.getElementById('tab-feedback').innerHTML = cacheNote + formatFeedback(data.feedback);
+                refreshUsage();
+            } else {
+                document.getElementById('tab-feedback').innerHTML =
+                    '<span style="color:var(--error);">Error: ' + escapeHtml(data.error) + '</span>';
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Error de conexión.');
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '🤖 Retroalimentación IA';
+    }
+
+    async function submitSolution() {
+        const pseudocode = editor.value.trim();
+        if (!pseudocode) return alert('Escribe tu solución primero.');
+
+        const btn = document.getElementById('btn-submit');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Enviando...';
+
+        const timeSpent = Math.floor((Date.now() - startTime) / 1000);
+
+        try {
+            const res = await fetch('/api/submit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    pseudocode,
+                    exercise_id: exerciseId,
+                    converted: convertedCode,
+                    feedback: currentFeedback,
+                    time_spent: timeSpent
+                })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                showGradeResult(data);
+                refreshUsage();
+                askCognitiveLoad(data.submission_id);
+            } else {
+                alert('Error al enviar: ' + data.error);
+            }
+        } catch (err) {
+            alert('Error de conexión.');
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '✅ Enviar solución';
+    }
+
+    // Muestra la calificación IA de la solución en el tab de feedback
+    function showGradeResult(data) {
+        switchTab('feedback');
+        const box = document.getElementById('tab-feedback');
+        if (data.score === null || data.score === undefined) {
+            box.innerHTML = '<div style="text-align:center; padding:1rem;">'
+                + '<div style="font-size:2.2rem;">📨</div>'
+                + '<h3 style="margin:0.4rem 0;">¡Solución enviada!</h3>'
+                + '<p style="color:var(--text-muted); font-size:0.85rem;">No se pudo calificar automáticamente esta vez; tu docente podrá revisarla.</p></div>';
+            return;
+        }
+        const passed = data.passed;
+        const color = passed ? '#a6e3a1' : (data.score >= 40 ? '#f9e2af' : '#f38ba8');
+        const emoji = passed ? '🎉' : (data.score >= 40 ? '💪' : '📚');
+        const title = passed ? '¡Ejercicio superado!' : 'Aún no lo superas — ¡sigue intentando!';
+        box.innerHTML = '<div style="text-align:center; padding:1rem;">'
+            + '<div style="font-size:2.6rem;">' + emoji + '</div>'
+            + '<h3 style="margin:0.4rem 0;">' + title + '</h3>'
+            + '<div style="font-size:2.4rem; font-weight:800; color:' + color + '; margin:0.5rem 0;">'
+            + data.score + '<span style="font-size:1rem; color:var(--text-muted);">/100</span></div>'
+            + (data.grade_reason
+                ? '<p style="color:var(--text-light); font-size:0.9rem; max-width:480px; margin:0.5rem auto;">'
+                  + escapeHtml(data.grade_reason) + '</p>'
+                : '')
+            + (passed
+                ? '<a href="/exercises" class="btn btn-primary btn-sm" style="margin-top:0.75rem;">Siguiente ejercicio →</a>'
+                : '<p style="color:var(--text-muted); font-size:0.8rem; margin-top:0.75rem;">Pide 🤖 Retroalimentación IA, corrige y vuelve a enviar (necesitas 60 o más).</p>')
+            + '</div>';
+    }
+
+    // ─── HELPERS ───────────────────────────────
+    // Renderer markdown ligero pensado para tema oscuro.
+    // Maneja: ```code blocks```, `inline code`, **bold**, *italic*,
+    // headings (#, ##, ###), bullets (-), horizontal rules (---), párrafos.
+    function formatFeedback(text) {
+        if (!text) return '';
+        // Placeholders para code blocks (evita que se procesen como markdown)
+        const blocks = [];
+        let s = String(text).replace(/```(\w+)?\n?([\s\S]*?)```/g, (_, lang, code) => {
+            const i = blocks.length;
+            blocks.push({ lang: lang || '', code: code.replace(/\n+$/,'') });
+            return ` B${i} `;
+        });
+
+        // Escape HTML (después de extraer code blocks)
+        s = s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+        // Headings (mantener antes de tocar saltos de línea)
+        s = s.replace(/^###\s+(.+)$/gm, '<h4 class="md-h">$1</h4>');
+        s = s.replace(/^##\s+(.+)$/gm, '<h3 class="md-h">$1</h3>');
+        s = s.replace(/^#\s+(.+)$/gm, '<h2 class="md-h">$1</h2>');
+
+        // Horizontal rule
+        s = s.replace(/^---+\s*$/gm, '<hr class="md-hr">');
+
+        // Listas con viñetas (- item o * item)
+        s = s.replace(/((?:^[-*]\s.+\n?)+)/gm, (m) => {
+            const items = m.trim().split(/\n/).map(l =>
+                `<li>${l.replace(/^[-*]\s+/, '')}</li>`).join('');
+            return `<ul class="md-ul">${items}</ul>`;
+        });
+
+        // Inline: **bold**, *italic*, `inline code`
+        s = s.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+        s = s.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<em>$2</em>');
+        s = s.replace(/`([^`\n]+)`/g, '<code class="md-inline">$1</code>');
+
+        // Párrafos: doble salto → cierre/apertura
+        s = s.replace(/\n{2,}/g, '</p><p class="md-p">');
+        s = '<p class="md-p">' + s + '</p>';
+
+        // Limpia <p> que envuelven bloques de bloque
+        s = s.replace(/<p class="md-p">(\s*)(<h\d|<ul|<hr|<pre)/g, '$1$2');
+        s = s.replace(/(<\/h\d>|<\/ul>|<hr[^>]*>|<\/pre>)(\s*)<\/p>/g, '$1$2');
+
+        // Saltos de línea sueltos
+        s = s.replace(/\n/g, '<br>');
+        s = s.replace(/<br>(<\/p>|<\/li>|<\/h\d>|<\/ul>|<hr|<pre)/g, '$1');
+
+        // Restituir code blocks
+        s = s.replace(/ B(\d+) /g, (_, i) => {
+            const b = blocks[Number(i)];
+            const escaped = b.code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return `<pre class="md-code"${b.lang ? ` data-lang="${b.lang}"` : ''}><code>${escaped}</code></pre>`;
+        });
+        return s;
+    }
+
+    function escapeHtml(s) {
+        return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function copyCode(lang) {
+        const code = document.getElementById('code-' + lang).textContent;
+        navigator.clipboard.writeText(code).then(() => {
+            const btn = event.target;
+            const orig = btn.textContent;
+            btn.textContent = '✓';
+            setTimeout(() => btn.textContent = orig, 1200);
+        });
+    }
+
+    function toggleHint() {
+        document.getElementById('hint-box').classList.toggle('show');
+    }
+
+    // ─── Badge "desde caché / sin cambios" ─────────────
+    function flashCacheBadge(lang, section, label) {
+        const target = document.getElementById((section === 'code' ? 'code-' : 'explain-') + lang);
+        if (!target) return;
+        const existing = target.parentNode.querySelector('.cache-badge-floating');
+        if (existing) existing.remove();
+        const badge = document.createElement('div');
+        badge.className = 'cache-badge-floating';
+        badge.innerHTML = '⚡ ' + label + ' · 0 tokens';
+        target.parentNode.insertBefore(badge, target);
+        setTimeout(() => { badge.style.opacity = '0'; setTimeout(() => badge.remove(), 600); }, 2400);
+    }
+
+    // ─── Banner de uso (refrescable) ────────────────────
+    async function refreshUsage() {
+        try {
+            const r = await fetch('/api/usage');
+            if (!r.ok) return;
+            const u = await r.json();
+            const banner = document.getElementById('usageBanner');
+            if (!banner) return;
+            document.getElementById('usageReal').textContent = u.real_calls;
+            document.getElementById('usageLimit').textContent = u.limit;
+            document.getElementById('usageCached').textContent = u.cached_calls;
+            const fill = document.getElementById('usageBarFill');
+            fill.style.width = Math.min(100, u.percent_used) + '%';
+            // Color según urgencia
+            fill.className = 'usage-bar-fill' +
+                (u.percent_used >= 90 ? ' u-danger' :
+                 u.percent_used >= 70 ? ' u-warn' : '');
+            banner.style.display = 'flex';
+        } catch (_) { /* silent */ }
+    }
+    refreshUsage(); // al cargar
+
+    // Inicializar las panes como flex columns
+    document.querySelectorAll('.lang-pane').forEach(p => {
+        if (p.id === 'tab-python') p.style.display = 'flex';
+    });
+
+    charCount.textContent = editor.value.length + ' caracteres';
+
+    // ── Escala de carga cognitiva ──────────────────────────────
+    let ccSubmissionId = null;
+
+    function askCognitiveLoad(submissionId) {
+        ccSubmissionId = submissionId || null;
+        const f = document.getElementById('cc-form');
+        if (f) f.reset();
+        document.getElementById('cc-overlay').hidden = false;
+    }
+
+    function skipCognitiveLoad() {
+        document.getElementById('cc-overlay').hidden = true;
+    }
+
+    document.getElementById('cc-form').addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        const responses = {};
+        new FormData(ev.target).forEach((v, k) => { responses[k] = parseInt(v, 10); });
+
+        const btn = ev.target.querySelector('button[type=submit]');
+        btn.disabled = true; btn.textContent = 'Enviando...';
+        try {
+            const res = await fetch('/api/carga-cognitiva', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    responses,
+                    exercise_id: exerciseId,
+                    submission_id: ccSubmissionId
+                })
+            });
+            const d = await res.json();
+            if (!d.success) alert('No se pudo registrar: ' + (d.error || ''));
+        } catch (e) {
+            // Que un fallo aquí no bloquee al estudiante
+        }
+        btn.disabled = false; btn.textContent = 'Enviar';
+        document.getElementById('cc-overlay').hidden = true;
+    });
+
+
+    function alternarEjemplo() {
+        const c = document.getElementById('caja-ejemplo');
+        const b = document.getElementById('btn-ejemplo');
+        c.hidden = !c.hidden;
+        b.textContent = c.hidden ? '📖 Ver un ejemplo parecido resuelto'
+                                 : '📖 Ocultar el ejemplo';
+    }
+
+    // ── Ayudas bajo demanda ────────────────────────────────────
+    // Arrancan ocultas a propósito: así se mide el esfuerzo real del
+    // estudiante antes de recurrir al apoyo.
+    let ayudasAbiertas = false;
+    function alternarAyudas() {
+        const c = document.getElementById('caja-ayudas');
+        const b = document.getElementById('btn-ayudas');
+        c.hidden = !c.hidden;
+        b.textContent = c.hidden ? '🆘 Me trabé, mostrar ayudas' : '🔒 Ocultar ayudas';
+        if (!c.hidden && !ayudasAbiertas) {
+            ayudasAbiertas = true;
+            fetch('/api/registrar-ayuda', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    exercise_id: exerciseId,
+                    segundos: Math.floor((Date.now() - startTime) / 1000)
+                })
+            }).catch(() => {});   // que un fallo aquí no moleste al estudiante
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{% block title %}CodeLogic IUP{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Identidad visual: la marca </> en violeta institucional y cyan -->
+    <link rel="icon" href="{{ url_for('static', filename='img/logo.svg') }}" type="image/svg+xml">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" sizes="any">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/icon-180.png') }}">
+    <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
+    <meta name="theme-color" content="#9333ea">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ css_version }}">
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ url_for('index') }}" class="nav-logo">
+                <span class="logo-icon">⟨/⟩</span>
+                <span class="logo-text">CodeLogic <small>IUP</small></span>
+            </a>
+
+            {% if current_user.is_authenticated %}
+            <div class="nav-links">
+                {% if current_user.role == 'estudiante' %}
+                <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">Inicio</a>
+                <a href="{{ url_for('exercises') }}" class="nav-link {% if request.endpoint in ('exercises', 'topic_exercises') %}active{% endif %}">Ejercicios</a>
+                <a href="{{ url_for('editor') }}" class="nav-link {% if request.endpoint == 'editor' %}active{% endif %}">Editor Libre</a>
+                {% else %}
+                <a href="{{ url_for('admin_dashboard') }}" class="nav-link {% if request.endpoint == 'admin_dashboard' %}active{% endif %}">Panel</a>
+                <a href="{{ url_for('admin_exercises') }}" class="nav-link {% if request.endpoint == 'admin_exercises' %}active{% endif %}">Ejercicios</a>
+                <a href="{{ url_for('admin_students') }}" class="nav-link {% if request.endpoint == 'admin_students' %}active{% endif %}">Estudiantes</a>
+                <a href="{{ url_for('admin_research') }}" class="nav-link {% if request.endpoint == 'admin_research' %}active{% endif %}">Investigación</a>
+                <a href="{{ url_for('admin_tokens') }}" class="nav-link {% if request.endpoint in ('admin_tokens','admin_cache') %}active{% endif %}">Tokens IA</a>
+                <a href="{{ url_for('admin_logs') }}" class="nav-link {% if request.endpoint == 'admin_logs' %}active{% endif %}">Logs</a>
+                {% endif %}
+            </div>
+            <div class="nav-user">
+                <a href="{{ url_for('perfil') }}" class="user-name" style="text-decoration:none; color:inherit;" title="Mi perfil">{{ current_user.name.split()[0] }}</a>
+                <span class="user-role badge-{{ current_user.role }}">{{ current_user.role }}</span>
+                <a href="{{ url_for('logout') }}" class="nav-link logout-link">Salir</a>
+            </div>
+            {% else %}
+            <div class="nav-links">
+                <a href="{{ url_for('login') }}" class="nav-link">Iniciar Sesión</a>
+                <a href="{{ url_for('register') }}" class="btn btn-primary btn-sm">Registrarse</a>
+            </div>
+            {% endif %}
+        </div>
+    </nav>
+
+    <!-- FLASH MESSAGES -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-container">
+        {% for category, message in messages %}
+        <div class="flash flash-{{ category }}">
+            {{ message }}
+            <button class="flash-close" onclick="this.parentElement.remove()">&times;</button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <!-- CONTENT -->
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <p>CodeLogic IUP &mdash; Plataforma de aprendizaje de programación</p>
+        <p class="footer-sub">Institución Universitaria del Putumayo &bull; 2026</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

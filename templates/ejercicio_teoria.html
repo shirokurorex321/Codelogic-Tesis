@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block title %}{{ exercise.title }} — CodeLogic IUP{% endblock %}
+
+{% block content %}
+<div class="teoria-cab">
+    <a href="{{ url_for('topic_exercises', topic_id=exercise.topic_id) }}"
+       class="btn btn-outline btn-sm">← Volver a {{ exercise.topic.name }}</a>
+    <span class="diff-badge diff-{{ exercise.difficulty }}">{{ exercise.difficulty }}</span>
+</div>
+
+<div class="teoria">
+    <h1 class="teoria-titulo">{{ exercise.title }}</h1>
+
+    <section class="teoria-sec teoria-enunciado">
+        <h2>📋 El ejercicio</h2>
+        <p>{{ exercise.description }}</p>
+    </section>
+
+    {% if exercise.concepto %}
+    <section class="teoria-sec">
+        <h2>🎯 Qué vas a practicar</h2>
+        <div class="leccion-texto">{{ exercise.concepto|parrafos }}</div>
+    </section>
+    {% endif %}
+
+    {% if exercise.ejemplo_resuelto %}
+    <section class="teoria-sec">
+        <h2>📖 Un ejemplo parecido, resuelto</h2>
+        <p class="teoria-nota">
+            Este <strong>no</strong> es el ejercicio: es un caso similar para que
+            veas el patrón. Estúdialo y después adáptalo a lo que te piden.
+        </p>
+        <pre class="leccion-codigo">{{ exercise.ejemplo_resuelto }}</pre>
+        {% if exercise.ejemplo_salida %}
+        <div class="pred-caja" id="pred-caja"
+             data-url="{{ url_for('prediccion', exercise_id=exercise.id) }}">
+            <h3>🔮 Antes de seguir: ¿qué crees que imprime?</h3>
+            {% if exercise.ejemplo_entrada %}
+            <p class="pred-entrada">Supón que el usuario escribe:
+                <strong>{{ exercise.ejemplo_entrada }}</strong></p>
+            {% endif %}
+            <p class="pred-ayuda">Escríbelo tal y como crees que va a salir en pantalla,
+                una línea por cada cosa que imprima. No pasa nada si fallas: esto no
+                puntúa, y fallar aquí es justamente lo que enseña.</p>
+            <textarea id="pred-texto" rows="5" spellcheck="false"
+                      placeholder="Escribe aquí tu predicción…"></textarea>
+            <button type="button" class="btn btn-primary" id="pred-btn">Comprobar</button>
+            <div id="pred-resultado" class="pred-resultado" hidden></div>
+        </div>
+        {% endif %}
+    </section>
+    {% endif %}
+
+    {% if exercise.pasos %}
+    <section class="teoria-sec">
+        <h2>🪜 Cómo puedes abordarlo</h2>
+        <ol class="teoria-pasos">
+            {% for paso in exercise.pasos.split('\n') %}
+                {% if paso.strip() %}<li>{{ paso.strip() }}</li>{% endif %}
+            {% endfor %}
+        </ol>
+    </section>
+    {% endif %}
+
+    <section class="teoria-sec teoria-repaso">
+        <p>
+            ¿Necesitas repasar la teoría del tema?
+            <a href="{{ url_for('topic_exercises', topic_id=exercise.topic_id) }}">
+                Vuelve a la lección de {{ exercise.topic.name }}</a>.
+        </p>
+    </section>
+
+    <div class="teoria-accion">
+        <p class="teoria-aviso">
+            En el editor trabajarás <strong>sin estas ayudas a la vista</strong>.
+            Si te trabas, podrás abrirlas desde ahí.
+        </p>
+        <a id="pred-seguir"
+           href="{{ url_for('editor_exercise', exercise_id=exercise.id) }}"
+           class="btn btn-primary btn-lg{% if exercise.ejemplo_salida and not ya_predijo %} bloqueado{% endif %}">
+            Resolver el ejercicio <span class="arrow">→</span>
+        </a>
+    </div>
+</div>
+<script>
+/* Paso de prediccion. La primera vez el boton de resolver esta bloqueado:
+   no se trata de castigar, sino de que nadie se salte el unico momento en
+   que tiene que pensar antes de que le den la respuesta. */
+(function(){
+  const caja = document.getElementById("pred-caja");
+  if(!caja) return;
+  const btn = document.getElementById("pred-btn");
+  const texto = document.getElementById("pred-texto");
+  const salida = document.getElementById("pred-resultado");
+  const seguir = document.getElementById("pred-seguir");
+
+  function esc(s){ return String(s).replace(/[&<>"']/g, c =>
+    ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+  btn.addEventListener("click", async () => {
+    const v = texto.value.trim();
+    if(!v){ texto.focus(); return; }
+    btn.disabled = true; btn.textContent = "Comprobando…";
+    try{
+      const r = await fetch(caja.dataset.url, {
+        method: "POST",
+        /* El token CSRF no se pone aqui: app.js envuelve fetch y lo anade solo.
+           Ponerlo vacio a mano impediria que la envoltura pusiera el bueno. */
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({prediccion: v})
+      });
+      const d = await r.json();
+      if(d.error){ salida.hidden=false; salida.className="pred-resultado mal";
+                   salida.textContent = d.error; btn.disabled=false;
+                   btn.textContent="Comprobar"; return; }
+      salida.hidden = false;
+      salida.className = "pred-resultado " + d.resultado;
+      salida.innerHTML = `<p><b>${esc(d.mensaje)}</b></p>
+        <p class="pred-etq">Lo que imprime de verdad:</p>
+        <pre>${esc(d.salida_real)}</pre>`;
+      texto.readOnly = true;
+      btn.hidden = true;
+      /* Respondido: ya puede pasar al editor. */
+      if(seguir) seguir.classList.remove("bloqueado");
+    }catch(e){
+      salida.hidden=false; salida.className="pred-resultado mal";
+      salida.textContent = "No se pudo comprobar. Inténtalo otra vez.";
+      btn.disabled=false; btn.textContent="Comprobar";
+    }
+  });
+
+  /* Si aun no ha predicho, el enlace no lleva a ningun lado. */
+  if(seguir && seguir.classList.contains("bloqueado")){
+    seguir.addEventListener("click", e => {
+      if(seguir.classList.contains("bloqueado")){
+        e.preventDefault();
+        texto.focus();
+        caja.scrollIntoView({behavior:"smooth", block:"center"});
+      }
+    });
+  }
+})();
+</script>
+{% endblock %}

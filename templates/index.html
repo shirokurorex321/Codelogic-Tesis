@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+{% block title %}CodeLogic IUP — Aprende programación paso a paso{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <div class="hero-bg" aria-hidden="true">
+        <span class="blob blob-1"></span>
+        <span class="blob blob-2"></span>
+        <span class="blob blob-3"></span>
+        <span class="grid-overlay"></span>
+    </div>
+
+    <div class="hero-grid">
+        <div class="hero-copy reveal">
+            <span class="hero-badge">
+                <span class="pulse-dot"></span>
+                Institución Universitaria del Putumayo
+            </span>
+            <h1>
+                Aprende a programar<br>
+                <span class="gradient-text">paso a paso</span>
+            </h1>
+            <p class="hero-subtitle">
+                Escribe pseudocódigo, conviértelo a <strong>Python</strong>, <strong>C++</strong> o <strong>PHP</strong>
+                y recibe retroalimentación inteligente con IA que te guía en cada error.
+            </p>
+            <div class="hero-actions">
+                <a href="{{ url_for('register') }}" class="btn btn-primary btn-lg btn-shine">
+                    Comenzar ahora <span class="arrow">→</span>
+                </a>
+                <a href="{{ url_for('login') }}" class="btn btn-outline btn-lg">Ya tengo cuenta</a>
+            </div>
+            <div class="hero-trust">
+                <span class="trust-dot"></span> 100% gratis para estudiantes IUP
+                <span class="trust-sep">·</span>
+                <span>sin instalación</span>
+            </div>
+        </div>
+
+        <div class="hero-mockup reveal" aria-hidden="true">
+            <div class="code-card">
+                <header class="code-card-head">
+                    <span class="dot dot-r"></span>
+                    <span class="dot dot-y"></span>
+                    <span class="dot dot-g"></span>
+                    <span class="code-card-title" id="codeCardTitle">pseudocódigo → python</span>
+                </header>
+                <pre class="code-pseudo" id="heroPseudo"></pre>
+                <div class="code-arrow">▼ Conversión IA</div>
+                <pre class="code-target" id="heroTarget"></pre>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="stats reveal">
+    <div class="stat">
+        <div class="stat-num" data-count="3">0</div>
+        <div class="stat-label">lenguajes objetivo</div>
+    </div>
+    <div class="stat">
+        <div class="stat-num" data-count="40" data-suffix="+">0</div>
+        <div class="stat-label">ejercicios guiados</div>
+    </div>
+    <div class="stat">
+        <div class="stat-num" data-count="100" data-suffix="%">0</div>
+        <div class="stat-label">en español</div>
+    </div>
+    <div class="stat">
+        <div class="stat-num" data-count="24" data-suffix="/7">0</div>
+        <div class="stat-label">tutor IA disponible</div>
+    </div>
+</section>
+
+<section class="how-it-works">
+    <header class="section-head reveal">
+        <span class="section-eyebrow">Cómo funciona</span>
+        <h2>De idea a código en <span class="gradient-text-cool">tres pasos</span></h2>
+    </header>
+    <div class="steps">
+        <div class="step reveal" style="--delay:0ms">
+            <div class="step-num">1</div>
+            <h3>Escribe tu lógica</h3>
+            <p>Usa pseudocódigo en español. Sin preocuparte por la sintaxis de ningún lenguaje.</p>
+        </div>
+        <div class="step-arrow" aria-hidden="true">→</div>
+        <div class="step reveal" style="--delay:120ms">
+            <div class="step-num">2</div>
+            <h3>Convierte con IA</h3>
+            <p>Tu algoritmo se traduce a Python, C++ y PHP en segundos. Compáralos lado a lado.</p>
+        </div>
+        <div class="step-arrow" aria-hidden="true">→</div>
+        <div class="step reveal" style="--delay:240ms">
+            <div class="step-num">3</div>
+            <h3>Ejecuta y aprende</h3>
+            <p>Corre el código en un sandbox seguro, mira la salida y recibe explicación paso a paso.</p>
+        </div>
+    </div>
+</section>
+
+<section class="features">
+    <header class="section-head reveal">
+        <span class="section-eyebrow">Todo lo que necesitas</span>
+        <h2>Una plataforma diseñada para <span class="gradient-text-warm">aprender</span></h2>
+    </header>
+    <div class="features-grid">
+        <div class="feature-card reveal" style="--delay:0ms">
+            <span class="feature-icon-wrap"><span class="feature-icon">✏️</span></span>
+            <h3>Escribe en pseudocódigo</h3>
+            <p>Concéntrate en la lógica del algoritmo sin preocuparte por la sintaxis. Escribe en español, como piensas.</p>
+        </div>
+        <div class="feature-card reveal" style="--delay:80ms">
+            <span class="feature-icon-wrap"><span class="feature-icon">🔄</span></span>
+            <h3>Conversión automática</h3>
+            <p>Observa cómo tu algoritmo se transforma en código real: Python, C++ y PHP. Compara los tres lenguajes lado a lado.</p>
+        </div>
+        <div class="feature-card reveal" style="--delay:160ms">
+            <span class="feature-icon-wrap"><span class="feature-icon">🤖</span></span>
+            <h3>Retroalimentación con IA</h3>
+            <p>Un asistente inteligente revisa tu pseudocódigo, te dice qué está mal, dónde está el error y cómo corregirlo.</p>
+        </div>
+        <div class="feature-card reveal" style="--delay:240ms">
+            <span class="feature-icon-wrap"><span class="feature-icon">📈</span></span>
+            <h3>Progreso visible</h3>
+            <p>Avanza tema por tema: variables, condicionales, ciclos y arreglos. Ve tu progreso y celebra cada logro.</p>
+        </div>
+        <div class="feature-card reveal" style="--delay:320ms">
+            <span class="feature-icon-wrap"><span class="feature-icon">🎯</span></span>
+            <h3>Ejercicios guiados</h3>
+            <p>Practica con ejercicios diseñados para el curso de Diagramación y Algoritmos, con pistas cuando las necesites.</p>
+        </div>
+        <div class="feature-card reveal" style="--delay:400ms">
+            <span class="feature-icon-wrap"><span class="feature-icon">▶️</span></span>
+            <h3>Ejecuta tu código</h3>
+            <p>Corre el código convertido en un sandbox seguro y mira el resultado al instante. Sin instalar nada.</p>
+        </div>
+    </div>
+</section>
+
+<section class="cta reveal">
+    <div class="cta-bg" aria-hidden="true"></div>
+    <div class="cta-inner">
+        <h2>¿Listo para <span class="gradient-text-fire">empezar</span>?</h2>
+        <p>Únete a la plataforma de la Institución Universitaria del Putumayo y aprende a programar en español, paso a paso.</p>
+        <div class="hero-actions">
+            <a href="{{ url_for('register') }}" class="btn btn-accent btn-lg btn-shine">
+                Crear cuenta gratis <span class="arrow">→</span>
+            </a>
+            <a href="{{ url_for('login') }}" class="btn btn-outline btn-lg btn-outline-light">Iniciar sesión</a>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // ─── Reveal on scroll ──────────────────────
+    const revealEls = document.querySelectorAll('.reveal');
+    if ('IntersectionObserver' in window && !reduce) {
+        const io = new IntersectionObserver((entries) => {
+            entries.forEach(e => {
+                if (e.isIntersecting) {
+                    e.target.classList.add('is-visible');
+                    io.unobserve(e.target);
+                }
+            });
+        }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+        revealEls.forEach(el => io.observe(el));
+    } else {
+        revealEls.forEach(el => el.classList.add('is-visible'));
+    }
+
+    // ─── Counter animation ─────────────────────
+    function animateCounter(el) {
+        const target = parseInt(el.dataset.count, 10);
+        const suffix = el.dataset.suffix || '';
+        if (reduce) { el.textContent = target + suffix; return; }
+        const duration = 1200;
+        const start = performance.now();
+        function tick(now) {
+            const t = Math.min(1, (now - start) / duration);
+            const eased = 1 - Math.pow(1 - t, 3);
+            el.textContent = Math.round(target * eased) + suffix;
+            if (t < 1) requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+    }
+    const counters = document.querySelectorAll('.stat-num');
+    if ('IntersectionObserver' in window) {
+        const co = new IntersectionObserver((entries) => {
+            entries.forEach(e => {
+                if (e.isIntersecting) { animateCounter(e.target); co.unobserve(e.target); }
+            });
+        }, { threshold: 0.5 });
+        counters.forEach(c => co.observe(c));
+    } else {
+        counters.forEach(animateCounter);
+    }
+
+    // ─── Hero code typewriter (loop pseudo→python→cpp→php) ──────
+    const examples = [
+        {
+            lang: 'python',
+            title: 'pseudocódigo → python',
+            pseudo: `Algoritmo Suma
+    Definir a, b Como Entero
+    a <- 5
+    b <- 3
+    Escribir a + b
+FinAlgoritmo`,
+            target: `# Suma de dos enteros
+a = 5
+b = 3
+print(a + b)`
+        },
+        {
+            lang: 'cpp',
+            title: 'pseudocódigo → c++',
+            pseudo: `Algoritmo Saludo
+    Definir nombre Como Cadena
+    nombre <- "Ana"
+    Escribir "Hola, ", nombre
+FinAlgoritmo`,
+            target: `#include <iostream>
+int main() {
+    std::string nombre = "Ana";
+    std::cout << "Hola, " << nombre;
+}`
+        },
+        {
+            lang: 'php',
+            title: 'pseudocódigo → php',
+            pseudo: `Algoritmo Par
+    Definir n Como Entero
+    n <- 10
+    Si n % 2 = 0 Entonces
+        Escribir "Es par"
+    FinSi
+FinAlgoritmo`,
+            target: `<?php
+$n = 10;
+if ($n % 2 === 0) {
+    echo "Es par";
+}`
+        }
+    ];
+
+    const pseudoEl = document.getElementById('heroPseudo');
+    const targetEl = document.getElementById('heroTarget');
+    const titleEl  = document.getElementById('codeCardTitle');
+    let idx = 0;
+
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+    async function typeInto(el, text, speed) {
+        el.textContent = '';
+        if (reduce) { el.textContent = text; return; }
+        for (let i = 0; i < text.length; i++) {
+            el.textContent += text[i];
+            // tiny pauses on newlines for rhythm
+            await sleep(text[i] === '\n' ? 60 : speed);
+        }
+    }
+    async function loop() {
+        while (true) {
+            const ex = examples[idx];
+            titleEl.textContent = ex.title;
+            targetEl.textContent = '';
+            await typeInto(pseudoEl, ex.pseudo, 18);
+            await sleep(reduce ? 0 : 350);
+            await typeInto(targetEl, ex.target, 14);
+            await sleep(reduce ? 9999999 : 2200);
+            idx = (idx + 1) % examples.length;
+            if (reduce) break;
+        }
+    }
+    if (pseudoEl && targetEl) loop();
+})();
+</script>
+{% endblock %}

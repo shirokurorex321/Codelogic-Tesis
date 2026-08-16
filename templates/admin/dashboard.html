@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Panel Docente — CodeLogic IUP{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <h1>Panel del Docente</h1>
+    <p>Monitorea el progreso de los estudiantes y gestiona la plataforma.</p>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ total_students }}</div>
+        <div class="stat-label">Estudiantes</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ total_submissions }}</div>
+        <div class="stat-label">Envíos totales</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ total_exercises }}</div>
+        <div class="stat-label">Ejercicios activos</div>
+    </div>
+</div>
+
+<div class="admin-grid">
+    <!-- Estudiantes más activos -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">Estudiantes más activos</span>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr><th>Estudiante</th><th>Envíos</th></tr>
+                </thead>
+                <tbody>
+                    {% for name, count in active_students %}
+                    <tr><td>{{ name }}</td><td><strong>{{ count }}</strong></td></tr>
+                    {% else %}
+                    <tr><td colspan="2" style="color:var(--text-muted); text-align:center;">Sin actividad aún</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Envíos recientes -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">Envíos recientes</span>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr><th>Estudiante</th><th>Ejercicio</th><th>Fecha</th></tr>
+                </thead>
+                <tbody>
+                    {% for sub in recent_submissions %}
+                    <tr>
+                        <td>{{ sub.student.name.split()[0] }}</td>
+                        <td>{{ sub.exercise.title if sub.exercise else 'Práctica libre' }}</td>
+                        <td style="font-size:0.8rem; color:var(--text-light);">{{ sub.created_at.strftime('%d/%m %H:%M') }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Acciones rápidas -->
+<div class="grid-2 mt-2">
+    <a href="{{ url_for('admin_exercises') }}" class="btn btn-primary btn-block">Gestionar Ejercicios</a>
+    <a href="/api/admin/export-logs" class="btn btn-outline btn-block" target="_blank">Exportar Logs (JSON)</a>
+</div>
+{% endblock %}

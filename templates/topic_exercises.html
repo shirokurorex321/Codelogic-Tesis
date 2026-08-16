@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}{{ topic.name }} — CodeLogic IUP{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <div class="flex-between">
+        <div>
+            <h1>{{ topic.icon }} {{ topic.name }}</h1>
+            <p>{{ topic.description }}</p>
+        </div>
+        <a href="{{ url_for('exercises') }}" class="btn btn-outline">← Volver a temas</a>
+    </div>
+</div>
+
+{% if topic.leccion_que_es %}
+<div class="leccion">
+    <div class="leccion-cab">
+        <h2>📚 Antes de practicar</h2>
+        <button type="button" class="btn btn-outline btn-sm" onclick="alternarLeccion()"
+                id="btn-leccion">Ocultar lección</button>
+    </div>
+
+    <div id="cuerpo-leccion">
+        <section class="leccion-sec">
+            <h3>¿Qué es y para qué sirve?</h3>
+            <div class="leccion-texto">{{ topic.leccion_que_es|parrafos }}</div>
+        </section>
+
+        {% if topic.leccion_sintaxis %}
+        <section class="leccion-sec">
+            <h3>Cómo se escribe</h3>
+            <pre class="leccion-codigo">{{ topic.leccion_sintaxis }}</pre>
+        </section>
+        {% endif %}
+
+        {% if topic.leccion_ejemplo %}
+        <section class="leccion-sec">
+            <h3>Ejemplo completo</h3>
+            <pre class="leccion-codigo">{{ topic.leccion_ejemplo }}</pre>
+            {% if topic.leccion_ejemplo_explicacion %}
+            <h4 class="leccion-sub">Explicado paso a paso</h4>
+            <div class="leccion-texto">{{ topic.leccion_ejemplo_explicacion|parrafos }}</div>
+            {% endif %}
+        </section>
+        {% endif %}
+
+        {% if topic.leccion_errores %}
+        <section class="leccion-sec leccion-errores">
+            <h3>⚠️ Errores frecuentes</h3>
+            <div class="leccion-texto">{{ topic.leccion_errores|parrafos }}</div>
+        </section>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<h2 class="titulo-ejercicios">✏️ Ahora practica</h2>
+
+<div class="exercise-list">
+    {% for ex in exercises %}
+    <div class="exercise-item">
+        <div class="exercise-info">
+            <h4>
+                {% if ex.completed %}
+                    <span class="completed-badge" title="Completado">✓</span>
+                {% endif %}
+                {{ ex.title }}
+            </h4>
+            <p>{{ ex.description[:120] }}{% if ex.description|length > 120 %}...{% endif %}</p>
+        </div>
+        <div class="exercise-meta">
+            <span class="diff-badge diff-{{ ex.difficulty }}">{{ ex.difficulty }}</span>
+            {% if ex.attempts > 0 %}
+            <span style="font-size:0.8rem; color:var(--text-muted);">{{ ex.attempts }} intentos</span>
+            {% endif %}
+            <a href="{{ url_for('ejercicio_teoria', exercise_id=ex.id) }}" class="btn btn-primary btn-sm">
+                {% if ex.completed %}Practicar{% else %}Resolver{% endif %}
+            </a>
+        </div>
+    </div>
+    {% else %}
+    <div class="card text-center" style="padding:3rem;">
+        <p style="color:var(--text-muted); font-size:1.1rem;">No hay ejercicios disponibles aún para este tema.</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function alternarLeccion() {
+        const c = document.getElementById('cuerpo-leccion');
+        const b = document.getElementById('btn-leccion');
+        const oculto = c.style.display === 'none';
+        c.style.display = oculto ? '' : 'none';
+        b.textContent = oculto ? 'Ocultar lección' : 'Ver lección';
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Gestionar Ejercicios — CodeLogic IUP{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <h1>Gestionar Ejercicios</h1>
+    <p>Crea y administra los ejercicios para los estudiantes.</p>
+</div>
+
+<div class="admin-grid">
+    <!-- Formulario nuevo ejercicio -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">Nuevo Ejercicio</span>
+        </div>
+        <form method="POST" action="{{ url_for('admin_exercises') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label class="form-label">Tema</label>
+                <select name="topic_id" class="form-select" required>
+                    {% for topic in topics %}
+                    <option value="{{ topic.id }}">{{ topic.icon }} {{ topic.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Título</label>
+                <input type="text" name="title" class="form-input" required placeholder="Ej: Suma de dos números">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Descripción / Enunciado</label>
+                <textarea name="description" class="form-textarea" required rows="4"
+                    placeholder="Describe claramente lo que el estudiante debe resolver..."></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Dificultad</label>
+                <select name="difficulty" class="form-select">
+                    <option value="basico">Básico</option>
+                    <option value="intermedio">Intermedio</option>
+                    <option value="avanzado">Avanzado</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Pistas (opcional)</label>
+                <textarea name="hints" class="form-textarea" rows="2"
+                    placeholder="Pistas que se mostrarán al estudiante si las solicita..."></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Crear Ejercicio</button>
+        </form>
+    </div>
+
+    <!-- Lista de ejercicios existentes -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">Ejercicios existentes ({{ exercises | length }})</span>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr><th>Título</th><th>Tema</th><th>Dificultad</th><th>Acción</th></tr>
+                </thead>
+                <tbody>
+                    {% for ex in exercises %}
+                    {% if ex.is_active %}
+                    <tr>
+                        <td>{{ ex.title }}</td>
+                        <td style="font-size:0.85rem;">{{ ex.topic.name if ex.topic else '-' }}</td>
+                        <td><span class="diff-badge diff-{{ ex.difficulty }}">{{ ex.difficulty }}</span></td>
+                        <td>
+                            <form method="POST" action="{{ url_for('delete_exercise', exercise_id=ex.id) }}" style="display:inline;"
+                                  onsubmit="return confirm('¿Desactivar este ejercicio?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-danger btn-sm">Desactivar</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}Registrarse — CodeLogic IUP{% endblock %}
+
+{% block content %}
+<div class="auth-layout">
+    <aside class="auth-side">
+        <div class="auth-bg" aria-hidden="true">
+            <span class="blob blob-1"></span>
+            <span class="blob blob-2"></span>
+            <span class="blob blob-3"></span>
+            <span class="grid-overlay"></span>
+        </div>
+
+        <div class="auth-floats" aria-hidden="true">
+            <span class="float-token f1">algoritmo</span>
+            <span class="float-token f2">for</span>
+            <span class="float-token f3">array</span>
+            <span class="float-token f4">print</span>
+            <span class="float-token f5">int</span>
+            <span class="float-token f6">echo</span>
+            <span class="float-token f7">cout</span>
+            <span class="float-token f8">IA</span>
+        </div>
+
+        <div class="auth-side-inner">
+            <span class="hero-badge">
+                <span class="pulse-dot"></span>
+                Institución Universitaria del Putumayo
+            </span>
+            <h1 class="auth-title">
+                Empieza a programar<br>
+                <span class="gradient-text-cool">en español</span>
+            </h1>
+            <p class="auth-lead">
+                Crea tu cuenta gratis y descubre cómo tu pseudocódigo se transforma en
+                Python, C++ y PHP en segundos.
+            </p>
+
+            <ul class="auth-features">
+                <li><span class="auth-tick">✓</span> Conversión automática a 3 lenguajes</li>
+                <li><span class="auth-tick">✓</span> Ejecución en sandbox seguro</li>
+                <li><span class="auth-tick">✓</span> Tutor IA con explicación paso a paso</li>
+                <li><span class="auth-tick">✓</span> Progreso por tema y ejercicios guiados</li>
+            </ul>
+
+            <div class="auth-terminal" aria-hidden="true">
+                <header>
+                    <span class="dot dot-r"></span>
+                    <span class="dot dot-y"></span>
+                    <span class="dot dot-g"></span>
+                    <span class="term-title">codelogic ~/inicio</span>
+                </header>
+                <div class="term-body">
+                    <div><span class="term-prompt">$</span> <span id="termLine"></span><span class="term-cursor">▌</span></div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="auth-main">
+        <div class="auth-card">
+            <h2>Crear Cuenta</h2>
+            <p class="subtitle">Regístrate con tu correo institucional para empezar.</p>
+
+            <form method="POST" action="{{ url_for('register') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                {% if config.REGISTRATION_CODE %}
+                <div class="form-group">
+                    <label class="form-label" for="registration_code">Código de acceso</label>
+                    <input type="text" id="registration_code" name="registration_code"
+                           class="form-input" placeholder="Te lo entrega tu docente"
+                           required autocomplete="off">
+                </div>
+                {% endif %}
+
+                <div class="form-group">
+                    <label class="form-label" for="name">Nombre completo</label>
+                    <input type="text" id="name" name="name" class="form-input"
+                           placeholder="Tu nombre completo" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="email">Correo electrónico</label>
+                    <input type="email" id="email" name="email" class="form-input"
+                           placeholder="tucorreo@itp.edu.co" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="password">Contraseña</label>
+                    <input type="password" id="password" name="password" class="form-input"
+                           placeholder="Mínimo 6 caracteres" required minlength="6">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="confirm_password">Confirmar contraseña</label>
+                    <input type="password" id="confirm_password" name="confirm_password" class="form-input"
+                           placeholder="Repite tu contraseña" required minlength="6">
+                </div>
+
+                <div class="form-group" style="border:1px solid rgba(128,128,128,.35); border-radius:10px; padding:.85rem 1rem;">
+                    <label for="consent" style="display:flex; gap:.65rem; align-items:flex-start; cursor:pointer; margin:0;">
+                        <input type="checkbox" id="consent" name="consent" value="1" required
+                               style="margin-top:.25rem; flex-shrink:0; width:auto;">
+                        <span style="font-size:.9rem; line-height:1.5;">
+                            Acepto participar en el estudio y autorizo el tratamiento de mis datos
+                            personales con fines académicos, conforme a la Ley 1581 de 2012.
+                            Entiendo que los resultados se publicarán de forma anónima, que mis
+                            respuestas no afectan mi calificación y que puedo retirarme en
+                            cualquier momento.
+                            <a href="{{ url_for('privacidad') }}" target="_blank" rel="noopener">
+                                Leer el consentimiento completo</a>.
+                        </span>
+                    </label>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block btn-lg btn-shine">
+                    Crear cuenta <span class="arrow">→</span>
+                </button>
+            </form>
+
+            <p class="auth-footer">
+                ¿Ya tienes cuenta? <a href="{{ url_for('login') }}">Inicia sesión</a>
+            </p>
+        </div>
+    </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const lines = [
+        "crear cuenta --rol estudiante",
+        "verificando correo @itp.edu.co...",
+        "✓ cuenta lista en 0.8s",
+        "asignando temas: variables, ciclos, arreglos",
+        "tutor IA activo · listo para aprender 🎓"
+    ];
+    const el = document.getElementById('termLine');
+    if (!el) return;
+    if (reduce) { el.textContent = lines[0]; return; }
+    let li = 0, ci = 0, phase = 'type';
+    function tick() {
+        const cur = lines[li];
+        if (phase === 'type') {
+            el.textContent = cur.slice(0, ++ci);
+            if (ci >= cur.length) { phase = 'hold'; setTimeout(tick, 1100); return; }
+            setTimeout(tick, 28 + Math.random() * 30);
+        } else if (phase === 'hold') {
+            phase = 'erase'; setTimeout(tick, 200);
+        } else {
+            el.textContent = cur.slice(0, --ci);
+            if (ci <= 0) { phase = 'type'; li = (li + 1) % lines.length; setTimeout(tick, 200); return; }
+            setTimeout(tick, 14);
+        }
+    }
+    tick();
+})();
+</script>
+{% endblock %}

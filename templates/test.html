@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% set nice_name = 'Pretest' if test_type == 'pretest' else 'Postest' %}
+{% block title %}{{ nice_name }} — CodeLogic IUP{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <h1>📝 {{ nice_name }} de conocimientos</h1>
+    <p>{{ questions | length }} preguntas de opción múltiple sobre fundamentos de algoritmos.
+       Responde con calma: solo puedes presentarlo <strong>una vez</strong>.</p>
+</div>
+
+{% if existing %}
+<div class="card" style="text-align:center;">
+    <span style="font-size:3rem; display:block; margin-bottom:0.5rem;">✅</span>
+    <h2>Ya presentaste este {{ nice_name | lower }}</h2>
+    <p style="color:var(--text-light); margin:0.75rem 0;">
+        Tu resultado: <strong>{{ existing.correct_answers }}/{{ existing.total_questions }}</strong>
+        correctas &middot; puntaje <strong>{{ existing.score }}</strong>/100
+    </p>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-primary">Volver al panel</a>
+</div>
+{% else %}
+
+<form id="test-form" onsubmit="return false;">
+    {% for q in questions %}
+    <div class="card mb-3 question-card" id="card-{{ q.id }}">
+        <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.4rem;">
+            Pregunta {{ loop.index }} de {{ questions|length }} &middot; {{ q.topic }}
+        </div>
+        <div style="font-weight:600; white-space:pre-wrap; margin-bottom:0.9rem;">{{ q.text }}</div>
+        {% for opt in q.options %}
+        <label style="display:flex; gap:0.6rem; align-items:flex-start; padding:0.5rem 0.6rem; border-radius:8px; cursor:pointer;"
+               onmouseover="this.style.background='rgba(128,128,128,0.08)'" onmouseout="this.style.background='transparent'">
+            <input type="radio" name="{{ q.id }}" value="{{ loop.index0 }}" style="margin-top:0.2rem;">
+            <span style="white-space:pre-wrap;">{{ opt }}</span>
+        </label>
+        {% endfor %}
+    </div>
+    {% endfor %}
+
+    <div class="card" style="text-align:center;">
+        <div id="test-progress" style="margin-bottom:0.75rem; color:var(--text-light); font-size:0.9rem;">
+            0 de {{ questions|length }} respondidas
+        </div>
+        <button class="btn btn-primary" id="btn-send-test" onclick="submitTest()">✅ Enviar respuestas</button>
+        <div id="test-error" style="color:#f38ba8; margin-top:0.6rem; display:none;"></div>
+    </div>
+</form>
+
+<div class="card" id="test-result" style="display:none; text-align:center;"></div>
+
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if not existing %}
+<script>
+    const startTime = Date.now();
+    const totalQuestions = {{ questions | length }};
+
+    document.querySelectorAll('#test-form input[type=radio]').forEach(r => {
+        r.addEventListener('change', () => {
+            const answered = new Set(
+                Array.from(document.querySelectorAll('#test-form input[type=radio]:checked'))
+                    .map(el => el.name)
+            ).size;
+            document.getElementById('test-progress').textContent =
+                answered + ' de ' + totalQuestions + ' respondidas';
+        });
+    });
+
+    async function submitTest() {
+        const answers = {};
+        document.querySelectorAll('#test-form input[type=radio]:checked').forEach(el => {
+            answers[el.name] = parseInt(el.value, 10);
+        });
+
+        const errBox = document.getElementById('test-error');
+        if (Object.keys(answers).length < totalQuestions) {
+            errBox.textContent = 'Te faltan preguntas por responder. Revisa las que no tienen opción marcada.';
+            errBox.style.display = 'block';
+            return;
+        }
+
+        const btn = document.getElementById('btn-send-test');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Enviando...';
+
+        try {
+            const res = await fetch('/api/evaluacion/{{ test_type }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    answers,
+                    time_spent: Math.floor((Date.now() - startTime) / 1000)
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('test-form').style.display = 'none';
+                const box = document.getElementById('test-result');
+                box.innerHTML = '<span style="font-size:3rem; display:block; margin-bottom:0.5rem;">🎉</span>'
+                    + '<h2>¡{{ nice_name }} enviado!</h2>'
+                    + '<p style="color:var(--text-light); margin:0.75rem 0;">Obtuviste <strong>'
+                    + data.correct + '/' + data.total + '</strong> correctas &middot; puntaje <strong>'
+                    + data.score + '</strong>/100</p>'
+                    + '<a href="/dashboard" class="btn btn-primary">Volver al panel</a>';
+                box.style.display = 'block';
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else {
+                errBox.textContent = data.error || 'No se pudo enviar.';
+                errBox.style.display = 'block';
+                btn.disabled = false;
+                btn.innerHTML = '✅ Enviar respuestas';
+            }
+        } catch (e) {
+            errBox.textContent = 'Error de conexión.';
+            errBox.style.display = 'block';
+            btn.disabled = false;
+            btn.innerHTML = '✅ Enviar respuestas';
+        }
+    }
+</script>
+{% endif %}
+{% endblock %}

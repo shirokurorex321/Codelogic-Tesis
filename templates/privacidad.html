@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Consentimiento informado y tratamiento de datos — CodeLogic IUP{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <h1>Consentimiento informado y tratamiento de datos</h1>
+    <p>Institución Universitaria del Putumayo — Trabajo de grado 2026 · versión {{ consent_version }}</p>
+</div>
+
+<div class="card">
+    <div class="card-header"><span class="card-title">De qué se trata el estudio</span></div>
+    <p>
+        CodeLogic IUP es una plataforma desarrollada como trabajo de grado del programa de
+        Ingeniería de Sistemas. Su objetivo es evaluar si escribir pseudocódigo, convertirlo
+        automáticamente a Python, C++ y PHP, y recibir retroalimentación asistida por
+        inteligencia artificial mejora el aprendizaje de los fundamentos de programación.
+    </p>
+    <p>
+        Tu participación consiste en usar la plataforma durante el curso y responder unos
+        cuestionarios breves antes y después. La duración estimada del periodo de evaluación
+        es de cuatro a ocho semanas.
+    </p>
+</div>
+
+<div class="card">
+    <div class="card-header"><span class="card-title">Qué datos se recogen</span></div>
+    <ul>
+        <li><strong>De identificación:</strong> nombre y correo electrónico.</li>
+        <li><strong>Académicos:</strong> grupo asignado en el estudio, experiencia previa en
+            programación y promedio de ingreso.</li>
+        <li><strong>De la investigación:</strong> respuestas al pretest y postest, escala de
+            autoeficacia, escala de carga cognitiva y calificaciones de los ejercicios.</li>
+        <li><strong>De uso:</strong> el pseudocódigo que escribes, los intentos realizados,
+            el tiempo por actividad, los errores más frecuentes y cuántas sugerencias de IA
+            consultas.</li>
+        <li><strong>Técnicos:</strong> dirección IP y fecha y hora de cada acción, usados
+            únicamente para seguridad de la plataforma.</li>
+    </ul>
+</div>
+
+<div class="card">
+    <div class="card-header"><span class="card-title">Para qué se usan</span></div>
+    <p>
+        Exclusivamente para los fines académicos de esta investigación. Los resultados se
+        publicarán de forma <strong>agregada y anónima</strong>: en el documento de tesis y en
+        cualquier presentación derivada no aparecerán nombres, correos ni datos que permitan
+        identificarte individualmente.
+    </p>
+    <p>
+        Tus respuestas <strong>no afectan tu calificación</strong> en la asignatura. Participar
+        o no participar no tiene ninguna consecuencia académica.
+    </p>
+</div>
+
+<div class="card">
+    <div class="card-header"><span class="card-title">Tus derechos</span></div>
+    <p>
+        Conforme a la <strong>Ley 1581 de 2012</strong> y el <strong>Decreto 1377 de 2013</strong>,
+        en cualquier momento puedes:
+    </p>
+    <ul>
+        <li>Conocer, actualizar y rectificar tus datos personales.</li>
+        <li>Solicitar prueba de la autorización que otorgaste.</li>
+        <li>Ser informado sobre el uso que se ha dado a tus datos.</li>
+        <li>Revocar la autorización y solicitar la supresión de tus datos.</li>
+        <li>Retirarte del estudio sin dar explicaciones y sin ninguna consecuencia.</li>
+    </ul>
+    <p>
+        Este estudio se clasifica como <strong>investigación con riesgo mínimo</strong> según la
+        Resolución 8430 de 1993 del Ministerio de Salud.
+    </p>
+    <p>
+        Al finalizar la fase de evaluación, <strong>todos los estudiantes</strong> —incluidos los
+        del grupo de comparación— reciben acceso completo a la plataforma, de modo que ningún
+        participante quede en desventaja.
+    </p>
+</div>
+
+<div class="card">
+    <div class="card-header"><span class="card-title">Responsables</span></div>
+    <p>
+        <strong>Investigadores:</strong> Daniel Alejandro Rosero Gómez y Brayan Aldahir Torres Yandul<br>
+        <strong>Asesor:</strong> Jhoni Ricardo Cerón Chaves<br>
+        <strong>Programa:</strong> Ingeniería de Sistemas — Facultad de Ingeniería y Ciencias Básicas<br>
+        <strong>Institución:</strong> Institución Universitaria del Putumayo, Mocoa
+    </p>
+    <p>
+        Para ejercer cualquiera de tus derechos o resolver dudas, escribe a
+        <a href="mailto:danieale321@gmail.com">danieale321@gmail.com</a>.
+    </p>
+</div>
+
+<div class="card">
+    <p style="margin:0;">
+        <a href="{{ url_for('register') }}" class="btn btn-outline btn-sm">Volver al registro</a>
+    </p>
+</div>
+{% endblock %}
