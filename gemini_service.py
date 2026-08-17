@@ -29,6 +29,7 @@ REGLAS IMPORTANTES:
 3. Usa nombres de variables descriptivos en español cuando sea posible.
 4. Agrega comentarios explicativos breves en español.
 5. Si el pseudocódigo tiene errores lógicos evidentes, convierte lo que puedas pero señálalos.
+5b. NO "mejores" los números que escribió el estudiante. Si el pseudocódigo dice 3.1416, el código debe decir 3.1416, NUNCA math.pi, M_PI ni pi(). El estudiante compara el resultado con lo que calculó a mano y un valor distinto le hace creer que se equivocó.
 6. Estructura típica del pseudocódigo:
    - "Algoritmo" o "Proceso" = inicio del programa
    - "Definir X Como Entero/Real/Cadena/Logico" = declaración de variables
@@ -345,6 +346,50 @@ def _generate(system_instruction: str, user_prompt: str, model: str = None) -> s
         raise primary_err
 
 
+# Constantes que los modelos "mejoran" por su cuenta: el estudiante escribe
+# 3.1416 y el codigo sale con math.pi. El area de un circulo de radio 5 pasa
+# de 78.54 a 78.5398, el estudiante compara con lo que calculo a mano y cree
+# que se equivoco. Pedirlo en el prompt ayuda pero no garantiza nada, asi que
+# ademas se comprueba y se corrige aqui, que si es seguro.
+_CONSTANTES_SUSTITUIDAS = {
+    "python": ((r"\bmath\.pi\b", 3.141592653589793),
+               (r"\bnp\.pi\b", 3.141592653589793),
+               (r"\bnumpy\.pi\b", 3.141592653589793),
+               (r"\bmath\.e\b", 2.718281828459045)),
+    "cpp":    ((r"\bM_PI\b", 3.141592653589793),
+               (r"\bM_E\b", 2.718281828459045)),
+    "php":    ((r"\bM_PI\b", 3.141592653589793),
+               (r"\bpi\(\)", 3.141592653589793),
+               (r"\bM_E\b", 2.718281828459045)),
+}
+
+_RE_DECIMAL = re.compile(r"\d+\.\d+")
+
+
+def _respetar_constantes(codigo: str, pseudocodigo: str, idioma: str) -> str:
+    """Devuelve el codigo con las constantes del lenguaje cambiadas por el
+    numero que escribio el estudiante, cuando lo escribio.
+
+    Solo actua si en el pseudocodigo hay un decimal que se parece a la
+    constante (menos de 0.01 de diferencia). Si el estudiante no escribio
+    ninguna aproximacion, no se toca nada: puede que math.pi sea justo lo que
+    toca.
+    """
+    if not codigo or not pseudocodigo:
+        return codigo
+    decimales = _RE_DECIMAL.findall(pseudocodigo)
+    if not decimales:
+        return codigo
+
+    for patron, valor in _CONSTANTES_SUSTITUIDAS.get(idioma, ()):
+        if not re.search(patron, codigo):
+            continue
+        parecidos = [t for t in decimales if abs(float(t) - valor) < 0.01]
+        if parecidos:
+            codigo = re.sub(patron, parecidos[0], codigo)
+    return codigo
+
+
 def convert_pseudocode(pseudocode: str, target_language: str) -> dict:
     """Convierte pseudocódigo a un lenguaje de programación."""
     language_names = {
@@ -379,6 +424,8 @@ Genera ÚNICAMENTE el código en {lang_name}, sin markdown, sin explicaciones, s
             if lines and lines[-1].strip() == "```":
                 lines = lines[:-1]
             code = "\n".join(lines)
+
+        code = _respetar_constantes(code, pseudocode, target_language)
 
         result = {"success": True, "code": code, "usage": usage}
         cache_put("convert", key, result)
