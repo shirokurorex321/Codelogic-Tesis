@@ -28,6 +28,21 @@ IDIOMAS = ["python", "cpp", "php"]
 # permitir los planes gratuitos de Gemini. Bajarlo invita a que corten.
 PAUSA = 6.0
 
+# El plan gratuito de Gemini da 20 peticiones AL DIA por modelo
+# (GenerateRequestsPerDayPerProjectPerModel-FreeTier, comprobado en el error
+# 429 que devuelve). Como el cupo es por modelo, se rotan varios: al agotarse
+# uno se pasa al siguiente y el trabajo continua el mismo dia. Van primero los
+# "lite", que son de sobra para convertir pseudocodigo de diez lineas y suelen
+# traer cupos mas holgados.
+MODELOS_GEMINI = [
+    "gemini-2.5-flash-lite",
+    "gemini-3.1-flash-lite",
+    "gemini-3.5-flash-lite",
+    "gemini-flash-lite-latest",
+    "gemini-2.5-flash",
+    "gemini-3-flash-preview",
+]
+
 # Modelos retirados cuyas entradas quedaron inalcanzables. Se listan de forma
 # EXPLICITA, no como "todo lo que no sea el modelo actual": con esa regla, una
 # entrada generada por el respaldo de Gemini se borraria en la ejecucion
@@ -71,22 +86,38 @@ with app.app_context():
     por_proveedor = {}
     cortado = False
 
+    idx = 0
+    if g._gemini_client:
+        g.GEMINI_MODEL = MODELOS_GEMINI[0]
+
     for n, (ej, idi) in enumerate(tareas, 1):
         etiqueta = "[%2d/%d] %-28s %-7s" % (n, len(tareas), ej.title[:28], idi)
-        try:
-            r = g.convert_pseudocode(ej.expected_pseudocode, idi)
-        except Exception as exc:
-            r = {"success": False, "error": "%s: %s" % (type(exc).__name__, exc)}
+        while True:
+            try:
+                r = g.convert_pseudocode(ej.expected_pseudocode, idi)
+            except Exception as exc:
+                r = {"success": False, "error": "%s: %s" % (type(exc).__name__, exc)}
+
+            if r.get("success") or not es_limite(r.get("error")):
+                break
+            # Cupo agotado: se prueba el siguiente modelo, que tiene el suyo.
+            if g._gemini_client and idx + 1 < len(MODELOS_GEMINI):
+                idx += 1
+                g.GEMINI_MODEL = MODELOS_GEMINI[idx]
+                log("%s cupo agotado, paso a %s" % (etiqueta, g.GEMINI_MODEL))
+                continue
+            break
 
         if r.get("success"):
             if r.get("cached"):
                 ya += 1
             else:
                 nuevas += 1
-                prov = (r.get("usage") or {}).get("provider", "?")
-                por_proveedor[prov] = por_proveedor.get(prov, 0) + 1
-                log("%s OK por %-8s (%d lineas)"
-                    % (etiqueta, prov, len((r.get("code") or "").splitlines())))
+                u = r.get("usage") or {}
+                quien = u.get("model") or u.get("provider", "?")
+                por_proveedor[quien] = por_proveedor.get(quien, 0) + 1
+                log("%s OK por %-24s (%d lineas)"
+                    % (etiqueta, quien, len((r.get("code") or "").splitlines())))
                 time.sleep(PAUSA)
             continue
 
