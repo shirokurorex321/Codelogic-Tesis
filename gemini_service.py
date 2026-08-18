@@ -518,6 +518,13 @@ Califica la solución."""
     try:
         raw, usage = _generate(GRADING_SYSTEM_PROMPT, prompt, model=OPENCODE_MODEL_TUTOR)
         score, reason = _parse_grade(raw)
+        if score is None:
+            # Se responde como fallo para que quien llama guarde la nota vacia
+            # en vez de un numero inventado. Tampoco se cachea: seria fijar el
+            # error para siempre en esa entrega.
+            return {"success": False, "cached": False,
+                    "error": "La IA respondió en un formato ilegible; "
+                             "el ejercicio quedó sin calificar."}
         result = {"success": True, "score": score, "reason": reason, "usage": usage}
         cache_put("grade", key, result)
         return {**result, "cached": False}
@@ -539,7 +546,11 @@ def _parse_grade(raw: str) -> tuple:
     except Exception:
         # Último recurso: buscar "score": NN en el texto
         m = re.search(r'"score"\s*:\s*(\d{1,3})', text)
-        score = max(0, min(100, int(m.group(1)))) if m else 0
+        # Sin nota legible se devuelve None, NUNCA 0. Un 0 guardado por un
+        # fallo de formato es indistinguible de un ejercicio genuinamente mal
+        # hecho, y `submissions.score` es la variable de resultado del estudio:
+        # una sola nota inventada contamina el analisis y nadie se entera.
+        score = max(0, min(100, int(m.group(1)))) if m else None
         m2 = re.search(r'"reason"\s*:\s*"([^"]*)"', text)
         reason = (m2.group(1) if m2 else "No se pudo interpretar la calificación de la IA.")[:400]
         return score, reason
