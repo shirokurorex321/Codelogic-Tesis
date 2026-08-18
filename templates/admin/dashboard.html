@@ -59,7 +59,7 @@
                     <tr>
                         <td>{{ sub.student.name.split()[0] }}</td>
                         <td>{{ sub.exercise.title if sub.exercise else 'Práctica libre' }}</td>
-                        <td style="font-size:0.8rem; color:var(--text-light);">{{ sub.created_at.strftime('%d/%m %H:%M') }}</td>
+                        <td style="font-size:0.8rem; color:var(--text-light);">{{ sub.created_at | hora_local('%d/%m %H:%M') }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>

@@ -38,8 +38,8 @@
                     </td>
                     <td><code style="font-size:0.78rem;">{{ e.cache_key[:8] }}…</code></td>
                     <td><strong style="color:#86efac;">⚡ {{ e.hit_count }}</strong></td>
-                    <td style="font-size:0.8rem; color:var(--text-light);">{{ e.created_at.strftime('%d/%m %H:%M') if e.created_at else '—' }}</td>
-                    <td style="font-size:0.8rem; color:var(--text-light);">{{ e.last_used_at.strftime('%d/%m %H:%M') if e.last_used_at else '—' }}</td>
+                    <td style="font-size:0.8rem; color:var(--text-light);">{{ e.created_at | hora_local('%d/%m %H:%M') }}</td>
+                    <td style="font-size:0.8rem; color:var(--text-light);">{{ e.last_used_at | hora_local('%d/%m %H:%M') }}</td>
                 </tr>
                 {% else %}
                 <tr><td colspan="5" style="text-align:center; color:var(--text-muted);">Caché vacía.</td></tr>

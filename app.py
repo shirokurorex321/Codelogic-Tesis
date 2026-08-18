@@ -2,6 +2,7 @@ import os
 import re
 import logging
 import secrets
+from zoneinfo import ZoneInfo
 import sys
 
 # Consolas de Windows con cp1252 revientan con los emojis de los prints
@@ -350,6 +351,23 @@ def inyectar_version_css():
         return {"css_version": int(os.path.getmtime(ruta))}
     except Exception:
         return {"css_version": 0}
+
+
+# Las fechas se guardan en UTC (el servidor corre en UTC) pero quien las lee
+# esta en Colombia, cinco horas por detras. Sin convertir, un estudiante que
+# entrega a las 11:44 ve "16:44" en su panel, y en el pilotaje eso confunde
+# tambien a quien analiza los registros.
+_ZONA = ZoneInfo("America/Bogota")
+
+
+@app.template_filter("hora_local")
+def _hora_local(dt, formato="%d/%m/%Y %H:%M"):
+    """Pasa una fecha guardada en UTC a la hora de Colombia."""
+    if not dt:
+        return "—"
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(_ZONA).strftime(formato)
 
 
 @app.template_filter("parrafos")

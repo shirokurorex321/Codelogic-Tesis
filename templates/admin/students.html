@@ -45,7 +45,7 @@
                         {% endif %}
                     </td>
                     <td style="font-size:0.8rem; color:var(--text-light);">
-                        {{ student.created_at.strftime('%d/%m/%Y') }}
+                        {{ student.created_at | hora_local('%d/%m/%Y') }}
                     </td>
                     <td>
                         <form method="POST" action="{{ url_for('assign_group', user_id=student.id) }}" style="display:flex; gap:0.25rem;">

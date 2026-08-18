@@ -129,7 +129,7 @@
                     </td>
                     <td><strong style="color:var(--primary-light);">{{ r.total_tokens|int }}</strong></td>
                     <td style="font-size:0.8rem; color:var(--text-light);">
-                        {{ r.last_used.strftime('%d/%m %H:%M') if r.last_used else '—' }}
+                        {{ r.last_used | hora_local('%d/%m %H:%M') }}
                     </td>
                 </tr>
                 {% else %}
