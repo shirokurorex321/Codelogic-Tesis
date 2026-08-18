@@ -1,5 +1,6 @@
 import os
 import re
+import logging
 import secrets
 import sys
 
@@ -221,6 +222,23 @@ def _enviar_restablecimiento(user) -> bool:
     return correo_restablecer(user.name, user.email, enlace, RESET_TTL_MINUTOS)
 
 
+# El envio de correo registra los fallos como ERROR (se ven) pero los exitos
+# como INFO, y nadie sube el nivel: por defecto es WARNING, asi que no quedaba
+# ni rastro de los correos que SI salieron. Durante el pilotaje hace falta
+# poder decir "a este estudiante se le mando el enlace tal dia a tal hora"
+# cuando llame diciendo que no le llega nada.
+# Subir el nivel no basta: el logger raiz no tiene ningun manejador, asi que
+# Python cae en el "de ultimo recurso", que solo emite WARNING o mas. Hay que
+# darle su propia salida a stderr, que es lo que gunicorn captura al registro
+# del servicio (--capture-output).
+_log_correo = logging.getLogger("mailer")
+_log_correo.setLevel(logging.INFO)
+if not _log_correo.handlers:
+    _h = logging.StreamHandler()
+    _h.setFormatter(logging.Formatter("[correo] %(levelname)s %(message)s"))
+    _log_correo.addHandler(_h)
+
+
 def _enviar_verificacion(user) -> bool:
     """Genera un token nuevo y manda el correo de confirmación."""
     from mailer import correo_verificacion
@@ -235,7 +253,13 @@ def _enviar_verificacion(user) -> bool:
 
     base = app.config.get("PUBLIC_BASE_URL") or request.url_root.rstrip("/")
     enlace = f"{base}/verificar/{user.verification_token}"
-    return correo_verificacion(user.name, user.email, enlace, horas)
+    # Se espera al envio en vez de lanzarlo a un hilo. Con el hilo, `enviar`
+    # devolvia True siempre y nadie sabia si el correo habia salido: el
+    # estudiante se quedaba mirando "revisa tu bandeja" para siempre y el
+    # fallo solo aparecia en un registro que nadie mira. Registrarse es una
+    # accion unica; esperar dos segundos no molesta a nadie.
+    return correo_verificacion(user.name, user.email, enlace, horas,
+                               en_segundo_plano=False)
 
 
 @app.errorhandler(429)
@@ -526,7 +550,10 @@ def register():
         db.session.commit()
 
         if verificar:
-            _enviar_verificacion(user)
+            if not _enviar_verificacion(user):
+                flash("Tu cuenta se creó, pero no pudimos enviarte el correo "
+                      "de confirmación. Usa «reenviar verificación» en un rato "
+                      "o avisa a tu docente.", "error")
             log_activity_para(user, "register_pendiente_verificacion")
             return redirect(url_for("verificacion_pendiente"))
 

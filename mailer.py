@@ -67,7 +67,8 @@ def enviar(destino: str, asunto: str, texto: str, html: str = None,
     return True
 
 
-def correo_verificacion(nombre: str, destino: str, enlace: str, horas: int):
+def correo_verificacion(nombre: str, destino: str, enlace: str, horas: int,
+                        en_segundo_plano: bool = True):
     """Arma y envía el correo de verificación de cuenta."""
     asunto = "Confirma tu cuenta en CodeLogic IUP"
 
@@ -123,7 +124,7 @@ cuenta no se activa.
 </body>
 </html>"""
 
-    return enviar(destino, asunto, texto, html)
+    return enviar(destino, asunto, texto, html, en_segundo_plano)
 
 
 def correo_restablecer(nombre: str, destino: str, enlace: str, minutos: int):
