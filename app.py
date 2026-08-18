@@ -461,7 +461,16 @@ def index():
 
 
 @app.route("/login", methods=["GET", "POST"])
-@limiter.limit(lambda: app.config["RATELIMIT_AUTH"])
+# methods=["POST"]: antes el limite contaba tambien los GET, asi que ABRIR la
+# pagina gastaba cupo. En un aula, donde los 40 estudiantes salen por la misma
+# IP de la institucion, el undecimo ya no podia ni ver el formulario: recibia
+# un 429 crudo. Mirar la pagina ahora es gratis; solo se cuentan los intentos.
+@limiter.limit(lambda: app.config["RATELIMIT_AUTH"], methods=["POST"])
+# Y este limita por CORREO, no por IP: es el que de verdad frena a quien
+# intenta adivinar la contrasena de una cuenta concreta. Separarlos permite
+# ser generoso con el aula sin aflojar la proteccion de cada cuenta.
+@limiter.limit("8 per 15 minutes", methods=["POST"],
+               key_func=lambda: "correo:" + (request.form.get("email") or "").strip().lower())
 def login():
     if current_user.is_authenticated:
         return redirect(url_for("dashboard"))
@@ -492,7 +501,10 @@ def login():
 
 
 @app.route("/register", methods=["GET", "POST"])
-@limiter.limit(lambda: app.config["RATELIMIT_AUTH"])
+# Solo los envios, por lo mismo que en el acceso. El registro ya esta cerrado
+# con el codigo de acceso y el dominio institucional obligatorio, asi que el
+# limite por IP aqui es la tercera barrera, no la primera.
+@limiter.limit(lambda: app.config["RATELIMIT_AUTH"], methods=["POST"])
 def register():
     if current_user.is_authenticated:
         return redirect(url_for("dashboard"))
