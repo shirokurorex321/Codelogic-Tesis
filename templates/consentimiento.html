@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Consentimiento informado — CodeLogic IUP{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <h1>Antes de empezar</h1>
+    <p>Tu cuenta está lista, pero falta un paso: aceptar participar en el estudio.</p>
+</div>
+
+<div class="card">
+    <div class="card-header"><span class="card-title">Por qué te pedimos esto</span></div>
+    <p>
+        CodeLogic IUP es una plataforma desarrollada como trabajo de grado. Además de servirte
+        para aprender, registra cómo la usas —ejercicios entregados, tiempos, respuestas a unos
+        cuestionarios breves— para evaluar si este método ayuda a aprender programación.
+    </p>
+    <p>
+        Esos datos no se pueden recoger sin tu permiso, y ese permiso lo das tú, no otra persona
+        por ti. Por eso aparece esta pantalla aunque tu cuenta ya exista.
+    </p>
+    <p>
+        Puedes leer el documento completo aquí:
+        <a href="{{ url_for('privacidad') }}" target="_blank" rel="noopener">consentimiento
+        informado y tratamiento de datos</a> (versión {{ consent_version }}).
+    </p>
+
+    <form method="POST" style="margin-top:1.25rem;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-group" style="border:1px solid rgba(128,128,128,.35); border-radius:10px; padding:.85rem 1rem;">
+            <label for="consent" style="display:flex; gap:.65rem; align-items:flex-start; cursor:pointer; margin:0;">
+                <input type="checkbox" id="consent" name="consent" value="1" required
+                       style="margin-top:.25rem; flex-shrink:0; width:auto;">
+                <span style="font-size:.9rem; line-height:1.5;">
+                    Acepto participar en el estudio y autorizo el tratamiento de mis datos
+                    con fines académicos, según lo descrito en el
+                    <a href="{{ url_for('privacidad') }}" target="_blank" rel="noopener">consentimiento
+                    informado</a>.
+                </span>
+            </label>
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg" style="margin-top:1rem;">
+            Aceptar y continuar
+        </button>
+    </form>
+
+    <p style="margin-top:1rem; font-size:.85rem; opacity:.7;">
+        Si prefieres no participar, cierra la sesión y avisa a tu docente: puede darte acceso
+        a los ejercicios sin que tus datos entren al estudio.
+    </p>
+</div>
+{% endblock %}

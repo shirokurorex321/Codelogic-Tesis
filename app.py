@@ -861,6 +861,62 @@ def editor_exercise(exercise_id):
 
 # ─── EJERCICIOS ─────────────────────────────────────────────────────
 
+# ─── APRENDER ──────────────────────────────────────────────────────
+#
+# El material de lecciones.py (5 temas, 16 KB) y guias.py (24 guias, 17 KB)
+# estaba escrito y NO se mostraba en ningun sitio: ningun modulo lo importaba.
+# 33 KB de teoria que ningun estudiante llego a ver nunca. Estas dos rutas son
+# la puerta que le faltaba: primero se lee como se hacen las cosas, y desde
+# ahi se pasa a los ejercicios del mismo tema.
+
+def _lista_errores(texto):
+    """Los errores comunes vienen como parrafos que empiezan por vinneta."""
+    trozos = [t.strip() for t in (texto or "").split("\n\n") if t.strip()]
+    return [t.lstrip("• ").replace("\n  ", " ").strip() for t in trozos]
+
+
+@app.route("/aprender")
+@login_required
+def aprender():
+    """Indice de temas: que se aprende antes de ponerse a resolver."""
+    from lecciones import LECCIONES
+    temas = []
+    for t in Topic.query.order_by(Topic.order).all():
+        temas.append({
+            "tema": t,
+            "tiene_leccion": t.id in LECCIONES,
+            "n_ejercicios": Exercise.query.filter_by(topic_id=t.id, is_active=True).count(),
+        })
+    log_activity("abrir_aprender")
+    return render_template("aprender.html", temas=temas)
+
+
+@app.route("/aprender/<int:topic_id>")
+@login_required
+def aprender_tema(topic_id):
+    """La leccion de un tema, y al final el paso a sus ejercicios."""
+    from lecciones import LECCIONES
+    tema = db.session.get(Topic, topic_id)
+    if not tema or topic_id not in LECCIONES:
+        flash("Ese tema todavía no tiene lección.", "info")
+        return redirect(url_for("aprender"))
+
+    leccion = LECCIONES[topic_id]
+    ejercicios = (Exercise.query
+                  .filter_by(topic_id=topic_id, is_active=True)
+                  .order_by(Exercise.difficulty, Exercise.id).all())
+    # Temas anterior y siguiente, para poder recorrerlos en orden
+    todos = Topic.query.order_by(Topic.order).all()
+    pos = [t.id for t in todos].index(topic_id) if tema in todos else -1
+    log_activity("leer_leccion", {"topic_id": topic_id})
+    return render_template(
+        "aprender_tema.html", tema=tema, leccion=leccion,
+        errores=_lista_errores(leccion.get("errores", "")),
+        ejercicios=ejercicios,
+        anterior=todos[pos - 1] if pos > 0 else None,
+        siguiente=todos[pos + 1] if 0 <= pos < len(todos) - 1 else None)
+
+
 @app.route("/exercises")
 @login_required
 def exercises():
@@ -1358,6 +1414,67 @@ def submit_cognitive_load():
 
 
 # ─── PRIVACIDAD / CONSENTIMIENTO ───────────────────────────────────
+
+# Endpoints que un estudiante sin consentimiento SI puede visitar: los que
+# necesita justamente para leerlo y aceptarlo, y los de salir.
+SIN_CONSENTIMIENTO = {
+    "consentimiento", "privacidad", "logout", "static",
+    "login", "register", "verificar_correo", "verificacion_pendiente",
+    "reenviar_verificacion", "recuperar_clave", "restablecer_clave", "index",
+}
+
+
+@app.before_request
+def exigir_consentimiento():
+    """Nadie participa en el estudio sin haberlo aceptado.
+
+    consent_accepted se escribia al registrarse pero NO se comprobaba en
+    ningun sitio. Una cuenta creada a mano por el docente entraba, presentaba
+    el pretest y sus datos entraban al estudio sin que la persona hubiera
+    aceptado nada. Comprobado el 18/08/2026: saco 60,0 en el pretest sin
+    pasar por ninguna casilla. Ley 1581/2012 y Resolucion 8430/1993.
+
+    Solo se exige a los estudiantes: docentes y administradores no son
+    participantes del estudio, y bloquearlos los dejaria sin poder entrar a
+    administrar.
+    """
+    if not current_user.is_authenticated:
+        return
+    if current_user.role != "estudiante" or current_user.consent_accepted:
+        return
+    if request.endpoint in SIN_CONSENTIMIENTO:
+        return
+    # Las llamadas de la API contestan JSON: una redireccion la recibiria el
+    # fetch como HTML y el estudiante veria un error raro sin explicacion.
+    if request.path.startswith("/api/"):
+        return jsonify({"success": False,
+                        "error": "Antes de continuar tienes que leer y aceptar "
+                                 "el consentimiento informado."}), 403
+    return redirect(url_for("consentimiento"))
+
+
+@app.route("/consentimiento", methods=["GET", "POST"])
+@login_required
+def consentimiento():
+    """Aceptacion del consentimiento para quien no paso por el registro."""
+    if current_user.consent_accepted:
+        return redirect(url_for("dashboard"))
+
+    if request.method == "POST":
+        if not request.form.get("consent"):
+            flash("Para participar tienes que marcar la casilla.", "error")
+            return render_template("consentimiento.html",
+                                   consent_version=CONSENT_VERSION)
+        current_user.consent_accepted = True
+        current_user.consent_at = datetime.now(timezone.utc)
+        current_user.consent_version = CONSENT_VERSION
+        db.session.commit()
+        log_activity("consentimiento_aceptado", {"version": CONSENT_VERSION})
+        flash("Gracias. Ya puedes usar la plataforma.", "success")
+        return redirect(url_for("dashboard"))
+
+    return render_template("consentimiento.html", consent_version=CONSENT_VERSION)
+
 
 @app.route("/privacidad")
 def privacidad():

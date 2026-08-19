@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}{{ tema.name }} — Aprender — CodeLogic IUP{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <h1>{{ tema.icon or '📘' }} {{ tema.name }}</h1>
+    <p><a href="{{ url_for('aprender') }}">← Volver a los temas</a></p>
+</div>
+
+<div class="card">
+    <div class="card-header"><span class="card-title">Qué es</span></div>
+    {{ leccion.que_es | parrafos }}
+</div>
+
+<div class="card">
+    <div class="card-header"><span class="card-title">Cómo se escribe</span></div>
+    <pre class="leccion-codigo"><code>{{ leccion.sintaxis }}</code></pre>
+</div>
+
+<div class="card">
+    <div class="card-header"><span class="card-title">Un ejemplo completo</span></div>
+    <pre class="leccion-codigo"><code>{{ leccion.ejemplo }}</code></pre>
+</div>
+
+<div class="card">
+    <div class="card-header"><span class="card-title">El ejemplo, línea por línea</span></div>
+    <pre class="leccion-codigo"><code>{{ leccion.ejemplo_explicacion }}</code></pre>
+</div>
+
+{% if errores %}
+<div class="card">
+    <div class="card-header"><span class="card-title">Errores que más se repiten</span></div>
+    <ul style="margin:0; padding-left:1.2rem; line-height:1.7;">
+        {% for e in errores %}<li style="margin-bottom:.5rem;">{{ e }}</li>{% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-header"><span class="card-title">Ahora practica</span></div>
+    {% if ejercicios %}
+    <p>Ya sabes cómo se hace. Estos son los ejercicios de este tema, del más sencillo al más difícil:</p>
+    <ul style="margin:.5rem 0 1rem; padding-left:1.2rem; line-height:1.9;">
+        {% for e in ejercicios %}
+        <li><a href="{{ url_for('ejercicio_teoria', exercise_id=e.id) }}">{{ e.title }}</a>
+            <span style="opacity:.6; font-size:.85rem;">· {{ e.difficulty }}</span></li>
+        {% endfor %}
+    </ul>
+    <a href="{{ url_for('topic_exercises', topic_id=tema.id) }}" class="btn btn-primary btn-lg">
+        Ir a los ejercicios de {{ tema.name }}
+    </a>
+    {% else %}
+    <p>Este tema todavía no tiene ejercicios.</p>
+    {% endif %}
+</div>
+
+<div style="display:flex; justify-content:space-between; gap:1rem; margin-top:1.5rem;">
+    {% if anterior %}
+    <a href="{{ url_for('aprender_tema', topic_id=anterior.id) }}" class="btn">← {{ anterior.name }}</a>
+    {% else %}<span></span>{% endif %}
+    {% if siguiente %}
+    <a href="{{ url_for('aprender_tema', topic_id=siguiente.id) }}" class="btn">{{ siguiente.name }} →</a>
+    {% endif %}
+</div>
+{% endblock %}

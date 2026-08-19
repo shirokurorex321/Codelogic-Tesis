@@ -30,6 +30,7 @@
             <div class="nav-links">
                 {% if current_user.role == 'estudiante' %}
                 <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">Inicio</a>
+                <a href="{{ url_for('aprender') }}" class="nav-link {% if request.endpoint in ('aprender', 'aprender_tema') %}active{% endif %}">Aprender</a>
                 <a href="{{ url_for('exercises') }}" class="nav-link {% if request.endpoint in ('exercises', 'topic_exercises') %}active{% endif %}">Ejercicios</a>
                 <a href="{{ url_for('editor') }}" class="nav-link {% if request.endpoint == 'editor' %}active{% endif %}">Editor Libre</a>
                 {% else %}

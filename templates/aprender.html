@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Aprender — CodeLogic IUP{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <h1>Aprender</h1>
+    <p>Primero mira cómo se hacen las cosas. Después, a practicar.</p>
+</div>
+
+<div class="card" style="margin-bottom:1.25rem;">
+    <p style="margin:0;">
+        Cada tema explica <b>qué es</b>, <b>cómo se escribe</b>, un <b>ejemplo completo
+        explicado línea por línea</b> y los <b>errores que más se repiten</b>. Cuando lo
+        tengas claro, al final de cada lección están sus ejercicios.
+    </p>
+</div>
+
+<div class="topic-grid">
+    {% for t in temas %}
+    <a href="{{ url_for('aprender_tema', topic_id=t.tema.id) }}" class="topic-card">
+        <span class="topic-icon">{{ t.tema.icon or '📘' }}</span>
+        <h3>{{ t.tema.name }}</h3>
+        <p>{{ t.tema.description }}</p>
+        <div class="topic-meta">
+            <span>{% if t.tiene_leccion %}Lección + {% endif %}{{ t.n_ejercicios }} ejercicio{{ 's' if t.n_ejercicios != 1 }}</span>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% endblock %}
