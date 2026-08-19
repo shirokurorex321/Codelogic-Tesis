@@ -878,17 +878,52 @@ def _lista_errores(texto):
 @app.route("/aprender")
 @login_required
 def aprender():
-    """Indice de temas: que se aprende antes de ponerse a resolver."""
+    """Indice de temas, con lo que ya llevas hecho.
+
+    Sin esto, cinco tarjetas iguales y el estudiante sin saber por donde
+    empezar ni que le falta. Los datos ya se estaban registrando: solo habia
+    que pintarlos.
+    """
     from lecciones import LECCIONES
+
+    # Temas cuya leccion ya se abrio alguna vez. El dato lo deja
+    # `leer_leccion` en el historial de actividad desde que existe la seccion.
+    leidos = set()
+    for reg in (ActivityLog.query
+                .filter_by(user_id=current_user.id, action="leer_leccion")
+                .all()):
+        try:
+            leidos.add(int((reg.details or {}).get("topic_id")))
+        except (TypeError, ValueError):
+            pass
+
     temas = []
     for t in Topic.query.order_by(Topic.order).all():
+        ids = [e.id for e in Exercise.query.filter_by(topic_id=t.id, is_active=True).all()]
+        # Mismo criterio que el panel de inicio (nota >= 60) para que las dos
+        # pantallas no se contradigan.
+        hechos = 0
+        if ids:
+            hechos = (db.session.query(func.count(func.distinct(Submission.exercise_id)))
+                      .filter(Submission.user_id == current_user.id,
+                              Submission.exercise_id.in_(ids),
+                              Submission.score >= 60)
+                      .scalar() or 0)
         temas.append({
             "tema": t,
             "tiene_leccion": t.id in LECCIONES,
-            "n_ejercicios": Exercise.query.filter_by(topic_id=t.id, is_active=True).count(),
+            "leido": t.id in leidos,
+            "n_ejercicios": len(ids),
+            "hechos": hechos,
+            "porcentaje": round(hechos / len(ids) * 100) if ids else 0,
+            "completo": bool(ids) and hechos == len(ids),
         })
+
+    # Por donde seguir: el primer tema sin terminar. Asi el indice guia en vez
+    # de dejar cinco tarjetas identicas.
+    siguiente = next((t["tema"].id for t in temas if not t["completo"]), None)
     log_activity("abrir_aprender")
-    return render_template("aprender.html", temas=temas)
+    return render_template("aprender.html", temas=temas, siguiente=siguiente)
 
 
 @app.route("/aprender/<int:topic_id>")

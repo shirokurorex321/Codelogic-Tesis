@@ -13,16 +13,39 @@
         explicado línea por línea</b> y los <b>errores que más se repiten</b>. Cuando lo
         tengas claro, al final de cada lección están sus ejercicios.
     </p>
+    {% if siguiente %}
+    <p style="margin:.85rem 0 0;">
+        <a href="{{ url_for('aprender_tema', topic_id=siguiente) }}" class="btn btn-primary">
+            {% if temas | selectattr('hechos') | list %}Continuar por aquí{% else %}Empezar por aquí{% endif %}
+        </a>
+    </p>
+    {% else %}
+    <p style="margin:.85rem 0 0; color:var(--success, #22c55e);">
+        <b>Terminaste todos los temas.</b> Puedes volver a cualquiera cuando quieras.
+    </p>
+    {% endif %}
 </div>
 
 <div class="topic-grid">
     {% for t in temas %}
-    <a href="{{ url_for('aprender_tema', topic_id=t.tema.id) }}" class="topic-card">
+    <a href="{{ url_for('aprender_tema', topic_id=t.tema.id) }}" class="topic-card"
+       {% if t.tema.id == siguiente %}style="outline:2px solid var(--primary,#6366f1); outline-offset:2px;"{% endif %}>
         <span class="topic-icon">{{ t.tema.icon or '📘' }}</span>
-        <h3>{{ t.tema.name }}</h3>
+        <h3>
+            {{ t.tema.name }}
+            {% if t.completo %}<span title="tema completo">✅</span>
+            {% elif t.tema.id == siguiente %}<span title="sigue por aquí">👉</span>{% endif %}
+        </h3>
         <p>{{ t.tema.description }}</p>
+
+        <div style="margin:.6rem 0 .35rem; height:6px; border-radius:99px; background:rgba(128,128,128,.2); overflow:hidden;">
+            <div style="height:100%; width:{{ t.porcentaje }}%; border-radius:99px;
+                        background:{% if t.completo %}#22c55e{% else %}var(--primary,#6366f1){% endif %};"></div>
+        </div>
+
         <div class="topic-meta">
-            <span>{% if t.tiene_leccion %}Lección + {% endif %}{{ t.n_ejercicios }} ejercicio{{ 's' if t.n_ejercicios != 1 }}</span>
+            <span>{{ t.hechos }} de {{ t.n_ejercicios }} ejercicio{{ 's' if t.n_ejercicios != 1 }} resuelto{{ 's' if t.hechos != 1 }}</span>
+            <span>{% if t.leido %}Lección leída{% elif t.tiene_leccion %}Lección sin abrir{% endif %}</span>
         </div>
     </a>
     {% endfor %}
