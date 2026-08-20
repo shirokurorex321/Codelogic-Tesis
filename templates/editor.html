@@ -111,12 +111,22 @@ FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %
                     <header class="lang-section-header">
                         <span>📄 Código {{ label }}</span>
                         <div class="lang-actions">
+                            <span class="code-editado" id="editado-{{ lang }}" hidden>✏️ editado
+                                <button class="btn-restaurar" onclick="restoreCode('{{ lang }}')"
+                                        title="Volver al código original de la IA">↩</button>
+                            </span>
                             <button class="btn-mini btn-mini-primary" onclick="runCode('{{ lang }}')" id="btn-run-{{ lang }}">▶ Ejecutar</button>
                             <button class="btn-mini btn-mini-accent" onclick="explainCode('{{ lang }}')" id="btn-explain-{{ lang }}">💬 Explicar</button>
                             <button class="btn-mini" onclick="copyCode('{{ lang }}')" title="Copiar código">📋</button>
                         </div>
                     </header>
-                    <pre class="code-output" id="code-{{ lang }}"><span style="color:#585b70;">// El código convertido aparecerá aquí. Pulsa "🔄 Convertir" en el panel izquierdo.</span></pre>
+                    <pre class="code-output" id="code-{{ lang }}"
+                         contenteditable="plaintext-only" spellcheck="false"
+                         autocorrect="off" autocapitalize="off"
+                         aria-label="Código {{ label }} (editable)"
+                         oninput="onCodeEdited('{{ lang }}')"
+                         onkeydown="handleCodeKeys(event)"><span style="color:#585b70;">// El código convertido aparecerá aquí. Pulsa "🔄 Convertir" en el panel izquierdo.
+// Este panel es editable: puedes retocar el código y darle a ▶ Ejecutar.</span></pre>
                 </section>
 
                 <!-- Sección 2: SALIDA (medio) -->
@@ -258,7 +268,15 @@ FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %
 
         // ─── Cortocircuito: input no cambió desde la última conversión ───
         if (lastConvertedInput[lang] === pseudocode && convertedCode[lang]) {
-            flashCacheBadge(lang, 'code', 'sin cambios');
+            // El pseudocódigo no cambió. Si el estudiante retocó el código a
+            // mano, Convertir le devuelve el original de la IA; así el botón
+            // sirve de "deshacer" sin gastar una llamada a la API.
+            if (getCode(lang) !== convertedCode[lang]) {
+                restoreCode(lang);
+                flashCacheBadge(lang, 'code', 'código restaurado');
+            } else {
+                flashCacheBadge(lang, 'code', 'sin cambios');
+            }
             return;
         }
 
@@ -281,6 +299,7 @@ FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %
                 convertedCode[lang] = data.code;
                 lastConvertedInput[lang] = pseudocode;
                 document.getElementById('code-' + lang).textContent = data.code;
+                onCodeEdited(lang);
                 resetExecOutput(lang);
                 if (data.cached) flashCacheBadge(lang, 'code', 'desde caché');
                 if (activeTab === 'feedback') switchTab(lang);
@@ -326,6 +345,7 @@ FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %
                         convertedCode[lang] = sub.code;
                         lastConvertedInput[lang] = pseudocode;
                         document.getElementById('code-' + lang).textContent = sub.code;
+                        onCodeEdited(lang);
                         resetExecOutput(lang);
                         if (sub.cached) flashCacheBadge(lang, 'code', 'desde caché');
                     } else {
@@ -406,7 +426,7 @@ FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %
 
     // ─── EJECUTAR ──────────────────────────────
     async function runCode(lang, skipPromptCheck) {
-        const code = convertedCode[lang] || document.getElementById('code-' + lang).textContent;
+        const code = getCode(lang);
         if (!code || !code.trim() || code.trim().startsWith('//')) {
             return alert('Primero convierte el pseudocódigo a ' + lang + '.');
         }
@@ -472,7 +492,7 @@ FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %
         }
 
         // Si el código pide datos, ofrecer re-ejecutar con otros valores
-        const code = convertedCode[lang] || '';
+        const code = getCode(lang);
         if (detectStdinPrompts(code, lang).length > 0) {
             const stdinEl = document.getElementById('stdin-' + lang);
             const used = (stdinEl && stdinEl.value || '').trim().replace(/\n/g, ' · ');
@@ -490,6 +510,64 @@ FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %
         runCode(lang);
     }
 
+    // ─── Código editable ───────────────────────────────────────
+    // El panel de código es editable, así que lo que el estudiante ve en
+    // pantalla es la fuente de verdad: es lo que se ejecuta, lo que se
+    // explica y lo que se envía. `convertedCode` guarda aparte lo que
+    // devolvió la IA, solo para poder restaurarlo.
+
+    function getCode(lang) {
+        return document.getElementById('code-' + lang).textContent;
+    }
+
+    // Para enviar la solución: el placeholder empieza por "//" y no es
+    // código, así que ese lenguaje va vacío igual que antes.
+    function getAllCode() {
+        const todo = {};
+        for (const lang of ['python', 'cpp', 'php']) {
+            const code = getCode(lang);
+            todo[lang] = code.trim().startsWith('//') ? '' : code;
+        }
+        return todo;
+    }
+
+    function onCodeEdited(lang) {
+        const aviso = document.getElementById('editado-' + lang);
+        if (!aviso) return;
+        aviso.hidden = !(convertedCode[lang] && getCode(lang) !== convertedCode[lang]);
+    }
+
+    function restoreCode(lang) {
+        if (!convertedCode[lang]) return;
+        document.getElementById('code-' + lang).textContent = convertedCode[lang];
+        onCodeEdited(lang);
+    }
+
+    // Tab dentro del código indenta en vez de saltar al siguiente botón.
+    // execCommand está obsoleto, pero es lo único que conserva el
+    // deshacer nativo (Ctrl+Z) dentro de un contenteditable.
+    function handleCodeKeys(e) {
+        if (e.key !== 'Tab') return;
+        e.preventDefault();
+        document.execCommand('insertText', false, '    ');
+    }
+
+    // Los navegadores que no soportan contenteditable="plaintext-only"
+    // caen a "true", donde pegar arrastra HTML con colores y tipografías
+    // dentro del código. Ahí forzamos que el pegado entre como texto.
+    (function prepararEditables() {
+        for (const lang of ['python', 'cpp', 'php']) {
+            const el = document.getElementById('code-' + lang);
+            if (!el || el.contentEditable === 'plaintext-only') continue;
+            el.contentEditable = 'true';
+            el.addEventListener('paste', ev => {
+                ev.preventDefault();
+                const texto = (ev.clipboardData || window.clipboardData).getData('text/plain');
+                document.execCommand('insertText', false, texto);
+            });
+        }
+    })();
+
     function resetExecOutput(lang) {
         document.getElementById('output-' + lang).innerHTML =
             '<span style="color:var(--text-muted);">(Pulsa ▶ Ejecutar para ver la salida)</span>';
@@ -502,7 +580,7 @@ FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %
 
     // ─── EXPLICAR ──────────────────────────────
     async function explainCode(lang) {
-        const code = convertedCode[lang] || document.getElementById('code-' + lang).textContent;
+        const code = getCode(lang);
         if (!code || !code.trim() || code.trim().startsWith('//')) {
             return alert('Primero convierte el pseudocódigo a ' + lang + '.');
         }
@@ -615,7 +693,7 @@ FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %
                 body: JSON.stringify({
                     pseudocode,
                     exercise_id: exerciseId,
-                    converted: convertedCode,
+                    converted: getAllCode(),
                     feedback: currentFeedback,
                     time_spent: timeSpent
                 })

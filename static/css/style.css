@@ -1449,6 +1449,46 @@ tr:hover td { background: #f9fafb; }
     min-height: 120px;
 }
 
+/* ── Código convertido: editable ─────────────────────────────────
+   El estudiante puede retocar el código antes de ejecutarlo, así que
+   el panel tiene que verse como una zona de escritura y no como un
+   volcado de solo lectura. */
+.code-output[contenteditable] {
+    outline: none;
+    cursor: text;
+    caret-color: var(--accent);
+}
+.code-output[contenteditable]:hover { background: #21212f; }
+.code-output[contenteditable]:focus {
+    background: #21212f;
+    box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+/* Aviso de que lo que se ve ya no es lo que devolvió la IA */
+.code-editado {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.15rem 0.4rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--warning);
+    background: rgba(251, 191, 36, 0.12);
+    border: 1px solid rgba(251, 191, 36, 0.35);
+    border-radius: 6px;
+}
+.code-editado[hidden] { display: none; }
+.btn-restaurar {
+    padding: 0 0.2rem;
+    font-size: 0.8rem;
+    line-height: 1;
+    color: var(--warning);
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+.btn-restaurar:hover { color: #fff; }
+
 .output-block, .explain-block {
     padding: 0.85rem 1rem;
     font-size: 0.85rem;

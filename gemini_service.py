@@ -28,9 +28,10 @@ REGLAS IMPORTANTES:
 2. Debes generar código limpio, bien comentado en español y funcional.
 3. Usa nombres de variables descriptivos en español cuando sea posible.
 4. Agrega comentarios explicativos breves en español.
-5. Si el pseudocódigo tiene errores lógicos evidentes, convierte lo que puedas pero señálalos.
+5. El pseudocódigo es informal POR DEFINICIÓN: existe para que el estudiante piense la lógica sin pelearse con la sintaxis. Interpreta SIEMPRE lo que quiso decir y tradúcelo a código que funcione. "sumar a y b" es una suma y debes escribirla; "Definir 2 numeros a, b" declara a y b; mayúsculas/minúsculas, tildes, comillas simples o dobles y sinónimos (escribir/mostrar/imprimir, Leer/Ingresar) son equivalentes. NADA de esto es un error: para el estudiante esas formas son correctas, así que NO las comentes ni las corrijas.
 5b. NO "mejores" los números que escribió el estudiante. Si el pseudocódigo dice 3.1416, el código debe decir 3.1416, NUNCA math.pi, M_PI ni pi(). El estudiante compara el resultado con lo que calculó a mano y un valor distinto le hace creer que se equivocó.
-6. Estructura típica del pseudocódigo:
+5c. Comenta algo SOLO si la intención es genuinamente ambigua (dos lecturas razonables) o si falta algo sin lo cual el programa no puede funcionar. En ese caso implementa la lectura más probable —nunca dejes el programa a medias— y explica tu elección en UNA línea, en tono de tutor que acompaña, jamás de corrector que señala. No uses la palabra "error" para hablar del estilo de escritura.
+6. Estructura típica del pseudocódigo (ORIENTACIÓN para que la reconozcas, NO un formato obligatorio: el estudiante puede expresar lo mismo de otras maneras igual de válidas):
    - "Algoritmo" o "Proceso" = inicio del programa
    - "Definir X Como Entero/Real/Cadena/Logico" = declaración de variables
    - "Escribir" = imprimir/mostrar en pantalla
@@ -41,8 +42,7 @@ REGLAS IMPORTANTES:
    - "Dimension arreglo[N]" = declarar arreglo
    - "FinAlgoritmo" o "FinProceso" = fin del programa
 
-Responde ÚNICAMENTE con el código convertido, sin explicaciones adicionales.
-Si hay errores, agrégalos como comentarios dentro del código."""
+Responde ÚNICAMENTE con el código convertido, sin explicaciones fuera de los comentarios del propio código."""
 
 FEEDBACK_SYSTEM_PROMPT = """Eres un tutor de programación amigable y paciente que ayuda a estudiantes principiantes de la Institución Universitaria del Putumayo. Los estudiantes están aprendiendo algoritmos y pseudocódigo por primera vez.
 
@@ -409,7 +409,9 @@ PSEUDOCÓDIGO:
 
 Genera ÚNICAMENTE el código en {lang_name}, sin markdown, sin explicaciones, sin bloques de código con ```. Solo el código puro."""
 
-    key = _cache_key("convert", "v2", OPENCODE_MODEL_CONVERT, target_language,
+    # v3 = prompt que interpreta el pseudocódigo informal en vez de auditarlo
+    # (2026-08-19). Bumpear si vuelves a tocar CONVERSION_SYSTEM_PROMPT.
+    key = _cache_key("convert", "v3", OPENCODE_MODEL_CONVERT, target_language,
                      normalizar_pseudocodigo(pseudocode))
     cached = cache_get("convert", key)
     if cached:
