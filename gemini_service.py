@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import json
 import re
 from datetime import datetime, timezone
@@ -10,7 +11,40 @@ from models import db, AICache
 
 # ── Gemini (fallback) ───────────────────────────────────────────
 _gemini_client = genai.Client(api_key=Config.GEMINI_API_KEY) if Config.GEMINI_API_KEY else None
-GEMINI_MODEL = "gemini-3-flash-preview"
+# Lista de modelos, en orden de preferencia. GEMINI_MODEL es el primero y se
+# mantiene como variable suelta porque el resto del modulo la usa.
+#
+# Por que gemini-3.5-flash-lite el primero: con facturacion activa cada
+# llamada cuesta, y un Flash normal sale ~5 veces mas caro que un Lite. Medido
+# sobre el consumo real de esta plataforma: el pilotaje entero son ~39.000 COP
+# con Flash frente a ~7.400 con Lite. Y se comprobo que la calidad aguanta —
+# calificando el mismo ejercicio correcto, con error y con basura, el Lite da
+# 100/85/5 frente al 100/95/5 del caro: misma discriminacion, y penaliza algo
+# mas el error, que para ensenar viene bien.
+#
+# Por que una lista y no uno solo: los modelos se caen (el 20/08 uno devolvio
+# 503) y se retiran con el tiempo. Si el primero falla se prueba el siguiente
+# en vez de dejar al estudiante sin respuesta.
+# Registro propio con salida a stderr, que gunicorn recoge al diario del
+# servicio. No basta con getLogger: el logger raiz de esta aplicacion no tiene
+# manejadores, asi que Python cae en el "de ultimo recurso" y los mensajes se
+# pierden. Sin esto, quedarse sin cuota no dejaba ni rastro: el 20/08/2026 el
+# diario marcaba cero incidencias mientras los estudiantes veian el error en
+# pantalla.
+logger = logging.getLogger(__name__)
+if not logger.handlers:
+    logger.setLevel(logging.INFO)
+    _h = logging.StreamHandler()
+    _h.setFormatter(logging.Formatter("[ia] %(levelname)s %(message)s"))
+    logger.addHandler(_h)
+
+
+MODELOS_GEMINI = [
+    "gemini-3.5-flash-lite",
+    "gemini-flash-lite-latest",
+    "gemini-3-flash-preview",
+]
+GEMINI_MODEL = MODELOS_GEMINI[0]
 THINKING_LEVEL = "HIGH"
 
 # ── OpenCode Zen (primario) ─────────────────────────────────────
@@ -164,9 +198,35 @@ def _generate_opencode(system_instruction: str, user_prompt: str, model: str = N
 
 
 def _generate_gemini(system_instruction: str, user_prompt: str):
-    """Llama a Gemini (fallback). Devuelve (texto, usage_dict)."""
+    """Llama a Gemini probando los modelos de la lista en orden.
+
+    Si uno esta caido o sin cuota se pasa al siguiente. Antes se usaba un
+    unico modelo fijo: el 20/08/2026 se agoto su cupo diario y la plataforma
+    se quedo sin retroalimentacion ni calificacion durante horas, mientras
+    otros modelos seguian disponibles sin que nadie pudiera alcanzarlos.
+    """
     if not _gemini_client:
         raise RuntimeError("GEMINI_API_KEY no configurada")
+    ultimo = None
+    for modelo in MODELOS_GEMINI:
+        try:
+            return _generar_con_modelo(modelo, system_instruction, user_prompt)
+        except Exception as e:
+            ultimo = e
+            texto = str(e).lower()
+            # Solo se pasa al siguiente si el problema es del modelo. Un fallo
+            # de clave o de formato se repetiria igual en todos.
+            if not any(t in texto for t in ("429", "resource_exhausted", "quota",
+                                            "503", "unavailable", "404", "not found",
+                                            "overloaded")):
+                raise
+            logger.warning("Gemini: %s no disponible (%s), probando el siguiente",
+                           modelo, str(e)[:90])
+    logger.error("Gemini: ningun modelo disponible. Ultimo error: %s", str(ultimo)[:200])
+    raise ultimo
+
+
+def _generar_con_modelo(GEMINI_MODEL: str, system_instruction: str, user_prompt: str):
     response = _gemini_client.models.generate_content(
         model=GEMINI_MODEL,
         contents=user_prompt,
