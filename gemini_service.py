@@ -60,8 +60,37 @@ THINKING_LEVEL = "HIGH"
 # temporal) y 6 conversiones ejecutadas de verdad contra su salida esperada,
 # LOW acierta lo mismo que HIGH. Explicar y retroalimentar apenas razonan
 # (63 tokens por llamada), asi que ahi no hay nada que ahorrar.
-PRECIO_ENTRADA_USD_POR_MILLON = 0.30
-PRECIO_SALIDA_USD_POR_MILLON = 2.50   # incluye los tokens de razonamiento
+# Precio por millon de tokens, por modelo (USD, consultado el 23/08/2026 en
+# ai.google.dev/gemini-api/docs/pricing). La rotacion puede caer en un modelo
+# mas caro que el preferido, asi que el gasto se calcula con el que respondio
+# de verdad, no con el primero de la lista. OpenCode Zen no cobra por token.
+PRECIOS_POR_MILLON = {
+    "gemini-3.5-flash-lite":   (0.30, 2.50),
+    "gemini-flash-lite-latest": (0.30, 2.50),
+    "gemini-3-flash-preview":  (0.50, 3.00),
+}
+PRECIO_POR_DEFECTO = (0.50, 3.00)   # ante la duda, el mas caro conocido
+
+
+def coste_usd(usage: dict) -> float:
+    """Cuanto costo una llamada, en dolares, a partir de su usage.
+
+    La salida facturable es total - entrada, NO completion_tokens: los tokens
+    de razonamiento se cobran como salida pero no aparecen en completion.
+    """
+    if not usage or usage.get("provider") != "gemini":
+        return 0.0
+    entrada = int(usage.get("prompt_tokens") or 0)
+    total = int(usage.get("total_tokens") or 0)
+    salida = max(total - entrada, 0)
+    p_in, p_out = PRECIOS_POR_MILLON.get(usage.get("model"), PRECIO_POR_DEFECTO)
+    return entrada / 1e6 * p_in + salida / 1e6 * p_out
+
+
+def salida_facturable(usage: dict) -> int:
+    if not usage:
+        return 0
+    return max(int(usage.get("total_tokens") or 0) - int(usage.get("prompt_tokens") or 0), 0)
 THINKING_POR_OPERACION = {
     "convert": "LOW",
     "grade": "LOW",

@@ -139,6 +139,36 @@ class ActivityLog(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
 
+class GastoIA(db.Model):
+    """Libro de gasto de la IA, a proposito SIN clave foranea a users.
+
+    ActivityLog si la tiene, y codelogic-admin borra los registros hijos antes
+    de borrar una cuenta. El 23/08/2026 borre 40 cuentas de prueba y con ellas
+    se fue todo el historial de consumo, justo cuando hacia falta para cuadrar
+    la factura. El gasto ya ocurrio y hay que rendir cuentas de el aunque el
+    alumno se de de baja, asi que aqui user_id es un entero suelto: si la
+    cuenta desaparece la linea de gasto se queda.
+
+    tokens_salida guarda la salida FACTURABLE (total - entrada). Los tokens de
+    razonamiento se cobran como salida pero no aparecen en completion_tokens,
+    asi que usar ese campo subestima el gasto unas tres veces.
+    """
+    __tablename__ = "gasto_ia"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, index=True)        # sin ForeignKey, a proposito
+    operacion = db.Column(db.String(20), nullable=False, index=True)
+    proveedor = db.Column(db.String(20))
+    modelo = db.Column(db.String(60))
+    tokens_entrada = db.Column(db.Integer, default=0, nullable=False)
+    tokens_salida = db.Column(db.Integer, default=0, nullable=False)   # facturable
+    coste_usd = db.Column(db.Numeric(12, 8), default=0, nullable=False)
+    desde_cache = db.Column(db.Boolean, default=False, nullable=False)
+    exercise_id = db.Column(db.Integer, index=True)
+    created_at = db.Column(db.DateTime, index=True,
+                           default=lambda: datetime.now(timezone.utc))
+
+
 class AICache(db.Model):
     """Caché persistente de respuestas de IA (convert / feedback / explain).
     Evita llamadas duplicadas cuando el input es idéntico → ahorra tokens y rate-limit."""

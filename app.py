@@ -14,7 +14,7 @@ import unicodedata
 from sqlalchemy import func
 from flask import (
     Flask, render_template, request, redirect, url_for,
-    flash, jsonify, session
+    flash, jsonify, session, current_app
 )
 from flask_login import (
     LoginManager, login_user, logout_user,
@@ -27,7 +27,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from config import Config
 from models import (
     db, User, Topic, Exercise, Submission,
-    ActivityLog, TestResult, SelfEfficacyResult, CognitiveLoadResult
+    ActivityLog, TestResult, SelfEfficacyResult, CognitiveLoadResult, GastoIA
 )
 from gemini_service import (
     convert_pseudocode, get_ai_feedback, convert_to_all_languages,
@@ -180,6 +180,39 @@ def client_ip():
     return request.headers.get("CF-Connecting-IP") or request.remote_addr
 
 
+OPERACIONES_CON_COSTE = ("convert", "feedback", "grade", "explain")
+
+
+def registrar_gasto(action, details, user_id):
+    """Anota en el libro de gasto lo que costo una llamada a la IA.
+
+    Va aparte de ActivityLog porque aquel se borra en cascada al borrar una
+    cuenta y el gasto tiene que sobrevivir a la baja del alumno. Nunca puede
+    tumbar la peticion: si falla, se pierde la linea y no la respuesta.
+    """
+    if action not in OPERACIONES_CON_COSTE or not isinstance(details, dict):
+        return
+    usage = details.get("usage") or {}
+    if not usage.get("total_tokens"):
+        return          # cacheada o sin consumo: no hay nada que cobrar
+    try:
+        from gemini_service import coste_usd, salida_facturable
+        db.session.add(GastoIA(
+            user_id=user_id,
+            operacion=action,
+            proveedor=usage.get("provider"),
+            modelo=usage.get("model"),
+            tokens_entrada=int(usage.get("prompt_tokens") or 0),
+            tokens_salida=salida_facturable(usage),
+            coste_usd=round(coste_usd(usage), 8),
+            desde_cache=bool(details.get("cached")),
+            exercise_id=details.get("exercise_id"),
+        ))
+    except Exception:
+        current_app.logger.warning("no se pudo registrar el gasto de %s", action,
+                                   exc_info=True)
+
+
 def log_activity(action, details=None):
     """Registra actividad del usuario para la investigación."""
     if current_user.is_authenticated:
@@ -190,6 +223,7 @@ def log_activity(action, details=None):
             ip_address=client_ip()
         )
         db.session.add(log)
+        registrar_gasto(action, details, current_user.id)
         db.session.commit()
 
 
