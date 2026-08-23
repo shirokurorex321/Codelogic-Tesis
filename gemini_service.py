@@ -47,14 +47,21 @@ MODELOS_GEMINI = [
 GEMINI_MODEL = MODELOS_GEMINI[0]
 THINKING_LEVEL = "HIGH"
 
-# Nivel de razonamiento por operacion. Google factura los tokens de
-# razonamiento como salida aunque no aparezcan en completion_tokens: en la
-# cache del 23/08/2026 calificar gastaba 31.142 tokens de razonamiento para
-# producir 2.752 de respuesta, y convertir 136.813 para 31.424. Medido con
-# 12 casos de error sutil (off-by-one, negativos, sin inicializar) y 6
-# conversiones ejecutadas de verdad, LOW acierta lo mismo que HIGH y cuesta
-# entre 8 y 23 veces menos. Explicar y retroalimentar apenas razonan
+# Precio real de gemini-3.5-flash-lite (23/08/2026): 0,30 USD por millon de
+# entrada y 2,50 por millon de salida. Google avisa en su tabla que el precio
+# de salida "incluye los tokens de razonamiento", y esos tokens NO aparecen en
+# completion_tokens: solo se ven restando prompt_tokens al total_tokens. Para
+# contar el gasto hay que usar (total - prompt) como salida, nunca completion.
+#
+# Nivel de razonamiento por operacion. Calificar era el peor derrochador:
+# 31.142 tokens de razonamiento para producir 2.752 de respuesta; convertir,
+# 136.813 para 31.424. Medido con 12 casos de error sutil (off-by-one, maximo
+# que falla con negativos, acumulador sin inicializar, Euclides sin variable
+# temporal) y 6 conversiones ejecutadas de verdad contra su salida esperada,
+# LOW acierta lo mismo que HIGH. Explicar y retroalimentar apenas razonan
 # (63 tokens por llamada), asi que ahi no hay nada que ahorrar.
+PRECIO_ENTRADA_USD_POR_MILLON = 0.30
+PRECIO_SALIDA_USD_POR_MILLON = 2.50   # incluye los tokens de razonamiento
 THINKING_POR_OPERACION = {
     "convert": "LOW",
     "grade": "LOW",
