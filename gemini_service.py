@@ -47,6 +47,21 @@ MODELOS_GEMINI = [
 GEMINI_MODEL = MODELOS_GEMINI[0]
 THINKING_LEVEL = "HIGH"
 
+# Nivel de razonamiento por operacion. Google factura los tokens de
+# razonamiento como salida aunque no aparezcan en completion_tokens: en la
+# cache del 23/08/2026 calificar gastaba 31.142 tokens de razonamiento para
+# producir 2.752 de respuesta, y convertir 136.813 para 31.424. Medido con
+# 12 casos de error sutil (off-by-one, negativos, sin inicializar) y 6
+# conversiones ejecutadas de verdad, LOW acierta lo mismo que HIGH y cuesta
+# entre 8 y 23 veces menos. Explicar y retroalimentar apenas razonan
+# (63 tokens por llamada), asi que ahi no hay nada que ahorrar.
+THINKING_POR_OPERACION = {
+    "convert": "LOW",
+    "grade": "LOW",
+    "explain": THINKING_LEVEL,
+    "feedback": THINKING_LEVEL,
+}
+
 # ── OpenCode Zen (primario) ─────────────────────────────────────
 OPENCODE_KEY = Config.OPENCODE_API_KEY
 OPENCODE_URL = Config.OPENCODE_BASE_URL.rstrip("/")
@@ -145,7 +160,7 @@ def explain_code(code: str, language: str) -> dict:
         return {**cached, "cached": True}
 
     try:
-        explanation, usage = _generate(EXPLAIN_SYSTEM_PROMPT, prompt, model=OPENCODE_MODEL_TUTOR)
+        explanation, usage = _generate(EXPLAIN_SYSTEM_PROMPT, prompt, model=OPENCODE_MODEL_TUTOR, operacion="explain")
         result = {"success": True, "explanation": explanation, "usage": usage}
         cache_put("explain", key, result)
         return {**result, "cached": False}
@@ -197,7 +212,8 @@ def _generate_opencode(system_instruction: str, user_prompt: str, model: str = N
     return text, usage
 
 
-def _generate_gemini(system_instruction: str, user_prompt: str):
+def _generate_gemini(system_instruction: str, user_prompt: str,
+                     operacion: str = None):
     """Llama a Gemini probando los modelos de la lista en orden.
 
     Si uno esta caido o sin cuota se pasa al siguiente. Antes se usaba un
@@ -210,7 +226,8 @@ def _generate_gemini(system_instruction: str, user_prompt: str):
     ultimo = None
     for modelo in MODELOS_GEMINI:
         try:
-            return _generar_con_modelo(modelo, system_instruction, user_prompt)
+            return _generar_con_modelo(modelo, system_instruction, user_prompt,
+                                       operacion)
         except Exception as e:
             ultimo = e
             texto = str(e).lower()
@@ -226,13 +243,15 @@ def _generate_gemini(system_instruction: str, user_prompt: str):
     raise ultimo
 
 
-def _generar_con_modelo(GEMINI_MODEL: str, system_instruction: str, user_prompt: str):
+def _generar_con_modelo(GEMINI_MODEL: str, system_instruction: str, user_prompt: str,
+                        operacion: str = None):
+    nivel = THINKING_POR_OPERACION.get(operacion, THINKING_LEVEL)
     response = _gemini_client.models.generate_content(
         model=GEMINI_MODEL,
         contents=user_prompt,
         config=types.GenerateContentConfig(
             system_instruction=system_instruction,
-            thinking_config=types.ThinkingConfig(thinking_level=THINKING_LEVEL),
+            thinking_config=types.ThinkingConfig(thinking_level=nivel),
         ),
     )
     text = (response.text or "").strip()
@@ -390,7 +409,8 @@ def cache_put(endpoint: str, key: str, response: dict):
         db.session.rollback()
 
 
-def _generate(system_instruction: str, user_prompt: str, model: str = None) -> str:
+def _generate(system_instruction: str, user_prompt: str, model: str = None,
+              operacion: str = None) -> str:
     """Intenta OpenCode Zen primero (con el modelo indicado); si falla, cae a Gemini."""
     try:
         return _generate_opencode(system_instruction, user_prompt, model=model)
@@ -398,7 +418,7 @@ def _generate(system_instruction: str, user_prompt: str, model: str = None) -> s
         # Fallback automático a Gemini si está configurado
         if _gemini_client:
             try:
-                return _generate_gemini(system_instruction, user_prompt)
+                return _generate_gemini(system_instruction, user_prompt, operacion)
             except Exception as fallback_err:
                 raise RuntimeError(
                     f"OpenCode falló ({primary_err}); fallback Gemini también falló ({fallback_err})"
@@ -478,7 +498,7 @@ Genera ÚNICAMENTE el código en {lang_name}, sin markdown, sin explicaciones, s
         return {**cached, "cached": True}
 
     try:
-        code, usage = _generate(CONVERSION_SYSTEM_PROMPT, prompt, model=OPENCODE_MODEL_CONVERT)
+        code, usage = _generate(CONVERSION_SYSTEM_PROMPT, prompt, model=OPENCODE_MODEL_CONVERT, operacion="convert")
 
         if code.startswith("```"):
             lines = code.split("\n")
@@ -526,7 +546,7 @@ Analiza el pseudocódigo y proporciona retroalimentación."""
         return {**cached, "cached": True}
 
     try:
-        feedback, usage = _generate(system, prompt, model=OPENCODE_MODEL_TUTOR)
+        feedback, usage = _generate(system, prompt, model=OPENCODE_MODEL_TUTOR, operacion="feedback")
         result = {"success": True, "feedback": feedback, "usage": usage}
         cache_put("feedback", key, result)
         return {**result, "cached": False}
@@ -578,7 +598,7 @@ Califica la solución."""
         return {**cached, "cached": True}
 
     try:
-        raw, usage = _generate(GRADING_SYSTEM_PROMPT, prompt, model=OPENCODE_MODEL_TUTOR)
+        raw, usage = _generate(GRADING_SYSTEM_PROMPT, prompt, model=OPENCODE_MODEL_TUTOR, operacion="grade")
         score, reason = _parse_grade(raw)
         if score is None:
             # Se responde como fallo para que quien llama guarde la nota vacia
