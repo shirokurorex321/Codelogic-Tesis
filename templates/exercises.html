@@ -1,22 +1,72 @@
 {% extends "base.html" %}
 {% block title %}Ejercicios — CodeLogic IUP{% endblock %}
 
+{% macro tarjeta(topic) %}
+<a href="{{ url_for('topic_exercises', topic_id=topic.id) }}" class="topic-card">
+    <span class="topic-icon">{{ topic.icon }}</span>
+    <h3>{{ topic.name }}</h3>
+    <p>{{ topic.description }}</p>
+    <div class="topic-meta">
+        <span>{{ topic.exercises.filter_by(is_active=True).count() }} ejercicios</span>
+    </div>
+</a>
+{% endmacro %}
+
 {% block content %}
 <div class="dash-header">
     <h1>Ejercicios</h1>
-    <p>Selecciona un tema para ver los ejercicios disponibles.</p>
+    <p>Cada semestre tiene sus propios temas. Entra en el que estes cursando.</p>
 </div>
 
-<div class="topic-grid">
-    {% for topic in topics %}
-    <a href="{{ url_for('topic_exercises', topic_id=topic.id) }}" class="topic-card">
-        <span class="topic-icon">{{ topic.icon }}</span>
-        <h3>{{ topic.name }}</h3>
-        <p>{{ topic.description }}</p>
-        <div class="topic-meta">
-            <span>{{ topic.exercises.filter_by(is_active=True).count() }} ejercicios</span>
-        </div>
-    </a>
+{# ── PRIMER SEMESTRE: agrupado por las unidades del estatuto ── #}
+{% set primero = topics | selectattr('semestre', 'equalto', 1) | list %}
+{% if primero %}
+<div class="semestre-bloque semestre-1">
+    <div class="semestre-titulo">
+        <span class="semestre-chip">Primer semestre</span>
+        <span class="semestre-sub">Plan de asignatura vigente · 3 unidades</span>
+    </div>
+
+    {% for unidad in [1, 2, 3] %}
+        {% set temas = primero | selectattr('unidad', 'equalto', unidad) | list %}
+        {% if temas %}
+        <section class="unidad-bloque">
+            <header class="unidad-header">
+                <span class="unidad-num">Unidad {{ unidad }}</span>
+                <h2>{{ temas[0].unidad_nombre }}</h2>
+                {% if temas[0].nivel %}<p class="unidad-nivel">{{ temas[0].nivel }}</p>{% endif %}
+            </header>
+            <div class="topic-grid">
+                {% for topic in temas %}{{ tarjeta(topic) }}{% endfor %}
+            </div>
+        </section>
+        {% endif %}
     {% endfor %}
 </div>
+{% endif %}
+
+{# ── TERCER SEMESTRE: sus temas, sin las unidades del otro plan ── #}
+{% set tercero = topics | selectattr('semestre', 'equalto', 3) | list %}
+{% if tercero %}
+<div class="semestre-bloque semestre-3">
+    <div class="semestre-titulo">
+        <span class="semestre-chip">Tercer semestre</span>
+        <span class="semestre-sub">{{ tercero | length }} temas</span>
+    </div>
+    <div class="topic-grid">
+        {% for topic in tercero %}{{ tarjeta(topic) }}{% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{# Ningun tema debe quedar invisible por no tener semestre asignado #}
+{% set sueltos = topics | rejectattr('semestre', 'in', [1, 3]) | list %}
+{% if sueltos %}
+<div class="semestre-bloque">
+    <div class="semestre-titulo"><span class="semestre-chip">Sin semestre asignado</span></div>
+    <div class="topic-grid">
+        {% for topic in sueltos %}{{ tarjeta(topic) }}{% endfor %}
+    </div>
+</div>
+{% endif %}
 {% endblock %}

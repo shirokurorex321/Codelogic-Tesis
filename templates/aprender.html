@@ -26,15 +26,15 @@
     {% endif %}
 </div>
 
-<div class="topic-grid">
-    {% for t in temas %}
+{% macro tarjeta_tema(t, siguientes) %}
+    {% set sig = siguientes.get(t.tema.semestre) %}
     <a href="{{ url_for('aprender_tema', topic_id=t.tema.id) }}" class="topic-card"
-       {% if t.tema.id == siguiente %}style="outline:2px solid var(--primary,#6366f1); outline-offset:2px;"{% endif %}>
+       {% if t.tema.id == sig %}style="outline:2px solid var(--primary,#6366f1); outline-offset:2px;"{% endif %}>
         <span class="topic-icon">{{ t.tema.icon or '📘' }}</span>
         <h3>
             {{ t.tema.name }}
             {% if t.completo %}<span title="tema completo">✅</span>
-            {% elif t.tema.id == siguiente %}<span title="sigue por aquí">👉</span>{% endif %}
+            {% elif t.tema.id == sig %}<span title="sigue por aquí">👉</span>{% endif %}
         </h3>
         <p>{{ t.tema.description }}</p>
 
@@ -48,6 +48,56 @@
             <span>{% if t.leido %}Lección leída{% elif t.tiene_leccion %}Lección sin abrir{% endif %}</span>
         </div>
     </a>
+{% endmacro %}
+
+{# Los temas se agrupan por semestre y, dentro de 1er semestre, por unidad.
+   Son dos asignaturas distintas: mezclar sus tarjetas en una sola rejilla
+   hacia que un alumno de primero viera temas que no le tocan. #}
+{% set primero = temas | selectattr('tema.semestre', 'equalto', 1) | list %}
+{% if primero %}
+<div class="semestre-bloque semestre-1">
+    <div class="semestre-titulo">
+        <span class="semestre-chip">Primer semestre</span>
+        <span class="semestre-sub">Plan de asignatura vigente · 3 unidades</span>
+    </div>
+    {% for unidad in [1, 2, 3] %}
+        {% set grupo = primero | selectattr('tema.unidad', 'equalto', unidad) | list %}
+        {% if grupo %}
+        <section class="unidad-bloque">
+            <header class="unidad-header">
+                <span class="unidad-num">Unidad {{ unidad }}</span>
+                <h2>{{ grupo[0].tema.unidad_nombre }}</h2>
+                {% if grupo[0].tema.nivel %}<p class="unidad-nivel">{{ grupo[0].tema.nivel }}</p>{% endif %}
+            </header>
+            <div class="topic-grid">
+                {% for t in grupo %}{{ tarjeta_tema(t, siguientes) }}{% endfor %}
+            </div>
+        </section>
+        {% endif %}
     {% endfor %}
 </div>
+{% endif %}
+
+{% set tercero = temas | selectattr('tema.semestre', 'equalto', 3) | list %}
+{% if tercero %}
+<div class="semestre-bloque semestre-3">
+    <div class="semestre-titulo">
+        <span class="semestre-chip">Tercer semestre</span>
+        <span class="semestre-sub">{{ tercero | length }} temas</span>
+    </div>
+    <div class="topic-grid">
+        {% for t in tercero %}{{ tarjeta_tema(t, siguientes) }}{% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% set sueltos = temas | rejectattr('tema.semestre', 'in', [1, 3]) | list %}
+{% if sueltos %}
+<div class="semestre-bloque">
+    <div class="semestre-titulo"><span class="semestre-chip">Sin semestre asignado</span></div>
+    <div class="topic-grid">
+        {% for t in sueltos %}{{ tarjeta_tema(t, siguientes) }}{% endfor %}
+    </div>
+</div>
+{% endif %}
 {% endblock %}

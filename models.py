@@ -68,6 +68,21 @@ class Topic(db.Model):
     order = db.Column(db.Integer, default=0)
     icon = db.Column(db.String(50), default="📘")
 
+    # ── Semestre al que pertenece el tema ──
+    # La plataforma sirve a DOS asignaturas distintas que comparten temario
+    # (variables, condicionales, ciclos, vectores) pero no alumnos. Cada
+    # tema es de un semestre y no se mezclan en ninguna vista: un tema de
+    # 3er semestre no aparece nunca en el listado de 1ro, ni al reves.
+    semestre = db.Column(db.Integer)             # 1 o 3
+
+    # ── Unidad del plan de asignatura (estatuto de 2026, 1er semestre) ──
+    # Los temas existian antes que las unidades y no se tocaron: la unidad se
+    # les puso encima, para que la plataforma hable el mismo idioma que el
+    # temario sin renombrar ni mover nada de lo ya creado.
+    unidad = db.Column(db.Integer)               # 1, 2 o 3
+    unidad_nombre = db.Column(db.String(150))    # titulo de la unidad
+    nivel = db.Column(db.String(150))            # nivel de profundizacion
+
     # ── Lección del tema ──
     # Antes de esta adición, el estudiante pasaba de una descripción de una línea
     # directamente a programar. La tesis sostiene que ese salto sin andamiaje es

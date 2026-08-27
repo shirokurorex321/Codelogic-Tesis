@@ -1478,6 +1478,209 @@ tr:hover td { background: #f9fafb; }
     border-radius: 6px;
 }
 .code-editado[hidden] { display: none; }
+
+/* ── Diagrama de flujo ───────────────────────────────────────────
+   El SVG que dibuja Mermaid puede salir mas ancho que el panel, asi
+   que scrollea dentro de su caja en vez de romper la maquetacion. */
+.diagrama-block {
+    padding: 1rem;
+    background: #1e1e2e;
+    min-height: 200px;
+    max-height: 460px;
+    overflow: auto;
+    text-align: center;
+}
+.diagrama-block svg { max-width: 100%; height: auto; }
+
+/* Leyenda de la simbologia estandar que pide el temario */
+.simbologia {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 0.5rem 1rem;
+    padding: 0.85rem 1rem;
+    font-size: 0.8rem;
+    color: var(--text-light);
+    background: var(--bg-card);
+}
+.simbologia > div { display: flex; align-items: center; gap: 0.5rem; }
+.simb {
+    width: 26px;
+    height: 16px;
+    flex: 0 0 auto;
+    border: 2px solid var(--accent);
+    background: rgba(34, 211, 238, 0.12);
+}
+.simb-ovalo    { border-radius: 999px; }
+.simb-paralelo { transform: skewX(-20deg); }
+.simb-rect     { border-radius: 2px; }
+.simb-rombo    { transform: rotate(45deg) scale(0.78); }
+
+/* ── Unidades del plan de asignatura ─────────────────────────────
+   Los temas ya existian; la unidad es una capa por encima para que la
+   plataforma se lea igual que el temario. */
+/* ── Separacion por semestre ─────────────────────────────────────
+   Dos asignaturas distintas comparten la plataforma y casi el mismo
+   temario, asi que la separacion tiene que ser IMPOSIBLE de confundir:
+   cada semestre lleva su franja de color y su titulo. */
+.semestre-bloque {
+    position: relative;
+    padding: 1.25rem 0 0.5rem 1.15rem;
+    margin-bottom: 3rem;
+    border-left: 3px solid var(--border);
+}
+.semestre-1 { border-left-color: var(--accent); }
+.semestre-3 { border-left-color: var(--accent2); }
+
+.semestre-titulo {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 1.4rem;
+}
+.semestre-chip {
+    padding: 0.3rem 0.8rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    color: var(--bg-dark);
+    background: var(--border);
+    border-radius: 999px;
+}
+.semestre-1 .semestre-chip { background: var(--accent); }
+.semestre-3 .semestre-chip { background: var(--accent2); color: #fff; }
+.semestre-sub { font-size: 0.8rem; color: var(--text-muted); }
+
+/* Progreso del panel, tambien partido por semestre */
+.progreso-semestre {
+    padding-left: 0.85rem;
+    margin-bottom: 1.4rem;
+    border-left: 3px solid var(--border);
+}
+.progreso-semestre.semestre-1 { border-left-color: var(--accent); }
+.progreso-semestre.semestre-3 { border-left-color: var(--accent2); }
+.progreso-semestre-titulo {
+    margin-bottom: 0.7rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+/* Ubicacion (semestre + unidad) en la cabecera de un tema */
+.ubicacion-tema {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+.ubicacion-unidad { font-size: 0.78rem; color: var(--text-muted); }
+
+/* Etiqueta de semestre en las tablas del panel de administracion */
+.sem-tag {
+    display: inline-block;
+    padding: 0.1rem 0.45rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    white-space: nowrap;
+    border-radius: 5px;
+    color: var(--bg-dark);
+}
+.sem-tag-1 { background: var(--accent); }
+.sem-tag-3 { background: var(--accent2); color: #fff; }
+.sem-tag-x { background: var(--border); color: var(--text-muted); }
+
+.progreso-unidad {
+    padding: 0.05rem 0.35rem;
+    margin-left: 0.3rem;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+}
+
+.unidad-bloque { margin-bottom: 2.5rem; }
+.unidad-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem 0.85rem;
+    padding-bottom: 0.6rem;
+    margin-bottom: 1.1rem;
+    border-bottom: 1px solid var(--border);
+}
+.unidad-header h2 {
+    margin: 0;
+    font-size: 1.15rem;
+    color: var(--text);
+}
+.unidad-num {
+    padding: 0.2rem 0.6rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #fff;
+    background: linear-gradient(135deg, var(--primary), var(--accent2));
+    border-radius: 999px;
+}
+.unidad-nivel {
+    flex-basis: 100%;
+    margin: 0;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+/* ── Prueba de escritorio ────────────────────────────────────────
+   La tabla crece a lo ancho con cada variable y a lo largo con cada
+   paso, asi que scrollea dentro de su caja y la cabecera se queda
+   fija: sin eso, en un ciclo de 40 pasos se pierde de vista. */
+.traza-block { padding: 0; background: var(--bg-card); }
+.traza-scroll { max-height: 420px; overflow: auto; }
+.traza-tabla {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    white-space: nowrap;
+}
+.traza-tabla thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 0.5rem 0.7rem;
+    text-align: left;
+    font-weight: 700;
+    color: var(--accent);
+    background: var(--bg-dark);
+    border-bottom: 1px solid var(--border);
+}
+.traza-tabla td {
+    padding: 0.35rem 0.7rem;
+    color: var(--text-light);
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.traza-tabla tbody tr:hover td { background: rgba(255,255,255,0.03); }
+.traza-paso { color: var(--text-muted); text-align: right; }
+.traza-instr code { color: var(--text); font-size: 0.78rem; }
+.traza-vacio { color: #45475a; }
+
+/* El valor que cambia en este paso: es lo que se sigue con el dedo */
+.traza-cambio {
+    color: #fff !important;
+    font-weight: 700;
+    background: rgba(147, 51, 234, 0.28);
+}
+
+.traza-aviso {
+    padding: 0.6rem 1rem;
+    font-size: 0.78rem;
+    color: var(--warning);
+    border-top: 1px solid var(--border);
+}
+.traza-salida-prog { padding: 0.6rem 1rem 0.9rem; border-top: 1px solid var(--border); }
 .btn-restaurar {
     padding: 0 0.2rem;
     font-size: 0.8rem;

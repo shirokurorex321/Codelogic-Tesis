@@ -5,6 +5,14 @@
 <div class="dash-header">
     <div class="flex-between">
         <div>
+            {# Ubicacion: sin esto, dos temas casi homonimos de semestres
+               distintos son indistinguibles una vez dentro. #}
+            {% if topic.semestre %}
+            <div class="ubicacion-tema">
+                <span class="sem-tag sem-tag-{{ topic.semestre }}">{{ topic.semestre }}er semestre</span>
+                {% if topic.unidad %}<span class="ubicacion-unidad">Unidad {{ topic.unidad }} · {{ topic.unidad_nombre }}</span>{% endif %}
+            </div>
+            {% endif %}
             <h1>{{ topic.icon }} {{ topic.name }}</h1>
             <p>{{ topic.description }}</p>
         </div>

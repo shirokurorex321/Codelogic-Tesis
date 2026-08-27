@@ -79,20 +79,35 @@
     <div class="card-header">
         <span class="card-title">Progreso por tema</span>
     </div>
-    {% for tp in topic_progress %}
-    <div style="margin-bottom: 1rem;">
-        <div class="flex-between mb-1">
-            <span style="font-weight:600; font-size:0.9rem;">
-                {{ tp.topic.icon }} {{ tp.topic.name }}
-            </span>
-            <span style="font-size:0.8rem; color:var(--text-light);">
-                {{ tp.completed }}/{{ tp.total }} ejercicios
-            </span>
+    {# El progreso se separa por semestre: mezclar los temas de las dos
+       asignaturas en una sola lista daria un avance que no significa nada. #}
+    {% for sem, etiqueta in [(1, 'Primer semestre'), (3, 'Tercer semestre'), (None, 'Sin semestre asignado')] %}
+        {% if sem is none %}
+            {% set grupo = topic_progress | rejectattr('topic.semestre', 'in', [1, 3]) | list %}
+        {% else %}
+            {% set grupo = topic_progress | selectattr('topic.semestre', 'equalto', sem) | list %}
+        {% endif %}
+        {% if grupo %}
+        <div class="progreso-semestre {% if sem %}semestre-{{ sem }}{% endif %}">
+            <div class="progreso-semestre-titulo">{{ etiqueta }}</div>
+            {% for tp in grupo %}
+            <div style="margin-bottom: 1rem;">
+                <div class="flex-between mb-1">
+                    <span style="font-weight:600; font-size:0.9rem;">
+                        {{ tp.topic.icon }} {{ tp.topic.name }}
+                        {% if tp.topic.unidad %}<span class="progreso-unidad">U{{ tp.topic.unidad }}</span>{% endif %}
+                    </span>
+                    <span style="font-size:0.8rem; color:var(--text-light);">
+                        {{ tp.completed }}/{{ tp.total }} ejercicios
+                    </span>
+                </div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar-fill" style="width: {{ tp.percent }}%"></div>
+                </div>
+            </div>
+            {% endfor %}
         </div>
-        <div class="progress-bar-container">
-            <div class="progress-bar-fill" style="width: {{ tp.percent }}%"></div>
-        </div>
-    </div>
+        {% endif %}
     {% endfor %}
 </div>
 {% endif %}

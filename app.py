@@ -32,12 +32,14 @@ from models import (
 from gemini_service import (
     convert_pseudocode, get_ai_feedback, convert_to_all_languages,
     explain_code, grade_submission,
+    convert_to_diagram,
 )
 from questions import (
     TEST_QUESTIONS, SELF_EFFICACY_ITEMS, LIKERT_LABELS,
     COGNITIVE_LOAD_ITEMS, COGNITIVE_LOAD_LABELS,
 )
 import executor
+import traza
 
 # Versión del texto de consentimiento informado. Súbela si cambias el texto:
 # permite demostrar qué versión aceptó cada participante.
@@ -955,9 +957,20 @@ def aprender():
 
     # Por donde seguir: el primer tema sin terminar. Asi el indice guia en vez
     # de dejar cinco tarjetas identicas.
-    siguiente = next((t["tema"].id for t in temas if not t["completo"]), None)
+    #
+    # Se calcula POR SEMESTRE: con las dos asignaturas en la misma pagina,
+    # un unico "siguiente" global mandaba al alumno de primero a un tema de
+    # tercero en cuanto terminaba los suyos.
+    siguientes = {}
+    for t in temas:
+        sem = t["tema"].semestre
+        if not t["completo"] and sem not in siguientes:
+            siguientes[sem] = t["tema"].id
+    # El boton de cabecera apunta al plan vigente (1er semestre) si lo hay.
+    siguiente = siguientes.get(1) or siguientes.get(3) or next(iter(siguientes.values()), None)
     log_activity("abrir_aprender")
-    return render_template("aprender.html", temas=temas, siguiente=siguiente)
+    return render_template("aprender.html", temas=temas, siguiente=siguiente,
+                           siguientes=siguientes)
 
 
 @app.route("/aprender/<int:topic_id>")
@@ -974,8 +987,12 @@ def aprender_tema(topic_id):
     ejercicios = (Exercise.query
                   .filter_by(topic_id=topic_id, is_active=True)
                   .order_by(Exercise.difficulty, Exercise.id).all())
-    # Temas anterior y siguiente, para poder recorrerlos en orden
-    todos = Topic.query.order_by(Topic.order).all()
+    # Temas anterior y siguiente, para poder recorrerlos en orden.
+    # Solo dentro del MISMO semestre: encadenarlos todos hacia que la
+    # ultima leccion de una asignatura llevara a la primera de la otra.
+    todos = (Topic.query
+             .filter(Topic.semestre == tema.semestre)
+             .order_by(Topic.order).all())
     pos = [t.id for t in todos].index(topic_id) if tema in todos else -1
     log_activity("leer_leccion", {"topic_id": topic_id})
     return render_template(
@@ -1046,6 +1063,69 @@ def api_convert():
 
     log_activity("convert", {
         "language": language,
+        "pseudocode_length": len(pseudocode),
+        "success": result["success"],
+        "cached": result.get("cached", False),
+        "usage": result.get("usage", {}),
+    })
+
+    return jsonify(result)
+
+
+@app.route("/api/trace", methods=["POST"])
+@limiter.limit(lambda: app.config["RATELIMIT_EXEC"])
+@login_required
+def api_trace():
+    """Prueba de escritorio: traza real de la ejecución, paso a paso.
+
+    Acepta el código Python ya convertido (que el estudiante puede haber
+    retocado a mano) o, si no lo hay, el pseudocódigo: en ese caso lo
+    convierte primero, casi siempre desde caché.
+    """
+    data = request.get_json() or {}
+    code = (data.get("code") or "").strip()
+    pseudocode = (data.get("pseudocode") or "").strip()
+    stdin = data.get("stdin", "") or ""
+
+    if len(code) > 50_000 or len(stdin) > 10_000:
+        return jsonify({"success": False, "error": "El código o los datos son demasiado largos."}), 400
+
+    if not code:
+        if not pseudocode:
+            return jsonify({"success": False, "error": "No hay código que trazar."}), 400
+        conv = convert_pseudocode(pseudocode, "python")
+        if not conv.get("success"):
+            return jsonify({"success": False, "error": conv.get("error", "No se pudo convertir.")}), 400
+        code = conv["code"]
+
+    result = traza.trazar(code, stdin)
+
+    log_activity("trace", {
+        "code_length": len(code),
+        "success": result["success"],
+        "pasos": len(result.get("pasos", [])),
+        "cortada": result.get("cortada", False),
+    })
+
+    return jsonify(result)
+
+
+@app.route("/api/diagram", methods=["POST"])
+@limiter.limit(lambda: app.config["RATELIMIT_AI"])
+@login_required
+def api_diagram():
+    """Convierte pseudocódigo en un diagrama de flujo (Mermaid)."""
+    data = request.get_json() or {}
+    pseudocode = data.get("pseudocode", "").strip()
+
+    valido, motivo = validar_pseudocodigo(pseudocode)
+    if not valido:
+        log_activity("diagram_rechazado", {"largo": len(pseudocode)})
+        return jsonify({"success": False, "error": motivo, "no_es_pseudocodigo": True}), 400
+
+    result = convert_to_diagram(pseudocode)
+
+    log_activity("diagram", {
         "pseudocode_length": len(pseudocode),
         "success": result["success"],
         "cached": result.get("cached", False),

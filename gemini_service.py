@@ -129,6 +129,37 @@ REGLAS IMPORTANTES:
 
 Responde ÚNICAMENTE con el código convertido, sin explicaciones fuera de los comentarios del propio código."""
 
+DIAGRAM_SYSTEM_PROMPT = """Eres un experto en diagramas de flujo que trabaja con estudiantes principiantes.
+Conviertes pseudocodigo en un diagrama de flujo escrito en sintaxis Mermaid.
+
+SIMBOLOGIA ESTANDAR — respetala exactamente, es lo que el estudiante debe aprender:
+- Inicio y Fin        -> ovalo:         A(["Inicio"])
+- Entrada y salida    -> paralelogramo: B[/"Leer edad"/]
+- Proceso o asignacion-> rectangulo:    C["suma = a + b"]
+- Decision            -> rombo:         D{"edad >= 18"}
+
+REGLAS OBLIGATORIAS:
+1. Empieza SIEMPRE con: flowchart TD
+2. TODA etiqueta va entre comillas dobles: C["texto"]. Sin excepciones.
+3. Dentro de las etiquetas escribe la asignacion con = (nunca <-, rompe el diagrama).
+4. No uses parentesis, llaves ni corchetes DENTRO del texto de una etiqueta.
+5. Las decisiones salen con -->|"Si"| y -->|"No"|.
+6. Los ciclos se dibujan como una decision cuya rama de repetir vuelve a un nodo anterior.
+7. Identificadores de nodo simples: A, B, C... o N1, N2. Nunca con tildes ni espacios.
+8. Todo camino termina en un nodo Fin.
+
+EJEMPLO de la forma esperada:
+flowchart TD
+    A(["Inicio"]) --> B[/"Leer edad"/]
+    B --> C{"edad >= 18"}
+    C -->|"Si"| D["mensaje = Es mayor"]
+    C -->|"No"| E["mensaje = Es menor"]
+    D --> F[/"Escribir mensaje"/]
+    E --> F
+    F --> G(["Fin"])
+
+Responde UNICAMENTE con el codigo Mermaid, sin markdown, sin explicaciones, sin bloques con comillas triples."""
+
 FEEDBACK_SYSTEM_PROMPT = """Eres un tutor de programación amigable y paciente que ayuda a estudiantes principiantes de la Institución Universitaria del Putumayo. Los estudiantes están aprendiendo algoritmos y pseudocódigo por primera vez.
 
 Tu rol es:
@@ -418,7 +449,7 @@ def _respuesta_util(response: dict) -> bool:
     estudiantes que envíen ese pseudocódigo a ver un panel en blanco."""
     if not isinstance(response, dict) or not response.get("success"):
         return False
-    for campo in ("code", "feedback", "explanation"):
+    for campo in ("code", "feedback", "explanation", "diagram"):
         if campo in response:
             return len((response.get(campo) or "").strip()) >= 10
     return True
@@ -551,6 +582,62 @@ Genera ÚNICAMENTE el código en {lang_name}, sin markdown, sin explicaciones, s
 
     except Exception as e:
         return {"success": False, "error": str(e), "cached": False}
+
+
+def convert_to_diagram(pseudocode: str) -> dict:
+    """Convierte pseudocodigo en un diagrama de flujo (sintaxis Mermaid).
+
+    Comparte tuberia con convert_pseudocode a proposito: mismo modelo, misma
+    cache y mismo respaldo de Gemini. Para la plataforma, un diagrama es un
+    destino mas de la conversion, como Python o C++.
+    """
+    prompt = f"""Convierte el siguiente pseudocodigo en un diagrama de flujo Mermaid.
+
+PSEUDOCODIGO:
+```
+{pseudocode}
+```
+
+Genera UNICAMENTE el codigo Mermaid empezando por 'flowchart TD'."""
+
+    key = _cache_key("diagram", "v1", OPENCODE_MODEL_CONVERT,
+                     normalizar_pseudocodigo(pseudocode))
+    cached = cache_get("diagram", key)
+    if cached:
+        return {**cached, "cached": True}
+
+    try:
+        diagram, usage = _generate(DIAGRAM_SYSTEM_PROMPT, prompt,
+                                   model=OPENCODE_MODEL_CONVERT, operacion="diagram")
+        diagram = _limpiar_mermaid(diagram)
+        result = {"success": True, "diagram": diagram, "usage": usage}
+        cache_put("diagram", key, result)
+        return {**result, "cached": False}
+
+    except Exception as e:
+        return {"success": False, "error": str(e), "cached": False}
+
+
+def _limpiar_mermaid(texto: str) -> str:
+    """Deja el Mermaid listo para el navegador.
+
+    Los modelos devuelven a veces el diagrama envuelto en ```mermaid, y a
+    veces escriben la asignacion con <-, que Mermaid interpreta como parte de
+    una flecha y le rompe el dibujo entero.
+    """
+    t = texto.strip()
+    if t.startswith("```"):
+        lineas = t.split("\n")[1:]
+        if lineas and lineas[-1].strip() == "```":
+            lineas = lineas[:-1]
+        t = "\n".join(lineas).strip()
+
+    # <- solo es peligroso dentro de las etiquetas; ahi significa asignacion
+    t = re.sub(r'(?<=")([^"]*?)<-([^"]*?)(?=")', r'\1=\2', t)
+
+    if not t.lower().startswith("flowchart") and not t.lower().startswith("graph"):
+        t = "flowchart TD\n" + t
+    return t
 
 
 def get_ai_feedback(pseudocode: str, exercise_description: str = None) -> dict:

@@ -499,3 +499,481 @@ promedio <- suma / 5
   fueran negativos, el resultado sería incorrecto. Es mejor empezar con el
   primer elemento del arreglo.""",
 }
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Lecciones de PRIMER SEMESTRE (temas 6 a 10).
+#
+# Se escriben aparte, y no se reutilizan las de tercero, porque el plan de
+# primero pide cosas que aquellas no explican: Segun sea, el ciclo Mientras,
+# Repetir-Hasta Que y los metodos de ordenamiento.
+# ─────────────────────────────────────────────────────────────────────
+
+LECCIONES.update({
+
+6: {  # Datos, Variables y Operadores
+    "que_es": """Un dato es cualquier cosa que el programa necesita recordar: una edad, un
+nombre, un precio. Una variable es la caja donde guardas ese dato para poder
+usarlo más adelante, y el tipo dice qué clase de cosa cabe en esa caja.
+
+Hay cuatro tipos básicos: Entero para números sin decimales (12, -5), Real
+para números con decimales (3.14, 4.5), Cadena para texto ("Ana") y Logico
+para lo que solo puede ser verdadero o falso.
+
+Con esas cajas construyes expresiones: combinaciones de variables y
+operadores que el computador calcula hasta dejar un solo valor. Los
+operadores son de tres familias, y conviene no mezclarlas: los aritméticos
+dan números, los relacionales dan verdadero o falso, y los lógicos combinan
+varias condiciones en una sola.""",
+
+    "sintaxis": """// Aritmeticos: dan un numero
+suma <- a + b
+resta <- a - b
+producto <- a * b
+division <- a / b          // division exacta: 7 / 2 es 3.5
+entera <- trunc(a / b)     // se queda con la parte entera: 3
+resto <- a MOD b           // lo que sobra: 7 MOD 2 es 1
+
+// Relacionales: dan Verdadero o Falso
+a = b      // son iguales
+a <> b     // son distintos
+a > b      a < b      a >= b      a <= b
+
+// Logicos: combinan condiciones
+edad >= 18 Y tieneLicencia     // las DOS se cumplen
+esNino O esAdultoMayor         // basta con UNA
+NO(aprobado)                   // le da la vuelta""",
+
+    "ejemplo": """Algoritmo RevisarLosPuntos
+    Definir puntos, faltan Como Entero
+    Definir aprobo Como Logico
+
+    Escribir "Cuantos puntos saco? (de 0 a 100)"
+    Leer puntos
+
+    aprobo <- puntos >= 60 Y puntos <= 100
+    faltan <- 100 - puntos
+
+    Escribir "Puntos obtenidos: ", puntos
+    Escribir "Aprobo: ", aprobo
+    Escribir "Le faltan para el maximo: ", faltan
+    Escribir "Es un puntaje redondo: ", (puntos MOD 10) = 0
+FinAlgoritmo""",
+
+    "ejemplo_explicacion": """Definir puntos, faltan Como Entero
+    Los dos son numeros sin decimales. Trabajar con Enteros cuando los
+    datos son enteros evita resultados como 0.7999999999999998, que
+    aparecen al restar numeros con decimales.
+
+Definir aprobo Como Logico
+    Una caja que solo puede guardar Verdadero o Falso. No un numero, no un
+    texto: una de esas dos cosas.
+
+aprobo <- puntos >= 60 Y puntos <= 100
+    Aqui esta la idea importante. "puntos >= 60" NO es una pregunta: es un
+    valor, Verdadero o Falso. La Y junta los dos y el resultado, que
+    tambien es Verdadero o Falso, se guarda en la caja aprobo.
+
+faltan <- 100 - puntos
+    Una expresion aritmetica: primero se calcula la resta y despues el
+    resultado se guarda en la caja de la izquierda.
+
+Escribir "Es un puntaje redondo: ", (puntos MOD 10) = 0
+    Dos familias de operadores en una sola linea. Primero MOD calcula lo
+    que sobra al dividir entre 10, y despues el = compara ese resto con
+    cero. Lo que se muestra en pantalla no es un numero: es Verdadero o
+    Falso.""",
+
+    "errores": """• Confundir / con MOD. La division te dice cuantas veces cabe; MOD te dice
+  lo que sobra. Para saber si un numero es par se usa MOD, no /.
+
+• Usar el tipo equivocado. Si defines un promedio Como Entero, 4.5 se
+  guardara como 4 y el calculo saldra mal sin avisar.
+
+• Escribir 1 y 0 en vez de Verdadero y Falso. Un Logico no es un numero.
+
+• Encadenar comparaciones como en matematicas. "1 <= nota <= 5" no
+  funciona: hay que escribir "nota >= 1 Y nota <= 5".
+
+• Olvidar que Y exige las dos condiciones y O se conforma con una. Cambiar
+  una por otra es el error mas comun al escribir un requisito."""
+},
+
+7: {  # Estructura Secuencial
+    "que_es": """Un algoritmo secuencial es el mas simple que existe: las instrucciones se
+ejecutan una detras de otra, de arriba abajo, sin saltos ni repeticiones.
+Como una receta de cocina, donde no puedes hornear antes de mezclar.
+
+Casi todos los programas siguen el mismo patron de tres tiempos: primero
+ENTRAN los datos (Leer), despues se PROCESAN (los calculos y asignaciones),
+y al final SALE el resultado (Escribir). Si respetas ese orden, la mayoria
+de los errores desaparecen solos.
+
+El detalle que mas cuesta al principio es que el orden importa de verdad: no
+puedes calcular un promedio antes de haber leido las notas, porque en ese
+momento las cajas todavia estan vacias.""",
+
+    "sintaxis": """// SALIDA: mostrar algo en pantalla
+Escribir "Hola"
+Escribir "El total es: ", total    // la coma pega texto y valor
+
+// ENTRADA: pedirle un dato al usuario
+Leer edad
+
+// Casi siempre van juntos: primero avisas, luego lees
+Escribir "Ingrese su edad:"
+Leer edad
+
+// ASIGNACION: guardar un valor en una variable
+total <- 0
+total <- precio * cantidad
+contador <- contador + 1    // se lee: el nuevo contador es el viejo mas 1""",
+
+    "ejemplo": """Algoritmo CalcularElTotal
+    Definir precio, total Como Real
+    Definir cantidad Como Entero
+
+    Escribir "Precio del producto:"
+    Leer precio
+    Escribir "Cuantas unidades?"
+    Leer cantidad
+
+    total <- precio * cantidad
+
+    Escribir "Total a pagar: ", total
+FinAlgoritmo""",
+
+    "ejemplo_explicacion": """Escribir "Precio del producto:"
+    Antes de leer se avisa. Si no, el usuario ve la pantalla parada sin
+    saber que se espera de el.
+
+Leer precio
+    El programa se detiene aqui hasta que el usuario teclee un valor. Ese
+    valor queda guardado en la caja precio.
+
+total <- precio * cantidad
+    Primero se calcula lo de la derecha y despues se guarda en la caja de
+    la izquierda. La flecha siempre apunta hacia donde se guarda.
+
+Escribir "Total a pagar: ", total
+    El resultado va al final, cuando ya existe. Si esta linea estuviera
+    antes del calculo, mostraria una caja vacia.""",
+
+    "errores": """• Calcular antes de leer. Si pones el total antes del Leer, la operacion
+  se hace con cajas vacias y el resultado no significa nada.
+
+• Leer sin avisar. El programa parece colgado porque nadie dijo que habia
+  que escribir algo.
+
+• Invertir la asignacion. Se escribe total <- precio, nunca precio <- total
+  si lo que quieres es llenar total. La flecha apunta al destino.
+
+• Mostrar el nombre de la variable en vez de su valor:
+  Escribir "total" muestra la palabra total; Escribir total muestra 5000.
+
+• Olvidar Definir antes de usar una variable."""
+},
+
+8: {  # Estructuras de Seleccion
+    "que_es": """Hasta ahora el programa hacia siempre lo mismo. Con las estructuras de
+seleccion aprende a decidir: mira una condicion y, segun sea verdadera o
+falsa, toma un camino u otro.
+
+La forma mas simple es Si-Entonces: si se cumple, haz esto; si no, sigue de
+largo. Cuando hay dos caminos se usa Si-Entonces-Sino: uno de los dos se
+ejecuta siempre, nunca los dos.
+
+Cuando las opciones son muchas y todas comparan la MISMA variable contra
+valores concretos, Segun sea queda mucho mas claro que una escalera de Si
+encadenados. Y si una decision depende de otra, se meten unas dentro de
+otras: eso son las condiciones anidadas.""",
+
+    "sintaxis": """// Un solo camino
+Si edad >= 18 Entonces
+    Escribir "Es mayor de edad"
+FinSi
+
+// Dos caminos: uno de los dos se ejecuta siempre
+Si nota >= 3 Entonces
+    Escribir "Aprobo"
+Sino
+    Escribir "Reprobo"
+FinSi
+
+// Anidada: una decision dentro de otra
+Si numero > 0 Entonces
+    Escribir "Positivo"
+Sino
+    Si numero < 0 Entonces
+        Escribir "Negativo"
+    Sino
+        Escribir "Es cero"
+    FinSi
+FinSi
+
+// Seleccion multiple: misma variable, muchos valores
+Segun opcion Hacer
+    1:
+        Escribir "Sumar"
+    2:
+        Escribir "Restar"
+    De Otro Modo:
+        Escribir "Esa opcion no existe"
+FinSegun""",
+
+    "ejemplo": """Algoritmo ClasificarLaEdad
+    Definir edad Como Entero
+
+    Escribir "Ingrese su edad:"
+    Leer edad
+
+    Si edad < 0 Entonces
+        Escribir "Esa edad no es valida"
+    Sino
+        Si edad < 18 Entonces
+            Escribir "Menor de edad"
+        Sino
+            Escribir "Mayor de edad"
+        FinSi
+    FinSi
+FinAlgoritmo""",
+
+    "ejemplo_explicacion": """Si edad < 0 Entonces
+    Lo primero es descartar lo imposible. Validar antes de clasificar evita
+    tener que repetir la comprobacion en cada rama.
+
+Sino
+    Si edad < 18 Entonces
+    Este Si vive DENTRO del Sino anterior, y solo se evalua cuando la edad
+    ya se sabe valida. Fijate en la sangria: cada nivel se mueve a la
+    derecha, y eso es lo que permite leer el camino de un vistazo.
+
+FinSi
+FinSi
+    Dos Si abiertos, dos FinSi. Se cierran de dentro hacia afuera: el
+    ultimo que abriste es el primero que cierras.""",
+
+    "errores": """• Usar <- en vez de = dentro de un Si. Se asigna con <- y se compara
+  con =. Un <- dentro de una condicion no compara nada.
+
+• Olvidar un FinSi. Cada Si necesita el suyo, y los de adentro se cierran
+  primero.
+
+• Ordenar mal las condiciones. Si preguntas nota >= 3 antes que nota >= 4,
+  todas las notas altas caeran en el primer caso y nunca llegaran al
+  segundo.
+
+• Poner dos Si seguidos cuando querias Si-Sino. Con dos Si independientes
+  ambos se evaluan; con Si-Sino solo uno de los dos.
+
+• Olvidar De Otro Modo en un Segun. Si el usuario escribe algo que no
+  esta en ningun caso, el programa no responde nada."""
+},
+
+9: {  # Estructuras de Repeticion
+    "que_es": """Un ciclo repite un bloque de instrucciones sin que tengas que escribirlo
+muchas veces. La pregunta que decide cual usar es una sola: cuando sabes de
+antemano cuantas vueltas hay que dar.
+
+Si lo sabes, usa Para: le dices desde donde, hasta donde y de cuanto en
+cuanto, y el se encarga de contar. Si NO lo sabes y solo conoces la
+condicion para seguir, usa Mientras: repite mientras se cumpla, y si no se
+cumple desde el principio no entra ni una vez.
+
+Repetir-Hasta Que es el hermano del Mientras con una diferencia clave:
+ejecuta primero y pregunta despues, asi que siempre da al menos una vuelta.
+Por eso es el que se usa para validar datos: hay que pedir el dato una vez
+antes de poder comprobarlo.
+
+Dentro de los ciclos viven dos patrones que vas a usar toda la vida: el
+contador, que suma de uno en uno para llevar la cuenta, y el acumulador,
+que va sumando valores para obtener un total.""",
+
+    "sintaxis": """// PARA: sabes cuantas vueltas
+Para i <- 1 Hasta 10 Con Paso 1 Hacer
+    Escribir i
+FinPara
+
+// MIENTRAS: repite mientras se cumpla; puede no entrar nunca
+Mientras numero <> 0 Hacer
+    suma <- suma + numero
+    Leer numero
+FinMientras
+
+// REPETIR: ejecuta y DESPUES pregunta; entra al menos una vez
+Repetir
+    Escribir "Ingrese una edad valida:"
+    Leer edad
+Hasta Que edad >= 0 Y edad <= 120
+
+// Contador y acumulador
+cuantos <- cuantos + 1        // contador: cuenta veces
+suma <- suma + numero         // acumulador: suma valores
+
+// Anidados: por CADA vuelta del de fuera, el de dentro da todas las suyas
+Para i <- 1 Hasta 3 Con Paso 1 Hacer
+    Para j <- 1 Hasta 5 Con Paso 1 Hacer
+        Escribir i, " x ", j, " = ", i * j
+    FinPara
+FinPara""",
+
+    "ejemplo": """Algoritmo PromedioDeNotas
+    Definir cuantas, i Como Entero
+    Definir nota, suma Como Real
+
+    Escribir "Cuantas notas va a ingresar?"
+    Leer cuantas
+
+    suma <- 0
+
+    Para i <- 1 Hasta cuantas Con Paso 1 Hacer
+        Escribir "Nota ", i, ":"
+        Leer nota
+        suma <- suma + nota
+    FinPara
+
+    Escribir "El promedio es: ", suma / cuantas
+FinAlgoritmo""",
+
+    "ejemplo_explicacion": """suma <- 0
+    El acumulador se pone en cero ANTES del ciclo. Si lo inicializaras
+    dentro, se borraria en cada vuelta y al final valdria solo la ultima
+    nota.
+
+Para i <- 1 Hasta cuantas Con Paso 1 Hacer
+    Aqui si sabemos cuantas vueltas: las que dijo el usuario. Por eso Para
+    y no Mientras. La variable i cuenta sola, no hay que sumarle nada.
+
+suma <- suma + nota
+    El corazon del acumulador. Se lee: la nueva suma es la suma que ya
+    tenia mas la nota que acabo de leer.
+
+Escribir "El promedio es: ", suma / cuantas
+    Fuera del ciclo, cuando ya se sumaron todas. Dentro mostraria un
+    promedio parcial en cada vuelta.""",
+
+    "errores": """• Inicializar el acumulador dentro del ciclo. Se pone en cero antes, o se
+  reinicia en cada vuelta y el total sale mal.
+
+• Olvidar modificar la variable de la condicion en un Mientras. Si nada
+  cambia dentro, la condicion se cumple siempre y el ciclo no termina
+  nunca.
+
+• Usar Mientras cuando sabes el numero de vueltas. Funciona, pero te
+  obliga a llevar el contador a mano y es mas facil equivocarse.
+
+• Poner el resultado dentro del ciclo. Casi siempre va despues del
+  FinPara, cuando el calculo ya termino.
+
+• En los ciclos anidados, usar la misma variable para los dos. El de
+  dentro pisaria la cuenta del de fuera: usa i y j, no i e i.
+
+• Empezar un acumulador de multiplicaciones en 0. Todo lo que multipliques
+  dara 0: en ese caso se empieza en 1."""
+},
+
+10: {  # Vectores
+    "que_es": """Un vector es una caja con muchos compartimentos numerados, todos del mismo
+tipo y bajo un solo nombre. En vez de definir nota1, nota2, nota3... defines
+notas[5] y accedes a cada una por su posicion.
+
+Esa posicion se llama indice, y es lo que hace poderoso al vector: como el
+indice es un numero, puedes recorrerlo con un ciclo. Un Para que vaya de 1
+hasta 5 toca todos los compartimentos sin que escribas cinco lineas.
+
+Con el recorrido se construye todo lo demas: buscar un valor, calcular el
+mayor o el promedio, ordenarlos de menor a mayor. Y cuando necesitas guardar
+dos cosas de la misma persona (su nombre y su nota) usas dos vectores
+paralelos: la posicion 3 de uno se corresponde con la posicion 3 del otro.""",
+
+    "sintaxis": """// Declarar: primero el tipo, despues el tamano
+Definir notas Como Real
+Dimension notas[5]
+
+// Acceder a una posicion concreta
+notas[1] <- 4.5
+Escribir notas[1]
+
+// Llenar y recorrer: siempre con un ciclo
+Para i <- 1 Hasta 5 Con Paso 1 Hacer
+    Leer notas[i]
+FinPara
+
+// Buscar (busqueda lineal)
+posicion <- 0
+Para i <- 1 Hasta 5 Con Paso 1 Hacer
+    Si notas[i] = buscado Entonces
+        posicion <- i
+    FinSi
+FinPara
+
+// Intercambiar dos posiciones: SIEMPRE con una auxiliar
+aux <- notas[1]
+notas[1] <- notas[2]
+notas[2] <- aux""",
+
+    "ejemplo": """Algoritmo MayorYPromedio
+    Definir notas Como Real
+    Dimension notas[4]
+    Definir i Como Entero
+    Definir mayor, suma Como Real
+
+    Para i <- 1 Hasta 4 Con Paso 1 Hacer
+        Escribir "Nota ", i, ":"
+        Leer notas[i]
+    FinPara
+
+    mayor <- notas[1]
+    suma <- notas[1]
+
+    Para i <- 2 Hasta 4 Con Paso 1 Hacer
+        Si notas[i] > mayor Entonces
+            mayor <- notas[i]
+        FinSi
+        suma <- suma + notas[i]
+    FinPara
+
+    Escribir "La mayor es: ", mayor
+    Escribir "El promedio es: ", suma / 4
+FinAlgoritmo""",
+
+    "ejemplo_explicacion": """Definir notas Como Real
+Dimension notas[4]
+    Dos lineas: la primera dice que guardara numeros con decimales, la
+    segunda cuantos compartimentos tendra.
+
+mayor <- notas[1]
+    Aqui esta el detalle que mas se falla. El mayor arranca con el PRIMER
+    elemento, no con cero: si todas las notas fueran negativas, un cero
+    inicial ganaria siempre y el resultado seria falso.
+
+Para i <- 2 Hasta 4 Con Paso 1 Hacer
+    Empieza en 2 porque la posicion 1 ya se uso para arrancar. Compararla
+    consigo misma no aportaria nada.
+
+Si notas[i] > mayor Entonces
+    mayor <- notas[i]
+    Si el de esta posicion es mas grande que el campeon actual, pasa a ser
+    el nuevo campeon. Al terminar el recorrido, mayor tiene el mas grande
+    de todos.""",
+
+    "errores": """• Inicializar el mayor en 0 en vez de con el primer elemento. Con datos
+  negativos el resultado sale mal.
+
+• Salirse del vector. Si declaraste notas[5], la posicion 6 no existe y el
+  programa falla.
+
+• Intercambiar sin variable auxiliar. Si haces a <- b y luego b <- a, los
+  dos quedan con el mismo valor: el primero se perdio al ser pisado.
+
+• Confundir la posicion con el valor. notas[3] es lo que hay guardado en
+  la tercera casilla; el 3 es la casilla, no la nota.
+
+• Recorrer con un ciclo que no llega al final, o que empieza en 0 cuando
+  el vector arranca en 1.
+
+• En vectores paralelos, ordenar uno y no el otro. Se rompe la
+  correspondencia y los nombres dejan de coincidir con sus notas."""
+},
+
+})

@@ -97,10 +97,53 @@ FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %
                 <button class="tab active" data-tab="python" onclick="switchTab('python')">Python</button>
                 <button class="tab" data-tab="cpp" onclick="switchTab('cpp')">C++</button>
                 <button class="tab" data-tab="php" onclick="switchTab('php')">PHP</button>
+                <button class="tab" data-tab="diagrama" onclick="switchTab('diagrama')">Diagrama</button>
+                <button class="tab" data-tab="escritorio" onclick="switchTab('escritorio')">Escritorio</button>
                 <button class="tab" data-tab="feedback" onclick="switchTab('feedback')">IA</button>
             </div>
         </div>
         <div class="panel-body">
+
+            <!-- Prueba de escritorio -->
+            <div id="tab-escritorio" class="tab-content" style="display:none;">
+                <section class="lang-section">
+                    <header class="lang-section-header">
+                        <span>📋 Prueba de escritorio</span>
+                        <div class="lang-actions">
+                            <details class="stdin-details">
+                                <summary>📥 datos de entrada</summary>
+                                <textarea class="stdin-input" id="stdin-escritorio" rows="3" placeholder="Un dato por linea, igual que si los tecleara el usuario."></textarea>
+                            </details>
+                            <button class="btn-mini btn-mini-primary" onclick="generarTraza()" id="btn-escritorio">▶ Ejecutar paso a paso</button>
+                        </div>
+                    </header>
+                    <div class="traza-block" id="traza-salida"><span style="color:var(--text-muted);">(Pulsa ▶ Ejecutar paso a paso para seguir tu algoritmo instruccion por instruccion, viendo como cambia cada variable)</span></div>
+                </section>
+            </div>
+
+            <!-- Diagrama de flujo -->
+            <div id="tab-diagrama" class="tab-content" style="display:none;">
+                <section class="lang-section">
+                    <header class="lang-section-header">
+                        <span>🔷 Diagrama de flujo</span>
+                        <div class="lang-actions">
+                            <button class="btn-mini btn-mini-primary" onclick="generateDiagram()" id="btn-diagrama">🔄 Generar diagrama</button>
+                            <button class="btn-mini" onclick="toggleMermaid()" title="Ver el codigo Mermaid del diagrama">&lt;/&gt;</button>
+                        </div>
+                    </header>
+                    <div class="diagrama-block" id="diagrama-salida"><span style="color:var(--text-muted);">(Escribe tu pseudocodigo y pulsa 🔄 Generar diagrama)</span></div>
+                    <pre class="code-output" id="diagrama-fuente" style="display:none;"></pre>
+                </section>
+                <section class="lang-section">
+                    <header class="lang-section-header"><span>📖 Simbologia estandar</span></header>
+                    <div class="simbologia">
+                        <div><span class="simb simb-ovalo"></span> Ovalo — Inicio y Fin</div>
+                        <div><span class="simb simb-paralelo"></span> Paralelogramo — Entrada y salida</div>
+                        <div><span class="simb simb-rect"></span> Rectangulo — Proceso o asignacion</div>
+                        <div><span class="simb simb-rombo"></span> Rombo — Decision</div>
+                    </div>
+                </section>
+            </div>
 
             {% for lang, label in [('python','Python'), ('cpp','C++'), ('php','PHP')] %}
             <div id="tab-{{ lang }}" class="tab-content lang-pane{% if loop.first %} active{% endif %}"
@@ -255,7 +298,8 @@ FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %
         activeTab = tab;
         document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
         document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
-        document.getElementById('tab-' + tab).style.display = (tab === 'feedback') ? 'block' : 'flex';
+        document.getElementById('tab-' + tab).style.display =
+            (tab === 'feedback' || tab === 'diagrama' || tab === 'escritorio') ? 'block' : 'flex';
         document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
     }
 
@@ -263,6 +307,10 @@ FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %
     async function convertCode() {
         const pseudocode = editor.value.trim();
         if (!pseudocode) return alert('Escribe algo de pseudocódigo primero.');
+
+        // En la pestaña del diagrama, Convertir dibuja en vez de traducir
+        if (activeTab === 'diagrama') return generateDiagram();
+        if (activeTab === 'escritorio') return generarTraza();
 
         const lang = activeTab === 'feedback' ? 'python' : activeTab;
 
@@ -508,6 +556,183 @@ FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %
     function rerunWithNewInputs(lang) {
         document.getElementById('stdin-' + lang).value = '';
         runCode(lang);
+    }
+
+    // ─── Prueba de escritorio ──────────────────────────────────
+    // La tabla NO se la inventa la IA: el backend ejecuta el codigo de
+    // verdad con sys.settrace y anota el valor real de cada variable
+    // despues de cada linea.
+    async function generarTraza() {
+        const pseudocode = editor.value.trim();
+        const code = getCode('python');
+        const usable = code && !code.trim().startsWith('//');
+        if (!usable && !pseudocode) return alert('Escribe algo de pseudocódigo primero.');
+
+        const salida = document.getElementById('traza-salida');
+        const btn = document.getElementById('btn-escritorio');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Ejecutando...';
+        salida.innerHTML = '<div class="loading"><span class="spinner"></span> Siguiendo el algoritmo paso a paso...</div>';
+
+        try {
+            const res = await fetch('/api/trace', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    code: usable ? code : '',
+                    pseudocode: pseudocode,
+                    stdin: document.getElementById('stdin-escritorio').value || ''
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                pintarTraza(data);
+                refreshUsage();
+            } else {
+                salida.innerHTML = '<span style="color:#f38ba8;">' + escapeHtml(data.error || 'No se pudo trazar.') + '</span>';
+            }
+        } catch (err) {
+            console.error(err);
+            salida.innerHTML = '<span style="color:#f38ba8;">Error de conexión.</span>';
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '▶ Ejecutar paso a paso';
+    }
+
+    function pintarTraza(data) {
+        const salida = document.getElementById('traza-salida');
+        if (!data.pasos.length) {
+            salida.innerHTML = '<span style="color:var(--text-muted);">El programa no ejecuto ninguna instruccion.</span>';
+            return;
+        }
+
+        let html = '<div class="traza-scroll"><table class="traza-tabla"><thead><tr>'
+                 + '<th>Paso</th><th>Instruccion</th>';
+        data.variables.forEach(v => html += '<th>' + escapeHtml(v) + '</th>');
+        html += '</tr></thead><tbody>';
+
+        // Resaltar la celda cuyo valor cambia respecto al paso anterior:
+        // es lo que hace legible una prueba de escritorio larga.
+        let previo = {};
+        data.pasos.forEach(p => {
+            html += '<tr><td class="traza-paso">' + p.paso + '</td>'
+                  + '<td class="traza-instr"><code>' + escapeHtml(p.instruccion) + '</code></td>';
+            data.variables.forEach(v => {
+                const val = p.vars[v];
+                const cambio = val !== undefined && val !== previo[v];
+                html += '<td class="' + (cambio ? 'traza-cambio' : '') + '">'
+                      + (val === undefined ? '<span class="traza-vacio">·</span>' : escapeHtml(val))
+                      + '</td>';
+            });
+            html += '</tr>';
+            previo = Object.assign({}, previo, p.vars);
+        });
+        html += '</tbody></table></div>';
+
+        if (data.cortada) {
+            html += '<div class="traza-aviso">La tabla se corto en ' + data.max_pasos
+                  + ' pasos. El algoritmo siguio ejecutandose, pero mostrar mas filas no ayudaria a seguirlo.</div>';
+        }
+        if (data.error) {
+            html += '<div class="traza-aviso" style="color:#f38ba8;">El programa se detuvo con un error: '
+                  + escapeHtml(data.error) + '</div>';
+        }
+        if (data.salida && data.salida.trim()) {
+            html += '<div class="traza-salida-prog"><div class="exec-block-label">Lo que imprimio el programa</div>'
+                  + '<pre class="exec-stdout">' + escapeHtml(data.salida) + '</pre></div>';
+        }
+        salida.innerHTML = html;
+    }
+
+    // ─── Diagrama de flujo ─────────────────────────────────────
+    // Mermaid pesa 3,5 MB (0,9 comprimido), asi que NO se carga con la
+    // pagina: solo la primera vez que el estudiante pide un diagrama. Quien
+    // no use la pestaña no lo descarga nunca.
+    let _mermaidListo = null;
+    function cargarMermaid() {
+        if (_mermaidListo) return _mermaidListo;
+        _mermaidListo = new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = '/static/js/mermaid.min.js';
+            s.onload = () => {
+                // securityLevel strict: el pseudocodigo lo escribe el
+                // estudiante, asi que lo que acabe en las etiquetas del
+                // diagrama se sanea antes de dibujarse.
+                mermaid.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'strict' });
+                resolve();
+            };
+            s.onerror = () => reject(new Error('No se pudo cargar la libreria de diagramas'));
+            document.head.appendChild(s);
+        });
+        return _mermaidListo;
+    }
+
+    let ultimoMermaid = '';
+    let lastDiagramInput = null;
+
+    async function generateDiagram() {
+        const pseudocode = editor.value.trim();
+        if (!pseudocode) return alert('Escribe algo de pseudocódigo primero.');
+
+        const salida = document.getElementById('diagrama-salida');
+        if (lastDiagramInput === pseudocode && ultimoMermaid) {
+            flashCacheBadge('diagrama', 'code', 'sin cambios');
+            return;
+        }
+
+        const btn = document.getElementById('btn-diagrama');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Dibujando...';
+        salida.innerHTML = '<div class="loading"><span class="spinner"></span> Generando el diagrama...</div>';
+
+        try {
+            const res = await fetch('/api/diagram', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pseudocode })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                ultimoMermaid = data.diagram;
+                lastDiagramInput = pseudocode;
+                document.getElementById('diagrama-fuente').textContent = data.diagram;
+                await dibujarMermaid(data.diagram);
+                if (data.cached) flashCacheBadge('diagrama', 'code', 'desde caché');
+                refreshUsage();
+            } else {
+                salida.innerHTML = '<span style="color:#f38ba8;">Error: ' + escapeHtml(data.error) + '</span>';
+            }
+        } catch (err) {
+            console.error(err);
+            salida.innerHTML = '<span style="color:#f38ba8;">Error de conexión.</span>';
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '🔄 Generar diagrama';
+    }
+
+    async function dibujarMermaid(texto) {
+        const salida = document.getElementById('diagrama-salida');
+        try {
+            await cargarMermaid();
+            const { svg } = await mermaid.render('svg-diagrama-' + Date.now(), texto);
+            salida.innerHTML = svg;
+        } catch (err) {
+            // Si el diagrama no se puede dibujar, enseñar el texto que lo
+            // describe es mucho mas util que dejar el panel en blanco.
+            salida.innerHTML =
+                '<div style="color:#f9e2af; margin-bottom:0.6rem;">No se pudo dibujar el diagrama. '
+                + 'Este es el texto que genero la IA:</div>'
+                + '<pre class="code-output">' + escapeHtml(texto) + '</pre>';
+            console.error(err);
+        }
+    }
+
+    function toggleMermaid() {
+        const el = document.getElementById('diagrama-fuente');
+        el.style.display = (el.style.display === 'none') ? 'block' : 'none';
     }
 
     // ─── Código editable ───────────────────────────────────────
@@ -828,7 +1053,10 @@ FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %
 
     // ─── Badge "desde caché / sin cambios" ─────────────
     function flashCacheBadge(lang, section, label) {
-        const target = document.getElementById((section === 'code' ? 'code-' : 'explain-') + lang);
+        // El diagrama no tiene panel "code-<lang>": su salida es otra caja.
+        const target = (lang === 'diagrama')
+            ? document.getElementById('diagrama-salida')
+            : document.getElementById((section === 'code' ? 'code-' : 'explain-') + lang);
         if (!target) return;
         const existing = target.parentNode.querySelector('.cache-badge-floating');
         if (existing) existing.remove();
