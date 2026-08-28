@@ -2270,3 +2270,19 @@ h4.md-h { font-size: 0.92rem; color: #a5b4fc; text-transform: uppercase; letter-
 
 /* Mientras no haya predicho, el botón de resolver se ve pero no lleva. */
 a.bloqueado { opacity: .45; cursor: not-allowed; }
+
+/* ── Sin ligaduras en el pseudocódigo ──────────────────────────────
+   JetBrains Mono dibuja "<-" como "←", ">=" como "≥" y "<=" como "≤".
+   Para un programador veterano es cómodo; para un estudiante de primer
+   semestre es una trampa: ve un símbolo que no está en su teclado y no
+   sabe que en realidad debe escribir dos caracteres. El texto copiado
+   siempre fue correcto, pero el que transcribe a mano se quedaba
+   atascado. Aquí se ve exactamente lo que hay que escribir. */
+.leccion-codigo,
+.leccion-codigo code,
+pre code,
+.codigo-pseudo,
+.CodeMirror {
+    font-variant-ligatures: none;
+    font-feature-settings: "liga" 0, "calt" 0;
+}

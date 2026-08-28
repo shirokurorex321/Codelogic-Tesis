@@ -2,6 +2,7 @@ import hashlib
 import logging
 import json
 import re
+import time
 from datetime import datetime, timezone
 import requests
 from google import genai
@@ -476,21 +477,76 @@ def cache_put(endpoint: str, key: str, response: dict):
         db.session.rollback()
 
 
+# ── Respaldo de OpenCode: APAGADO ──────────────────────────────
+# Se apaga el 27/08/2026 a peticion del usuario: sus modelos gratuitos tardaban
+# 11,6 s de media con picos de 24,8 s, frente a los 0,9 s de Gemini, y en clase
+# eso parece que la plataforma se colgo. El codigo se conserva entero y en el
+# .env queda `OPENCODE_MODEL=hy3-free` (el unico gratuito que respondia bien),
+# asi que para volver a activarlo basta con poner esto en True.
+USAR_RESPALDO_OPENCODE = False
+
+
+# Errores que se arreglan solos esperando: saturacion momentanea del proveedor.
+# Un 400 o un fallo de clave NO estan aqui: repetirlos da exactamente lo mismo.
+_TRANSITORIOS = ("429", "503", "502", "504", "timeout", "timed out",
+                 "unavailable", "overloaded", "temporarily", "resource_exhausted")
+
+
+def _es_transitorio(err) -> bool:
+    texto = str(err).lower()
+    return any(t in texto for t in _TRANSITORIOS)
+
+
+# Lo que ve el estudiante cuando no hay forma de generar. El detalle tecnico va
+# al log: "429 Client Error..." no le dice nada a quien esta aprendiendo a
+# programar, y encima parece que rompio el la plataforma.
+MENSAJE_IA_NO_DISPONIBLE = (
+    "El asistente no esta disponible en este momento. "
+    "Espera unos segundos y vuelve a intentarlo."
+)
+
+
 def _generate(system_instruction: str, user_prompt: str, model: str = None,
               operacion: str = None) -> str:
-    """Intenta OpenCode Zen primero (con el modelo indicado); si falla, cae a Gemini."""
-    try:
-        return _generate_opencode(system_instruction, user_prompt, model=model)
-    except Exception as primary_err:
-        # Fallback automático a Gemini si está configurado
-        if _gemini_client:
+    """Genera con Gemini y, si no puede, cae al modelo gratuito de OpenCode.
+
+    El orden importa y se midio el 27/08/2026: Gemini responde en 0,9 s de media
+    (1,1 / 1,0 / 0,6) y el gratuito `hy3-free` en 11,6 s, con picos de 24,8 s.
+    En una clase, esperar 25 s por una conversion hace que el estudiante crea
+    que la plataforma se colgo, asi que manda la respuesta rapida y lo gratuito
+    queda de red de seguridad.
+
+    Gemini se reintenta porque el 26/08/2026 sus tres modelos dieron 503 a la
+    vez unos segundos y la plataforma se quedo sin generar, cuando bastaba con
+    volver a preguntar. OpenCode no se reintenta: cuando falla suele ser el cupo
+    gratuito agotado, y esperar no lo arregla.
+    """
+    err_gemini = None
+    if _gemini_client:
+        for intento in range(3):
             try:
                 return _generate_gemini(system_instruction, user_prompt, operacion)
-            except Exception as fallback_err:
-                raise RuntimeError(
-                    f"OpenCode falló ({primary_err}); fallback Gemini también falló ({fallback_err})"
-                )
-        raise primary_err
+            except Exception as e:
+                err_gemini = e
+                if not _es_transitorio(e) or intento == 2:
+                    break
+                espera = 2 * (intento + 1)          # 2 s y luego 4 s
+                logger.warning("Gemini saturado (%s); reintento en %ss",
+                               str(e)[:80], espera)
+                time.sleep(espera)
+        logger.warning("Gemini no pudo generar (%s); se pasa al respaldo gratuito",
+                       str(err_gemini)[:120])
+
+    if USAR_RESPALDO_OPENCODE:
+        try:
+            return _generate_opencode(system_instruction, user_prompt, model=model)
+        except Exception as err_opencode:
+            logger.error("Sin IA disponible. Gemini: %s | OpenCode: %s",
+                         str(err_gemini)[:150], str(err_opencode)[:150])
+            raise RuntimeError(MENSAJE_IA_NO_DISPONIBLE)
+
+    logger.error("Sin IA disponible (respaldo apagado). Gemini: %s", str(err_gemini)[:200])
+    raise RuntimeError(MENSAJE_IA_NO_DISPONIBLE)
 
 
 # Constantes que los modelos "mejoran" por su cuenta: el estudiante escribe

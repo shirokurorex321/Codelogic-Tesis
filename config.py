@@ -119,12 +119,12 @@ class Config:
     # OpenCode Zen (primario — proxy multimodel)
     OPENCODE_API_KEY = os.getenv("OPENCODE_API_KEY", "")
     OPENCODE_BASE_URL = os.getenv("OPENCODE_BASE_URL", "https://opencode.ai/zen/v1")
-    OPENCODE_MODEL = os.getenv("OPENCODE_MODEL", "deepseek-v4-flash-free")  # fallback default
+    OPENCODE_MODEL = os.getenv("OPENCODE_MODEL", "hy3-free")  # fallback default
     # Routing híbrido (basado en benchmark de 2026-05-12):
     #   - convert  → MiniMax: rápido (3-7s), tokens limpios, código sin ruido
     #   - tutor    → DeepSeek: tono pedagógico cálido, mejor para feedback/explain
-    OPENCODE_MODEL_CONVERT = os.getenv("OPENCODE_MODEL_CONVERT", "minimax-m2.5-free")
-    OPENCODE_MODEL_TUTOR = os.getenv("OPENCODE_MODEL_TUTOR", "deepseek-v4-flash-free")
+    OPENCODE_MODEL_CONVERT = os.getenv("OPENCODE_MODEL_CONVERT", "hy3-free")
+    OPENCODE_MODEL_TUTOR = os.getenv("OPENCODE_MODEL_TUTOR", "hy3-free")
 
     # Flask
     # Bind a loopback: el acceso público entra por Cloudflare Tunnel, sin
