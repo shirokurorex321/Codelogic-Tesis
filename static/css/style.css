@@ -1053,8 +1053,18 @@ a:hover { color: var(--primary); }
 /* ─── TOPICS & EXERCISES ─────────────────────── */
 .topic-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    /* auto-fit + ancho maximo: las tarjetas ya no se estiran a lo ancho de
+       la fila, que era lo que dejaba una tarjeta sola ocupando un cuarto de
+       pantalla con tres huecos al lado. */
+    grid-template-columns: repeat(auto-fit, minmax(280px, 340px));
     gap: 1.25rem;
+}
+
+/* Una unidad con una o dos tarjetas se centra, para que no quede descolgada
+   a un lado. Con tres o mas se alinean con el titulo de la unidad, que va a
+   la izquierda. Si el navegador no entiende :has(), se queda como estaba. */
+.topic-grid:not(:has(> :nth-child(3))) {
+    justify-content: center;
 }
 
 .topic-card {
@@ -2242,6 +2252,38 @@ h4.md-h { font-size: 0.92rem; color: #a5b4fc; text-transform: uppercase; letter-
     border-radius: 12px;
 }
 .pred-caja h3 { margin: 0 0 .5rem; font-size: 1rem; color: var(--primary-light); }
+/* Aviso que separa la prediccion del ejemplo resuelto: sin el, el alumno
+   entiende que se le pregunta por el ejemplo de arriba y no por su ejercicio. */
+.pred-aviso {
+    margin: 0 0 .7rem; padding: .55rem .75rem;
+    font-size: .86rem; line-height: 1.55;
+    color: var(--text-light);
+    background: rgba(245,158,11,.08);
+    border-left: 3px solid rgba(245,158,11,.55);
+    border-radius: 0 8px 8px 0;
+}
+.pred-aviso strong { color: #fbbf24; }
+
+/* Enlace a la leccion desde la lista de ejercicios. Sustituye al bloque que
+   repetia la leccion entera. */
+.repaso-leccion {
+    display: flex; align-items: center; gap: 1rem;
+    margin: 0 0 1.8rem; padding: 1rem 1.2rem;
+    background: linear-gradient(180deg, rgba(79,124,255,.07), rgba(79,124,255,.02));
+    border: 1px solid rgba(79,124,255,.22);
+    border-radius: 12px;
+}
+.repaso-leccion .repaso-icono { font-size: 1.5rem; line-height: 1; }
+.repaso-leccion > div { flex: 1; min-width: 0; }
+.repaso-leccion strong { display: block; font-size: .95rem; margin-bottom: .2rem; }
+.repaso-leccion p { margin: 0; font-size: .87rem; color: var(--text-muted); line-height: 1.55; }
+.repaso-leccion .btn { flex-shrink: 0; }
+
+@media (max-width: 640px) {
+    .repaso-leccion { flex-wrap: wrap; gap: .7rem; }
+    .repaso-leccion .btn { width: 100%; text-align: center; }
+}
+
 .pred-entrada { margin: 0 0 .5rem; font-size: .92rem; color: var(--text-light); }
 .pred-entrada strong { color: var(--accent); font-family: var(--mono, monospace); }
 .pred-ayuda { margin: 0 0 .8rem; font-size: .85rem; color: var(--text-muted); line-height: 1.6; }
@@ -2278,10 +2320,37 @@ a.bloqueado { opacity: .45; cursor: not-allowed; }
    sabe que en realidad debe escribir dos caracteres. El texto copiado
    siempre fue correcto, pero el que transcribe a mano se quedaba
    atascado. Aquí se ve exactamente lo que hay que escribir. */
+/* Todo lo que se dibuja con la fuente monoespaciada. JetBrains Mono convierte
+   "<-" en "←", ">=" en "≥" y "<=" en "≤", y el alumno tiene que ver los
+   caracteres que va a teclear, no el simbolo bonito.
+   OJO: si se añade otro elemento con var(--font-mono), hay que meterlo aqui. */
+#pseudocode-editor,
+textarea,
+pre,
+code,
+pre code,
+.code-output,
+.code-card,
+.code-pseudo,
+.code-target,
+.codigo-pseudo,
 .leccion-codigo,
 .leccion-codigo code,
-pre code,
-.codigo-pseudo,
+.lec-clave,
+.traza-tabla,
+.output-block,
+.exec-stdout,
+.exec-stderr,
+.exec-rerun-values,
+.stdin-input,
+.stdin-form-input,
+.md-inline,
+.md-code,
+.auth-terminal,
+.float-token,
+.logo-icon,
+.stdin-form-label,
+.stdin-form-hint kbd,
 .CodeMirror {
     font-variant-ligatures: none;
     font-feature-settings: "liga" 0, "calt" 0;

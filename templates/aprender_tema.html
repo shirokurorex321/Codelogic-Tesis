@@ -9,7 +9,7 @@
 
 <div class="card">
     <div class="card-header"><span class="card-title">Qué es</span></div>
-    {{ leccion.que_es | parrafos }}
+    <div class="leccion-texto">{{ leccion.que_es | parrafos }}</div>
 </div>
 
 <div class="card">
@@ -24,15 +24,13 @@
 
 <div class="card">
     <div class="card-header"><span class="card-title">El ejemplo, línea por línea</span></div>
-    <pre class="leccion-codigo"><code>{{ leccion.ejemplo_explicacion }}</code></pre>
+    <div class="leccion-texto">{{ leccion.ejemplo_explicacion | parrafos }}</div>
 </div>
 
-{% if errores %}
+{% if leccion.errores %}
 <div class="card">
     <div class="card-header"><span class="card-title">Errores que más se repiten</span></div>
-    <ul style="margin:0; padding-left:1.2rem; line-height:1.7;">
-        {% for e in errores %}<li style="margin-bottom:.5rem;">{{ e }}</li>{% endfor %}
-    </ul>
+    <div class="leccion-texto">{{ leccion.errores | parrafos }}</div>
 </div>
 {% endif %}
 

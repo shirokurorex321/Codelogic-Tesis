@@ -8,6 +8,20 @@ escribiría un estudiante que resuelve bien el ejercicio. Sirve para dos cosas:
      algo equivalente no gaste tokens.
 """
 
+# ─────────────────────────────────────────────────────────────────────
+# NO ES LA FUENTE. Este archivo es la semilla original, ya volcada a la
+# tabla `exercises`, que es de donde la aplicacion sirve los ejercicios
+# (las entregas apuntan a exercises.id, por eso tienen que ser filas).
+#
+# Nadie lo importa en caliente. Si vuelves a volcarlo pisaras lo que haya
+# en la base, que es lo bueno: el 28/08/2026 las dos copias ya se habian
+# separado en ortografia y hubo que sincronizarlas a mano.
+#
+# Para cambiar un ejercicio, cambia la fila. Este archivo se conserva solo
+# como referencia de como se creo el material.
+# ─────────────────────────────────────────────────────────────────────
+
+
 PSEUDOS = {
 1: """Algoritmo HolaMundo
     Escribir "Hola Mundo"
@@ -15,9 +29,9 @@ FinAlgoritmo""",
 
 2: """Algoritmo SumaDeDosNumeros
     Definir numero1, numero2, suma Como Entero
-    Escribir "Ingrese el primer numero:"
+    Escribir "Ingrese el primer número:"
     Leer numero1
-    Escribir "Ingrese el segundo numero:"
+    Escribir "Ingrese el segundo número:"
     Leer numero2
     suma <- numero1 + numero2
     Escribir "La suma es: ", suma
@@ -25,10 +39,10 @@ FinAlgoritmo""",
 
 3: """Algoritmo AreaDelCirculo
     Definir radio, area Como Real
-    Escribir "Ingrese el radio del circulo:"
+    Escribir "Ingrese el radio del círculo:"
     Leer radio
     area <- 3.1416 * radio * radio
-    Escribir "El area del circulo es: ", area
+    Escribir "El área del círculo es: ", area
 FinAlgoritmo""",
 
 4: """Algoritmo ConversionTemperatura
@@ -54,7 +68,7 @@ FinAlgoritmo""",
 
 6: """Algoritmo SaludoPersonalizado
     Definir nombre Como Cadena
-    Escribir "Cual es tu nombre?"
+    Escribir "¿Cuál es tu nombre?"
     Leer nombre
     Escribir "Hola, ", nombre, "! Bienvenido a CodeLogic"
 FinAlgoritmo""",
@@ -73,9 +87,9 @@ FinAlgoritmo""",
 
 8: """Algoritmo PromedioDeDosNumeros
     Definir numero1, numero2, promedio Como Real
-    Escribir "Ingrese el primer numero:"
+    Escribir "Ingrese el primer número:"
     Leer numero1
-    Escribir "Ingrese el segundo numero:"
+    Escribir "Ingrese el segundo número:"
     Leer numero2
     promedio <- (numero1 + numero2) / 2
     Escribir "El promedio es: ", promedio
@@ -94,11 +108,11 @@ FinAlgoritmo""",
 
 10: """Algoritmo NumeroMayor
     Definir a, b, c, mayor Como Real
-    Escribir "Ingrese el primer numero:"
+    Escribir "Ingrese el primer número:"
     Leer a
-    Escribir "Ingrese el segundo numero:"
+    Escribir "Ingrese el segundo número:"
     Leer b
-    Escribir "Ingrese el tercer numero:"
+    Escribir "Ingrese el tercer número:"
     Leer c
     mayor <- a
     Si b > mayor Entonces
@@ -107,31 +121,31 @@ FinAlgoritmo""",
     Si c > mayor Entonces
         mayor <- c
     FinSi
-    Escribir "El numero mayor es: ", mayor
+    Escribir "El número mayor es: ", mayor
 FinAlgoritmo""",
 
 11: """Algoritmo ParOImpar
     Definir numero Como Entero
-    Escribir "Ingrese un numero entero:"
+    Escribir "Ingrese un número entero:"
     Leer numero
     Si numero MOD 2 = 0 Entonces
-        Escribir "El numero es par"
+        Escribir "El número es par"
     Sino
-        Escribir "El numero es impar"
+        Escribir "El número es impar"
     FinSi
 FinAlgoritmo""",
 
 12: """Algoritmo PositivoNegativoOCero
     Definir numero Como Real
-    Escribir "Ingrese un numero:"
+    Escribir "Ingrese un número:"
     Leer numero
     Si numero > 0 Entonces
-        Escribir "El numero es positivo"
+        Escribir "El número es positivo"
     Sino
         Si numero < 0 Entonces
-            Escribir "El numero es negativo"
+            Escribir "El número es negativo"
         Sino
-            Escribir "El numero es cero"
+            Escribir "El número es cero"
         FinSi
     FinSi
 FinAlgoritmo""",
@@ -139,11 +153,11 @@ FinAlgoritmo""",
 13: """Algoritmo CalculadoraSimple
     Definir numero1, numero2, resultado Como Real
     Definir operacion Como Caracter
-    Escribir "Ingrese el primer numero:"
+    Escribir "Ingrese el primer número:"
     Leer numero1
-    Escribir "Ingrese el segundo numero:"
+    Escribir "Ingrese el segundo número:"
     Leer numero2
-    Escribir "Ingrese la operacion (+, -, *, /):"
+    Escribir "Ingrese la operación (+, -, *, /):"
     Leer operacion
     Si operacion = "+" Entonces
         resultado <- numero1 + numero2
@@ -165,7 +179,7 @@ FinAlgoritmo""",
                         Escribir "El resultado es: ", resultado
                     FinSi
                 Sino
-                    Escribir "Operacion no valida"
+                    Escribir "Operación no válida"
                 FinSi
             FinSi
         FinSi
@@ -192,7 +206,7 @@ FinAlgoritmo""",
 
 15: """Algoritmo TablaDeMultiplicar
     Definir numero, i, resultado Como Entero
-    Escribir "Ingrese un numero:"
+    Escribir "Ingrese un número:"
     Leer numero
     Para i <- 1 Hasta 10 Con Paso 1 Hacer
         resultado <- numero * i
@@ -203,11 +217,11 @@ FinAlgoritmo""",
 16: """Algoritmo SumaDeNNumeros
     Definir n, i Como Entero
     Definir numero, suma Como Real
-    Escribir "Cuantos numeros va a ingresar?"
+    Escribir "¿Cuántos números va a ingresar?"
     Leer n
     suma <- 0
     Para i <- 1 Hasta n Con Paso 1 Hacer
-        Escribir "Ingrese el numero ", i, ":"
+        Escribir "Ingrese el número ", i, ":"
         Leer numero
         suma <- suma + numero
     FinPara
@@ -216,7 +230,7 @@ FinAlgoritmo""",
 
 17: """Algoritmo ContadorRegresivo
     Definir numero, i Como Entero
-    Escribir "Ingrese un numero entero positivo:"
+    Escribir "Ingrese un número entero positivo:"
     Leer numero
     Para i <- numero Hasta 1 Con Paso -1 Hacer
         Escribir i
@@ -235,7 +249,7 @@ FinAlgoritmo""",
 
 19: """Algoritmo Factorial
     Definir n, i, factorial Como Entero
-    Escribir "Ingrese un numero entero positivo:"
+    Escribir "Ingrese un número entero positivo:"
     Leer n
     factorial <- 1
     Para i <- 1 Hasta n Con Paso 1 Hacer
@@ -247,7 +261,7 @@ FinAlgoritmo""",
 20: """Algoritmo PromedioDeNotasConCiclo
     Definir cantidad, i Como Entero
     Definir nota, suma, promedio Como Real
-    Escribir "Cuantas notas tiene?"
+    Escribir "¿Cuántas notas tiene?"
     Leer cantidad
     suma <- 0
     Para i <- 1 Hasta cantidad Con Paso 1 Hacer
@@ -258,9 +272,9 @@ FinAlgoritmo""",
     promedio <- suma / cantidad
     Escribir "El promedio es: ", promedio
     Si promedio >= 3 Entonces
-        Escribir "Aprobo"
+        Escribir "Aprobó"
     Sino
-        Escribir "Reprobo"
+        Escribir "Reprobó"
     FinSi
 FinAlgoritmo""",
 
@@ -285,7 +299,7 @@ FinAlgoritmo""",
     Definir i Como Entero
     Definir mayor Como Real
     Para i <- 1 Hasta 6 Con Paso 1 Hacer
-        Escribir "Ingrese el numero ", i, ":"
+        Escribir "Ingrese el número ", i, ":"
         Leer numeros[i]
     FinPara
     mayor <- numeros[1]
@@ -294,7 +308,7 @@ FinAlgoritmo""",
             mayor <- numeros[i]
         FinSi
     FinPara
-    Escribir "El numero mayor es: ", mayor
+    Escribir "El número mayor es: ", mayor
 FinAlgoritmo""",
 
 23: """Algoritmo ContarAprobados
@@ -321,10 +335,10 @@ FinAlgoritmo""",
     Dimension numeros[5]
     Definir i Como Entero
     Para i <- 1 Hasta 5 Con Paso 1 Hacer
-        Escribir "Ingrese el numero ", i, ":"
+        Escribir "Ingrese el número ", i, ":"
         Leer numeros[i]
     FinPara
-    Escribir "Los numeros en orden inverso son:"
+    Escribir "Los números en orden inverso son:"
     Para i <- 5 Hasta 1 Con Paso -1 Hacer
         Escribir numeros[i]
     FinPara

@@ -8,6 +8,14 @@ desarrollo próximo; Sweller, carga cognitiva), así que aquí se enseña el
 concepto antes de pedir que se aplique.
 
 Redactado para estudiantes de primer semestre SIN experiencia previa.
+
+FUENTE UNICA del texto de las lecciones desde el 28/08/2026. Lo leen las dos
+paginas que lo muestran: /aprender/<id> y /exercises/<id>. Antes esta segunda
+lo sacaba de unas columnas topics.leccion_* con una copia del mismo texto; las
+dos copias se separaron dos veces (una dejo cinco temas en blanco, otra dejo la
+ortografia a medias), asi que esas columnas se retiraron.
+
+Para cambiar una leccion se cambia aqui, y basta con reiniciar el servicio.
 """
 
 LECCIONES = {
@@ -114,9 +122,12 @@ Una regla de oro: antes de cada Leer, escribe siempre un mensaje que diga qué
 se espera. Si el programa se queda esperando en silencio, el usuario no sabe
 qué hacer.""",
 
-"sintaxis": """// SALIDA: mostrar en pantalla
-Escribir "Hola mundo"           // texto tal cual
-Escribir edad                    // el contenido de la variable
+"sintaxis": """Definir edad Como Entero
+edad <- 20                       // para que los ejemplos de abajo tengan qué mostrar
+
+// SALIDA: mostrar en pantalla
+Escribir "Hola mundo"            // texto tal cual
+Escribir edad                    // el contenido de la variable: 20
 Escribir "Tu edad es: ", edad    // combinando ambos, separados por comas
 
 // ENTRADA: pedir un dato al usuario
@@ -130,16 +141,16 @@ Leer edad""",
     Definir nombre Como Cadena
     Definir edad Como Entero
 
-    Escribir "¿Cual es tu nombre?"
+    Escribir "¿Cuál es tu nombre?"
     Leer nombre
 
-    Escribir "¿Cuantos anios tienes?"
+    Escribir "¿Cuántos años tienes?"
     Leer edad
 
-    Escribir "Hola ", nombre, ", tienes ", edad, " anios."
+    Escribir "Hola ", nombre, ", tienes ", edad, " años."
 FinAlgoritmo""",
 
-"ejemplo_explicacion": """Escribir "¿Cual es tu nombre?"
+"ejemplo_explicacion": """Escribir "¿Cuál es tu nombre?"
     Muestra la pregunta. Sin esto el programa se quedaría esperando sin que el
     usuario sepa por qué.
 
@@ -147,14 +158,14 @@ Leer nombre
     El programa se detiene aquí. Lo que la persona escriba y confirme con Enter
     queda guardado en la variable nombre.
 
-Escribir "¿Cuantos anios tienes?"
+Escribir "¿Cuántos años tienes?"
 Leer edad
     El mismo patrón: primero avisar, después leer.
 
-Escribir "Hola ", nombre, ", tienes ", edad, " anios."
+Escribir "Hola ", nombre, ", tienes ", edad, " años."
     Arma una frase mezclando texto fijo y el contenido de las variables. Si la
     persona escribió Daniel y 20, en pantalla aparece:
-    Hola Daniel, tienes 20 anios.
+    Hola Daniel, tienes 20 años.
 
     Fíjate en los espacios dentro de las comillas: sin ellos saldría
     HolaDaniel, pegado.""",
@@ -202,9 +213,9 @@ FinSi
 
 // Con alternativa
 Si nota >= 3 Entonces
-    Escribir "Aprobo"
+    Escribir "Aprobó"
 Sino
-    Escribir "Reprobo"
+    Escribir "Reprobó"
 FinSi
 
 // Encadenados: cuando hay más de dos casos
@@ -264,8 +275,8 @@ Fíjate en el orden: primero la condición más exigente (>= 4) y después la
 menos. Al revés no funcionaría: una nota de 4.5 también cumple >= 3 y
 mostraría Aprobado en vez de Excelente.""",
 
-"errores": """• Usar = para comparar cuando ya lo usaste para asignar. En pseudocódigo se
-  asigna con <- y se compara con =. Nunca uses <- dentro de un Si.
+"errores": """• Usar <- en vez de = dentro de un Si. En pseudocódigo se asigna con <- y se
+  compara con =: un <- dentro de una condición no compara nada.
 
 • Olvidar el FinSi. Cada Si necesita el suyo, y los de adentro se cierran
   primero.
@@ -319,8 +330,9 @@ Para i <- 10 Hasta 1 Con Paso -1 Hacer   // cuenta regresiva
 FinPara
 
 // MIENTRAS: se repite mientras la condición sea verdadera
+saldo <- 1000                             // tiene que valer algo ANTES de preguntar
 Mientras saldo > 0 Hacer
-    saldo <- saldo - 100
+    saldo <- saldo - 100                  // 1000, 900, 800... hasta 0: 10 vueltas
 FinMientras
 
 // ACUMULADOR: el patrón para sumar dentro de un ciclo
@@ -333,13 +345,13 @@ FinPara""",
     Definir cantidad, i Como Entero
     Definir numero, suma Como Real
 
-    Escribir "¿Cuantos numeros va a sumar?"
+    Escribir "¿Cuántos números va a sumar?"
     Leer cantidad
 
     suma <- 0
 
     Para i <- 1 Hasta cantidad Con Paso 1 Hacer
-        Escribir "Ingrese el numero ", i, ":"
+        Escribir "Ingrese el número ", i, ":"
         Leer numero
         suma <- suma + numero
     FinPara
@@ -355,9 +367,9 @@ Para i <- 1 Hasta cantidad Con Paso 1 Hacer
     Repite tantas veces como el usuario haya indicado. Si escribió 3, el
     bloque se ejecuta 3 veces con i valiendo 1, luego 2, luego 3.
 
-    Escribir "Ingrese el numero ", i, ":"
+    Escribir "Ingrese el número ", i, ":"
         Aquí se aprovecha el contador para que el mensaje diga
-        "Ingrese el numero 1:", después "2:", etc.
+        "Ingrese el número 1:", después "2:", etc.
 
     Leer numero
         La variable numero se sobrescribe en cada vuelta. No importa: su valor
@@ -422,7 +434,7 @@ Dimension notas[5]                    // 5 casillas: de notas[1] a notas[5]
 notas[1] <- 4.5
 notas[2] <- 3.8
 
-// Leer el valor de una posición
+// Consultar el valor de una posición (ojo: consultar no es Leer)
 Escribir notas[1]
 
 // LLENAR el arreglo con un ciclo (el patrón que más usarás)
@@ -487,7 +499,7 @@ promedio <- suma / 5
   y da error. Tampoco notas[0] en PSeInt.
 
 • Empezar el ciclo en 0. En PSeInt la primera casilla es la 1, así que el ciclo
-  va Desde 1 Hasta el tamaño.
+  va de 1 hasta el tamaño: Para i <- 1 Hasta 5 Con Paso 1 Hacer.
 
 • Escribir notas sin índice cuando quieres una casilla concreta. notas es el
   arreglo completo; notas[3] es la tercera casilla.
@@ -526,96 +538,113 @@ operadores son de tres familias, y conviene no mezclarlas: los aritméticos
 dan números, los relacionales dan verdadero o falso, y los lógicos combinan
 varias condiciones en una sola.""",
 
-    "sintaxis": """// Aritmeticos: dan un numero
-suma <- a + b
-resta <- a - b
-producto <- a * b
-division <- a / b          // division exacta: 7 / 2 es 3.5
-entera <- trunc(a / b)     // se queda con la parte entera: 3
-resto <- a MOD b           // lo que sobra: 7 MOD 2 es 1
+    "sintaxis": """// Partimos de dos números concretos, para poder comprobar cada resultado
+Definir a, b Como Entero
+a <- 7
+b <- 2
 
-// Relacionales: dan Verdadero o Falso
-a = b      // son iguales
-a <> b     // son distintos
-a > b      a < b      a >= b      a <= b
+// ARITMÉTICOS: dan un número
+suma <- a + b              // 9
+resta <- a - b             // 5
+producto <- a * b          // 14
+division <- a / b          // 3.5   la división exacta, con decimales
+entera <- trunc(a / b)     // 3     se queda con la parte de delante de la coma
+resto <- a MOD b           // 1     lo que sobra al dividir
 
-// Logicos: combinan condiciones
-edad >= 18 Y tieneLicencia     // las DOS se cumplen
-esNino O esAdultoMayor         // basta con UNA
-NO(aprobado)                   // le da la vuelta""",
+// RELACIONALES: dan Verdadero o Falso
+a = b      // Falso       ¿son iguales?
+a <> b     // Verdadero   ¿son distintos?
+a > b      // Verdadero
+a < b      // Falso
+a >= b     // Verdadero
+a <= b     // Falso
+
+// LÓGICOS: combinan valores Verdadero/Falso
+Definir edad Como Entero
+Definir tieneLicencia Como Logico
+edad <- 20
+tieneLicencia <- Verdadero
+
+edad >= 18 Y tieneLicencia     // Verdadero   Y  exige las DOS
+edad < 12 O edad > 65          // Falso       O  se conforma con UNA
+NO(tieneLicencia)              // Falso       NO le da la vuelta""",
 
     "ejemplo": """Algoritmo RevisarLosPuntos
     Definir puntos, faltan Como Entero
     Definir aprobo Como Logico
 
-    Escribir "Cuantos puntos saco? (de 0 a 100)"
+    Escribir "¿Cuántos puntos sacó? (de 0 a 100)"
     Leer puntos
 
     aprobo <- puntos >= 60 Y puntos <= 100
     faltan <- 100 - puntos
 
     Escribir "Puntos obtenidos: ", puntos
-    Escribir "Aprobo: ", aprobo
-    Escribir "Le faltan para el maximo: ", faltan
+    Escribir "Aprobó: ", aprobo
+    Escribir "Le faltan para el máximo: ", faltan
     Escribir "Es un puntaje redondo: ", (puntos MOD 10) = 0
 FinAlgoritmo""",
 
     "ejemplo_explicacion": """Definir puntos, faltan Como Entero
-    Los dos son numeros sin decimales. Trabajar con Enteros cuando los
+    Los dos son números sin decimales. Trabajar con Enteros cuando los
     datos son enteros evita resultados como 0.7999999999999998, que
-    aparecen al restar numeros con decimales.
+    aparecen al restar números con decimales.
 
 Definir aprobo Como Logico
-    Una caja que solo puede guardar Verdadero o Falso. No un numero, no un
+    Una caja que solo puede guardar Verdadero o Falso. No un número, no un
     texto: una de esas dos cosas.
 
 aprobo <- puntos >= 60 Y puntos <= 100
-    Aqui esta la idea importante. "puntos >= 60" NO es una pregunta: es un
+    Aquí está la idea importante. "puntos >= 60" NO es una pregunta: es un
     valor, Verdadero o Falso. La Y junta los dos y el resultado, que
-    tambien es Verdadero o Falso, se guarda en la caja aprobo.
+    también es Verdadero o Falso, se guarda en la caja aprobo.
 
 faltan <- 100 - puntos
-    Una expresion aritmetica: primero se calcula la resta y despues el
+    Una expresión aritmética: primero se calcula la resta y después el
     resultado se guarda en la caja de la izquierda.
 
 Escribir "Es un puntaje redondo: ", (puntos MOD 10) = 0
-    Dos familias de operadores en una sola linea. Primero MOD calcula lo
-    que sobra al dividir entre 10, y despues el = compara ese resto con
-    cero. Lo que se muestra en pantalla no es un numero: es Verdadero o
+    Dos familias de operadores en una sola línea. Primero MOD calcula lo
+    que sobra al dividir entre 10, y después el = compara ese resto con
+    cero. Lo que se muestra en pantalla no es un número: es Verdadero o
     Falso.""",
 
-    "errores": """• Confundir / con MOD. La division te dice cuantas veces cabe; MOD te dice
-  lo que sobra. Para saber si un numero es par se usa MOD, no /.
+    "errores": """• Confundir / con MOD. La división te dice cuántas veces cabe; MOD te dice
+  lo que sobra. Para saber si un número es par se usa MOD, no /.
 
 • Usar el tipo equivocado. Si defines un promedio Como Entero, 4.5 se
-  guardara como 4 y el calculo saldra mal sin avisar.
+  guardará como 4 y el cálculo saldrá mal sin avisar.
 
-• Escribir 1 y 0 en vez de Verdadero y Falso. Un Logico no es un numero.
+• Escribir 1 y 0 en vez de Verdadero y Falso. Un Logico no es un número.
 
-• Encadenar comparaciones como en matematicas. "1 <= nota <= 5" no
+• Encadenar comparaciones como en matemáticas. "1 <= nota <= 5" no
   funciona: hay que escribir "nota >= 1 Y nota <= 5".
 
 • Olvidar que Y exige las dos condiciones y O se conforma con una. Cambiar
-  una por otra es el error mas comun al escribir un requisito."""
+  una por otra es el error más común al escribir un requisito."""
 },
 
 7: {  # Estructura Secuencial
-    "que_es": """Un algoritmo secuencial es el mas simple que existe: las instrucciones se
-ejecutan una detras de otra, de arriba abajo, sin saltos ni repeticiones.
+    "que_es": """Un algoritmo secuencial es el más simple que existe: las instrucciones se
+ejecutan una detrás de otra, de arriba abajo, sin saltos ni repeticiones.
 Como una receta de cocina, donde no puedes hornear antes de mezclar.
 
-Casi todos los programas siguen el mismo patron de tres tiempos: primero
-ENTRAN los datos (Leer), despues se PROCESAN (los calculos y asignaciones),
-y al final SALE el resultado (Escribir). Si respetas ese orden, la mayoria
+Casi todos los programas siguen el mismo patrón de tres tiempos: primero
+ENTRAN los datos (Leer), después se PROCESAN (los cálculos y asignaciones),
+y al final SALE el resultado (Escribir). Si respetas ese orden, la mayoría
 de los errores desaparecen solos.
 
-El detalle que mas cuesta al principio es que el orden importa de verdad: no
-puedes calcular un promedio antes de haber leido las notas, porque en ese
-momento las cajas todavia estan vacias.""",
+El detalle que más cuesta al principio es que el orden importa de verdad: no
+puedes calcular un promedio antes de haber leído las notas, porque en ese
+momento las cajas todavía están vacías.""",
 
-    "sintaxis": """// SALIDA: mostrar algo en pantalla
+    "sintaxis": """Definir edad, cantidad, contador Como Entero
+Definir precio, total Como Real
+
+// SALIDA: mostrar algo en pantalla
 Escribir "Hola"
-Escribir "El total es: ", total    // la coma pega texto y valor
+total <- 5000
+Escribir "El total es: ", total    // la coma pega el texto y el valor
 
 // ENTRADA: pedirle un dato al usuario
 Leer edad
@@ -624,10 +653,15 @@ Leer edad
 Escribir "Ingrese su edad:"
 Leer edad
 
-// ASIGNACION: guardar un valor en una variable
-total <- 0
-total <- precio * cantidad
-contador <- contador + 1    // se lee: el nuevo contador es el viejo mas 1""",
+// ASIGNACIÓN: guardar un valor en una variable
+total <- 0                  // un valor fijo
+Leer precio                 // primero ENTRAN los datos...
+Leer cantidad
+total <- precio * cantidad  // ...y sólo después se calcula con ellos
+
+// Un contador tiene que existir ANTES de poder crecer
+contador <- 0
+contador <- contador + 1    // se lee: el nuevo contador es el viejo más 1""",
 
     "ejemplo": """Algoritmo CalcularElTotal
     Definir precio, total Como Real
@@ -635,7 +669,7 @@ contador <- contador + 1    // se lee: el nuevo contador es el viejo mas 1""",
 
     Escribir "Precio del producto:"
     Leer precio
-    Escribir "Cuantas unidades?"
+    Escribir "¿Cuántas unidades?"
     Leer cantidad
 
     total <- precio * cantidad
@@ -645,27 +679,27 @@ FinAlgoritmo""",
 
     "ejemplo_explicacion": """Escribir "Precio del producto:"
     Antes de leer se avisa. Si no, el usuario ve la pantalla parada sin
-    saber que se espera de el.
+    saber qué se espera de él.
 
 Leer precio
-    El programa se detiene aqui hasta que el usuario teclee un valor. Ese
+    El programa se detiene aquí hasta que el usuario teclee un valor. Ese
     valor queda guardado en la caja precio.
 
 total <- precio * cantidad
-    Primero se calcula lo de la derecha y despues se guarda en la caja de
+    Primero se calcula lo de la derecha y después se guarda en la caja de
     la izquierda. La flecha siempre apunta hacia donde se guarda.
 
 Escribir "Total a pagar: ", total
-    El resultado va al final, cuando ya existe. Si esta linea estuviera
-    antes del calculo, mostraria una caja vacia.""",
+    El resultado va al final, cuando ya existe. Si esta línea estuviera
+    antes del cálculo, mostraría una caja vacía.""",
 
-    "errores": """• Calcular antes de leer. Si pones el total antes del Leer, la operacion
-  se hace con cajas vacias y el resultado no significa nada.
+    "errores": """• Calcular antes de leer. Si pones el total antes del Leer, la operación
+  se hace con cajas vacías y el resultado no significa nada.
 
-• Leer sin avisar. El programa parece colgado porque nadie dijo que habia
+• Leer sin avisar. El programa parece colgado porque nadie dijo que había
   que escribir algo.
 
-• Invertir la asignacion. Se escribe total <- precio, nunca precio <- total
+• Invertir la asignación. Se escribe total <- precio, nunca precio <- total
   si lo que quieres es llenar total. La flecha apunta al destino.
 
 • Mostrar el nombre de la variable en vez de su valor:
@@ -675,17 +709,17 @@ Escribir "Total a pagar: ", total
 },
 
 8: {  # Estructuras de Seleccion
-    "que_es": """Hasta ahora el programa hacia siempre lo mismo. Con las estructuras de
-seleccion aprende a decidir: mira una condicion y, segun sea verdadera o
+    "que_es": """Hasta ahora el programa hacía siempre lo mismo. Con las estructuras de
+selección aprende a decidir: mira una condición y, según sea verdadera o
 falsa, toma un camino u otro.
 
-La forma mas simple es Si-Entonces: si se cumple, haz esto; si no, sigue de
+La forma más simple es Si-Entonces: si se cumple, haz esto; si no, sigue de
 largo. Cuando hay dos caminos se usa Si-Entonces-Sino: uno de los dos se
 ejecuta siempre, nunca los dos.
 
 Cuando las opciones son muchas y todas comparan la MISMA variable contra
-valores concretos, Segun sea queda mucho mas claro que una escalera de Si
-encadenados. Y si una decision depende de otra, se meten unas dentro de
+valores concretos, Segun ... Hacer (lo que también se llama Segun sea) queda
+mucho más claro que una escalera de Si encadenados. Y si una decisión depende de otra, se meten unas dentro de
 otras: eso son las condiciones anidadas.""",
 
     "sintaxis": """// Un solo camino
@@ -695,12 +729,12 @@ FinSi
 
 // Dos caminos: uno de los dos se ejecuta siempre
 Si nota >= 3 Entonces
-    Escribir "Aprobo"
+    Escribir "Aprobó"
 Sino
-    Escribir "Reprobo"
+    Escribir "Reprobó"
 FinSi
 
-// Anidada: una decision dentro de otra
+// Anidada: una decisión dentro de otra
 Si numero > 0 Entonces
     Escribir "Positivo"
 Sino
@@ -711,14 +745,14 @@ Sino
     FinSi
 FinSi
 
-// Seleccion multiple: misma variable, muchos valores
+// Selección múltiple: misma variable, muchos valores
 Segun opcion Hacer
     1:
         Escribir "Sumar"
     2:
         Escribir "Restar"
     De Otro Modo:
-        Escribir "Esa opcion no existe"
+        Escribir "Esa opción no existe"
 FinSegun""",
 
     "ejemplo": """Algoritmo ClasificarLaEdad
@@ -728,7 +762,7 @@ FinSegun""",
     Leer edad
 
     Si edad < 0 Entonces
-        Escribir "Esa edad no es valida"
+        Escribir "Esa edad no es válida"
     Sino
         Si edad < 18 Entonces
             Escribir "Menor de edad"
@@ -740,48 +774,48 @@ FinAlgoritmo""",
 
     "ejemplo_explicacion": """Si edad < 0 Entonces
     Lo primero es descartar lo imposible. Validar antes de clasificar evita
-    tener que repetir la comprobacion en cada rama.
+    tener que repetir la comprobación en cada rama.
 
 Sino
     Si edad < 18 Entonces
-    Este Si vive DENTRO del Sino anterior, y solo se evalua cuando la edad
-    ya se sabe valida. Fijate en la sangria: cada nivel se mueve a la
+    Este Si vive DENTRO del Sino anterior, y solo se evalúa cuando la edad
+    ya se sabe válida. Fíjate en la sangría: cada nivel se mueve a la
     derecha, y eso es lo que permite leer el camino de un vistazo.
 
 FinSi
 FinSi
     Dos Si abiertos, dos FinSi. Se cierran de dentro hacia afuera: el
-    ultimo que abriste es el primero que cierras.""",
+    último que abriste es el primero que cierras.""",
 
     "errores": """• Usar <- en vez de = dentro de un Si. Se asigna con <- y se compara
-  con =. Un <- dentro de una condicion no compara nada.
+  con =. Un <- dentro de una condición no compara nada.
 
 • Olvidar un FinSi. Cada Si necesita el suyo, y los de adentro se cierran
   primero.
 
 • Ordenar mal las condiciones. Si preguntas nota >= 3 antes que nota >= 4,
-  todas las notas altas caeran en el primer caso y nunca llegaran al
+  todas las notas altas caerán en el primer caso y nunca llegarán al
   segundo.
 
-• Poner dos Si seguidos cuando querias Si-Sino. Con dos Si independientes
-  ambos se evaluan; con Si-Sino solo uno de los dos.
+• Poner dos Si seguidos cuando querías Si-Sino. Con dos Si independientes
+  ambos se evalúan; con Si-Sino solo uno de los dos.
 
 • Olvidar De Otro Modo en un Segun. Si el usuario escribe algo que no
-  esta en ningun caso, el programa no responde nada."""
+  está en ningún caso, el programa no responde nada."""
 },
 
 9: {  # Estructuras de Repeticion
     "que_es": """Un ciclo repite un bloque de instrucciones sin que tengas que escribirlo
-muchas veces. La pregunta que decide cual usar es una sola: cuando sabes de
-antemano cuantas vueltas hay que dar.
+muchas veces. La pregunta que decide cuál usar es una sola: cuándo sabes de
+antemano cuántas vueltas hay que dar.
 
-Si lo sabes, usa Para: le dices desde donde, hasta donde y de cuanto en
-cuanto, y el se encarga de contar. Si NO lo sabes y solo conoces la
-condicion para seguir, usa Mientras: repite mientras se cumpla, y si no se
+Si lo sabes, usa Para: le dices desde dónde, hasta dónde y de cuánto en
+cuánto, y él se encarga de contar. Si NO lo sabes y solo conoces la
+condición para seguir, usa Mientras: repite mientras se cumpla, y si no se
 cumple desde el principio no entra ni una vez.
 
 Repetir-Hasta Que es el hermano del Mientras con una diferencia clave:
-ejecuta primero y pregunta despues, asi que siempre da al menos una vuelta.
+ejecuta primero y pregunta después, así que siempre da al menos una vuelta.
 Por eso es el que se usa para validar datos: hay que pedir el dato una vez
 antes de poder comprobarlo.
 
@@ -789,24 +823,28 @@ Dentro de los ciclos viven dos patrones que vas a usar toda la vida: el
 contador, que suma de uno en uno para llevar la cuenta, y el acumulador,
 que va sumando valores para obtener un total.""",
 
-    "sintaxis": """// PARA: sabes cuantas vueltas
+    "sintaxis": """// PARA: sabes cuántas vueltas
 Para i <- 1 Hasta 10 Con Paso 1 Hacer
     Escribir i
 FinPara
 
 // MIENTRAS: repite mientras se cumpla; puede no entrar nunca
+suma <- 0
+Leer numero                 // la PRIMERA lectura va fuera del ciclo
 Mientras numero <> 0 Hacer
     suma <- suma + numero
-    Leer numero
+    Leer numero             // sin esta línea el ciclo no termina nunca
 FinMientras
 
-// REPETIR: ejecuta y DESPUES pregunta; entra al menos una vez
+// REPETIR: ejecuta y DESPUÉS pregunta; entra al menos una vez
 Repetir
-    Escribir "Ingrese una edad valida:"
+    Escribir "Ingrese una edad válida:"
     Leer edad
 Hasta Que edad >= 0 Y edad <= 120
 
-// Contador y acumulador
+// Contador y acumulador: los dos se ponen a cero ANTES del ciclo
+cuantos <- 0
+suma <- 0
 cuantos <- cuantos + 1        // contador: cuenta veces
 suma <- suma + numero         // acumulador: suma valores
 
@@ -817,80 +855,98 @@ Para i <- 1 Hasta 3 Con Paso 1 Hacer
     FinPara
 FinPara""",
 
-    "ejemplo": """Algoritmo PromedioDeNotas
-    Definir cuantas, i Como Entero
-    Definir nota, suma Como Real
-
-    Escribir "Cuantas notas va a ingresar?"
-    Leer cuantas
+    "ejemplo": """Algoritmo PromedioConCentinela
+    Definir nota, suma, promedio Como Real
+    Definir cuantas Como Entero
 
     suma <- 0
+    cuantas <- 0
 
-    Para i <- 1 Hasta cuantas Con Paso 1 Hacer
-        Escribir "Nota ", i, ":"
-        Leer nota
+    Escribir "Ingrese una nota (o -1 para terminar):"
+    Leer nota
+
+    Mientras nota <> -1 Hacer
         suma <- suma + nota
-    FinPara
+        cuantas <- cuantas + 1
+        Escribir "Ingrese una nota (o -1 para terminar):"
+        Leer nota
+    FinMientras
 
-    Escribir "El promedio es: ", suma / cuantas
+    Si cuantas > 0 Entonces
+        promedio <- suma / cuantas
+        Escribir "Notas ingresadas: ", cuantas
+        Escribir "El promedio es: ", promedio
+    Sino
+        Escribir "No se ingresó ninguna nota"
+    FinSi
 FinAlgoritmo""",
 
     "ejemplo_explicacion": """suma <- 0
-    El acumulador se pone en cero ANTES del ciclo. Si lo inicializaras
-    dentro, se borraria en cada vuelta y al final valdria solo la ultima
-    nota.
+cuantas <- 0
+    Dos cajas en cero antes de empezar. suma es el ACUMULADOR (guarda el
+    total) y cuantas es el CONTADOR (cuenta cuántas veces se repitió). Son
+    dos cosas distintas y casi siempre van juntas.
 
-Para i <- 1 Hasta cuantas Con Paso 1 Hacer
-    Aqui si sabemos cuantas vueltas: las que dijo el usuario. Por eso Para
-    y no Mientras. La variable i cuenta sola, no hay que sumarle nada.
+Escribir "Ingrese una nota (o -1 para terminar):"
+Leer nota
+    Esta primera lectura va FUERA del ciclo. Sin ella, el Mientras no
+    tendría ningún valor que evaluar en su primera vuelta.
 
-suma <- suma + nota
-    El corazon del acumulador. Se lee: la nueva suma es la suma que ya
-    tenia mas la nota que acabo de leer.
+Mientras nota <> -1 Hacer
+    Aquí no se sabe cuántas vueltas habrá: dependen de cuándo el usuario
+    decida parar. Por eso Mientras y no Para. El -1 es el centinela: un
+    valor acordado que significa "ya terminé".
 
-Escribir "El promedio es: ", suma / cuantas
-    Fuera del ciclo, cuando ya se sumaron todas. Dentro mostraria un
-    promedio parcial en cada vuelta.""",
+    cuantas <- cuantas + 1
+        El contador sube de uno en uno. Al final tendrá el número de notas.
+
+    Leer nota
+        La última línea del ciclo vuelve a leer. Si se olvida, nota nunca
+        cambia y el ciclo se repite para siempre.
+
+Si cuantas > 0 Entonces
+    La división solo se hace si de verdad hubo notas. Si el usuario escribe
+    -1 de entrada, cuantas vale 0 y dividir entre cero rompería el programa.""",
 
     "errores": """• Inicializar el acumulador dentro del ciclo. Se pone en cero antes, o se
   reinicia en cada vuelta y el total sale mal.
 
-• Olvidar modificar la variable de la condicion en un Mientras. Si nada
-  cambia dentro, la condicion se cumple siempre y el ciclo no termina
+• Olvidar modificar la variable de la condición en un Mientras. Si nada
+  cambia dentro, la condición se cumple siempre y el ciclo no termina
   nunca.
 
-• Usar Mientras cuando sabes el numero de vueltas. Funciona, pero te
-  obliga a llevar el contador a mano y es mas facil equivocarse.
+• Usar Mientras cuando sabes el número de vueltas. Funciona, pero te
+  obliga a llevar el contador a mano y es más fácil equivocarse.
 
-• Poner el resultado dentro del ciclo. Casi siempre va despues del
-  FinPara, cuando el calculo ya termino.
+• Poner el resultado dentro del ciclo. Casi siempre va después del
+  FinPara, cuando el cálculo ya terminó.
 
 • En los ciclos anidados, usar la misma variable para los dos. El de
-  dentro pisaria la cuenta del de fuera: usa i y j, no i e i.
+  dentro pisaría la cuenta del de fuera: usa i y j, no i e i.
 
 • Empezar un acumulador de multiplicaciones en 0. Todo lo que multipliques
-  dara 0: en ese caso se empieza en 1."""
+  dará 0: en ese caso se empieza en 1."""
 },
 
 10: {  # Vectores
     "que_es": """Un vector es una caja con muchos compartimentos numerados, todos del mismo
 tipo y bajo un solo nombre. En vez de definir nota1, nota2, nota3... defines
-notas[5] y accedes a cada una por su posicion.
+notas[5] y accedes a cada una por su posición.
 
-Esa posicion se llama indice, y es lo que hace poderoso al vector: como el
-indice es un numero, puedes recorrerlo con un ciclo. Un Para que vaya de 1
-hasta 5 toca todos los compartimentos sin que escribas cinco lineas.
+Esa posición se llama índice, y es lo que hace poderoso al vector: como el
+índice es un número, puedes recorrerlo con un ciclo. Un Para que vaya de 1
+hasta 5 toca todos los compartimentos sin que escribas cinco líneas.
 
-Con el recorrido se construye todo lo demas: buscar un valor, calcular el
+Con el recorrido se construye todo lo demás: buscar un valor, calcular el
 mayor o el promedio, ordenarlos de menor a mayor. Y cuando necesitas guardar
 dos cosas de la misma persona (su nombre y su nota) usas dos vectores
-paralelos: la posicion 3 de uno se corresponde con la posicion 3 del otro.""",
+paralelos: la posición 3 de uno se corresponde con la posición 3 del otro.""",
 
-    "sintaxis": """// Declarar: primero el tipo, despues el tamano
+    "sintaxis": """// Declarar: primero el tipo, después el tamaño
 Definir notas Como Real
 Dimension notas[5]
 
-// Acceder a una posicion concreta
+// Acceder a una posición concreta
 notas[1] <- 4.5
 Escribir notas[1]
 
@@ -899,8 +955,9 @@ Para i <- 1 Hasta 5 Con Paso 1 Hacer
     Leer notas[i]
 FinPara
 
-// Buscar (busqueda lineal)
-posicion <- 0
+// Buscar (búsqueda lineal)
+Leer buscado               // el valor que queremos encontrar
+posicion <- 0              // 0 significa "no está"
 Para i <- 1 Hasta 5 Con Paso 1 Hacer
     Si notas[i] = buscado Entonces
         posicion <- i
@@ -939,34 +996,34 @@ FinAlgoritmo""",
 
     "ejemplo_explicacion": """Definir notas Como Real
 Dimension notas[4]
-    Dos lineas: la primera dice que guardara numeros con decimales, la
-    segunda cuantos compartimentos tendra.
+    Dos líneas: la primera dice que guardará números con decimales, la
+    segunda cuántos compartimentos tendrá.
 
 mayor <- notas[1]
-    Aqui esta el detalle que mas se falla. El mayor arranca con el PRIMER
+    Aquí está el detalle que más se falla. El mayor arranca con el PRIMER
     elemento, no con cero: si todas las notas fueran negativas, un cero
-    inicial ganaria siempre y el resultado seria falso.
+    inicial ganaría siempre y el resultado sería falso.
 
 Para i <- 2 Hasta 4 Con Paso 1 Hacer
-    Empieza en 2 porque la posicion 1 ya se uso para arrancar. Compararla
-    consigo misma no aportaria nada.
+    Empieza en 2 porque la posición 1 ya se usó para arrancar. Compararla
+    consigo misma no aportaría nada.
 
 Si notas[i] > mayor Entonces
     mayor <- notas[i]
-    Si el de esta posicion es mas grande que el campeon actual, pasa a ser
-    el nuevo campeon. Al terminar el recorrido, mayor tiene el mas grande
+    Si el de esta posición es más grande que el campeón actual, pasa a ser
+    el nuevo campeón. Al terminar el recorrido, mayor tiene el más grande
     de todos.""",
 
     "errores": """• Inicializar el mayor en 0 en vez de con el primer elemento. Con datos
   negativos el resultado sale mal.
 
-• Salirse del vector. Si declaraste notas[5], la posicion 6 no existe y el
+• Salirse del vector. Si declaraste notas[5], la posición 6 no existe y el
   programa falla.
 
 • Intercambiar sin variable auxiliar. Si haces a <- b y luego b <- a, los
-  dos quedan con el mismo valor: el primero se perdio al ser pisado.
+  dos quedan con el mismo valor: el primero se perdió al ser pisado.
 
-• Confundir la posicion con el valor. notas[3] es lo que hay guardado en
+• Confundir la posición con el valor. notas[3] es lo que hay guardado en
   la tercera casilla; el 3 es la casilla, no la nota.
 
 • Recorrer con un ciclo que no llega al final, o que empieza en 0 cuando

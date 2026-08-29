@@ -182,7 +182,9 @@ def client_ip():
     return request.headers.get("CF-Connecting-IP") or request.remote_addr
 
 
-OPERACIONES_CON_COSTE = ("convert", "feedback", "grade", "explain")
+# "diagram" faltaba: consume tokens igual que las demas y se quedaba fuera
+# del libro de gasto desde que se añadio la funcion, el 26/08/2026.
+OPERACIONES_CON_COSTE = ("convert", "feedback", "grade", "explain", "diagram")
 
 
 def registrar_gasto(action, details, user_id):
@@ -899,11 +901,14 @@ def editor_exercise(exercise_id):
 
 # ─── APRENDER ──────────────────────────────────────────────────────
 #
-# El material de lecciones.py (5 temas, 16 KB) y guias.py (24 guias, 17 KB)
-# estaba escrito y NO se mostraba en ningun sitio: ningun modulo lo importaba.
-# 33 KB de teoria que ningun estudiante llego a ver nunca. Estas dos rutas son
-# la puerta que le faltaba: primero se lee como se hacen las cosas, y desde
-# ahi se pasa a los ejercicios del mismo tema.
+# El material de lecciones.py (10 temas) y guias.py (24 guias) estaba escrito
+# y NO se mostraba en ningun sitio. Estas dos rutas son la puerta que le
+# faltaba: primero se lee como se hacen las cosas, y desde ahi se pasa a los
+# ejercicios del mismo tema.
+#
+# lecciones.py es la UNICA fuente del texto de las lecciones. Las columnas
+# topics.leccion_* existieron hasta el 28/08/2026 con una copia del mismo
+# texto; se retiraron porque las dos copias se separaron dos veces.
 
 def _lista_errores(texto):
     """Los errores comunes vienen como parrafos que empiezan por vinneta."""
@@ -1013,6 +1018,11 @@ def exercises():
 @app.route("/exercises/<int:topic_id>")
 @login_required
 def topic_exercises(topic_id):
+    # La leccion sale de lecciones.py, igual que en /aprender. Fue la unica
+    # fuente desde el 28/08/2026: antes esta pagina leia las columnas
+    # topics.leccion_* y la otra el archivo, asi que cada una podia mostrar
+    # un texto distinto del mismo tema.
+    from lecciones import LECCIONES
     topic = Topic.query.get_or_404(topic_id)
     # Sin ordenar, salian en el orden en que se insertaron y la dificultad
     # quedaba en zigzag: el estudiante se topaba con el avanzado antes de
@@ -1037,7 +1047,9 @@ def topic_exercises(topic_id):
             .count()
         )
 
-    return render_template("topic_exercises.html", topic=topic, exercises=exercises)
+    return render_template("topic_exercises.html", topic=topic,
+                           exercises=exercises,
+                           tiene_leccion=topic_id in LECCIONES)
 
 
 # ─── API ENDPOINTS ──────────────────────────────────────────────────

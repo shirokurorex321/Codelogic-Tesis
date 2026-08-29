@@ -88,11 +88,10 @@ class Topic(db.Model):
     # directamente a programar. La tesis sostiene que ese salto sin andamiaje es
     # una de las causas del fracaso en cursos introductorios, así que la
     # plataforma debe enseñar el concepto antes de pedir que se aplique.
-    leccion_que_es = db.Column(db.Text)                  # qué es y para qué sirve
-    leccion_sintaxis = db.Column(db.Text)                # cómo se escribe en pseudocódigo
-    leccion_ejemplo = db.Column(db.Text)                 # ejemplo completo resuelto
-    leccion_ejemplo_explicacion = db.Column(db.Text)     # el ejemplo explicado línea a línea
-    leccion_errores = db.Column(db.Text)                 # errores frecuentes de principiantes
+    # El texto de la leccion vive en lecciones.py, que es su unica fuente.
+    # Aqui hubo cinco columnas leccion_* con una copia; se retiraron el
+    # 28/08/2026 porque las dos copias se separaron dos veces y cada pagina
+    # mostraba una version distinta del mismo tema.
 
     exercises = db.relationship("Exercise", backref="topic", lazy="dynamic")
 

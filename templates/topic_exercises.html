@@ -20,45 +20,20 @@
     </div>
 </div>
 
-{% if topic.leccion_que_es %}
-<div class="leccion">
-    <div class="leccion-cab">
-        <h2>📚 Antes de practicar</h2>
-        <button type="button" class="btn btn-outline btn-sm" onclick="alternarLeccion()"
-                id="btn-leccion">Ocultar lección</button>
+{# La leccion completa vive en /aprender/<tema>, su unico sitio. Antes se
+   repetia entera aqui: entre el 76% y el 84% del texto estaba duplicado, y el
+   alumno que venia de leerla se la encontraba otra vez. Ahora solo el enlace. #}
+{% if tiene_leccion %}
+<div class="repaso-leccion">
+    <span class="repaso-icono">📚</span>
+    <div>
+        <strong>¿Necesitas repasar antes de practicar?</strong>
+        <p>La lección de {{ topic.name }} explica qué es, cómo se escribe, un ejemplo
+           resuelto línea por línea y los errores que más se repiten.</p>
     </div>
-
-    <div id="cuerpo-leccion">
-        <section class="leccion-sec">
-            <h3>¿Qué es y para qué sirve?</h3>
-            <div class="leccion-texto">{{ topic.leccion_que_es|parrafos }}</div>
-        </section>
-
-        {% if topic.leccion_sintaxis %}
-        <section class="leccion-sec">
-            <h3>Cómo se escribe</h3>
-            <pre class="leccion-codigo">{{ topic.leccion_sintaxis }}</pre>
-        </section>
-        {% endif %}
-
-        {% if topic.leccion_ejemplo %}
-        <section class="leccion-sec">
-            <h3>Ejemplo completo</h3>
-            <pre class="leccion-codigo">{{ topic.leccion_ejemplo }}</pre>
-            {% if topic.leccion_ejemplo_explicacion %}
-            <h4 class="leccion-sub">Explicado paso a paso</h4>
-            <div class="leccion-texto">{{ topic.leccion_ejemplo_explicacion|parrafos }}</div>
-            {% endif %}
-        </section>
-        {% endif %}
-
-        {% if topic.leccion_errores %}
-        <section class="leccion-sec leccion-errores">
-            <h3>⚠️ Errores frecuentes</h3>
-            <div class="leccion-texto">{{ topic.leccion_errores|parrafos }}</div>
-        </section>
-        {% endif %}
-    </div>
+    <a href="{{ url_for('aprender_tema', topic_id=topic.id) }}" class="btn btn-outline">
+        Ver la lección
+    </a>
 </div>
 {% endif %}
 

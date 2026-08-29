@@ -31,10 +31,20 @@
             veas el patrón. Estúdialo y después adáptalo a lo que te piden.
         </p>
         <pre class="leccion-codigo">{{ exercise.ejemplo_resuelto }}</pre>
-        {% if exercise.ejemplo_salida %}
+    </section>
+    {% endif %}
+
+    {# La prediccion va FUERA del ejemplo resuelto. Estaba dentro, pegada a su
+       codigo, y se entendia que preguntaba por el ejemplo cuando la entrada y
+       la salida que compara son las DEL EJERCICIO. #}
+    {% if exercise.ejemplo_salida %}
+    <section class="teoria-sec">
         <div class="pred-caja" id="pred-caja"
              data-url="{{ url_for('prediccion', exercise_id=exercise.id) }}">
-            <h3>🔮 Antes de seguir: ¿qué crees que imprime?</h3>
+            <h3>🔮 Antes de escribir: ¿qué debería imprimir TU programa?</h3>
+            <p class="pred-aviso">Esto es sobre <strong>el ejercicio que te piden</strong>,
+                no sobre el ejemplo de arriba. Todavía no has escrito nada: se trata de
+                que pienses qué tendría que salir en pantalla cuando lo tengas hecho.</p>
             {% if exercise.ejemplo_entrada %}
             <p class="pred-entrada">Supón que el usuario escribe:
                 <strong>{{ exercise.ejemplo_entrada }}</strong></p>
@@ -47,7 +57,6 @@
             <button type="button" class="btn btn-primary" id="pred-btn">Comprobar</button>
             <div id="pred-resultado" class="pred-resultado" hidden></div>
         </div>
-        {% endif %}
     </section>
     {% endif %}
 
