@@ -184,7 +184,15 @@ def client_ip():
 
 # "diagram" faltaba: consume tokens igual que las demas y se quedaba fuera
 # del libro de gasto desde que se añadio la funcion, el 26/08/2026.
-OPERACIONES_CON_COSTE = ("convert", "feedback", "grade", "explain", "diagram")
+# Unica lista de operaciones de IA. Antes estaba repetida en tres sitios y al
+# anadir "diagram" solo se actualizo uno: el contador que ve el estudiante y
+# las estadisticas del docente llevaban desde entonces sin contar ni un solo
+# diagrama, que es de las operaciones que mas cuesta. Cualquier operacion
+# nueva se anade AQUI y solo aqui.
+OPERACIONES_IA = ("convert", "feedback", "explain", "grade", "diagram")
+
+# Las que ademas se anotan en el libro de gasto (hoy, todas).
+OPERACIONES_CON_COSTE = OPERACIONES_IA
 
 
 def registrar_gasto(action, details, user_id):
@@ -1216,7 +1224,7 @@ def api_usage():
     since = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=window_h)
 
     rows = db.session.query(ActivityLog).filter(
-        ActivityLog.action.in_(("convert", "feedback", "explain", "grade")),
+        ActivityLog.action.in_(OPERACIONES_IA),
         ActivityLog.created_at >= since,
     ).all()
 
@@ -2056,7 +2064,7 @@ def admin_tokens():
     week_ago = now - timedelta(days=7)
 
     ai_logs = ActivityLog.query.filter(
-        ActivityLog.action.in_(("convert", "feedback", "explain", "grade"))
+        ActivityLog.action.in_(OPERACIONES_IA)
     ).all()
 
     # ── Agregado por usuario ──
