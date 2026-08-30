@@ -1920,6 +1920,7 @@ h4.md-h { font-size: 0.92rem; color: #a5b4fc; text-transform: uppercase; letter-
     margin: 1.1rem 0;
 }
 
+ol.md-ul { list-style: decimal; }
 .md-ul {
     margin: 0.5rem 0 0.5rem 1.25rem;
     padding: 0;

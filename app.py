@@ -495,6 +495,72 @@ def _hora_local(dt, formato="%d/%m/%Y %H:%M"):
     return dt.astimezone(_ZONA).strftime(formato)
 
 
+@app.template_filter("markdown_ia")
+def filtro_markdown_ia(texto):
+    """Pinta el markdown que devuelve la IA (encabezados, listas, negritas).
+
+    La ficha del estudiante mostraba la retroalimentacion en crudo: el docente
+    leia los ### y los ** tal cual. En el editor del alumno ya se formateaba,
+    pero con una funcion de JavaScript que aqui no sirve, porque esto se rinde
+    en el servidor.
+
+    Cubre el mismo subconjunto y usa las MISMAS clases (md-h, md-ul, md-p,
+    md-inline, md-hr, md-code) para que se vea igual en los dos sitios. Si se
+    cambia el aspecto de uno, cambia el del otro solo.
+
+    Escapa siempre: esto es texto que genera un modelo y se pinta en el
+    navegador del docente.
+    """
+    from markupsafe import Markup, escape
+    if not texto:
+        return ""
+    import re as _re
+
+    # Los bloques de codigo se apartan antes de tocar nada mas
+    bloques = []
+
+    def _guardar(m):
+        bloques.append((m.group(1) or "", (m.group(2) or "").rstrip("\n")))
+        return "\x00B%d\x00" % (len(bloques) - 1)
+
+    s = _re.sub(r"```(\w+)?\n?([\s\S]*?)```", _guardar, str(texto))
+    s = str(escape(s))
+
+    s = _re.sub(r"^###\s+(.+)$", r'<h4 class="md-h">\1</h4>', s, flags=_re.M)
+    s = _re.sub(r"^##\s+(.+)$", r'<h3 class="md-h">\1</h3>', s, flags=_re.M)
+    s = _re.sub(r"^#\s+(.+)$", r'<h2 class="md-h">\1</h2>', s, flags=_re.M)
+    s = _re.sub(r"^---+\s*$", '<hr class="md-hr">', s, flags=_re.M)
+
+    def _lista(m):
+        items = "".join("<li>%s</li>" % _re.sub(r"^\s*[-*]\s+", "", l)
+                        for l in m.group(0).strip().split("\n"))
+        return '<ul class="md-ul">%s</ul>' % items
+
+    s = _re.sub(r"(?:^[ \t]*[-*]\s+.+\n?)+", _lista, s, flags=_re.M)
+
+    def _lista_num(m):
+        items = "".join("<li>%s</li>" % _re.sub(r"^\s*\d+\.\s+", "", l)
+                        for l in m.group(0).strip().split("\n"))
+        return '<ol class="md-ul">%s</ol>' % items
+
+    # Las numeradas quedaban pegadas en un parrafo: se le quitaba el "1." y
+    # las tres viñetas se leian como una frase corrida.
+    s = _re.sub(r"(?:^[ \t]*\d+\.\s+.+\n?)+", _lista_num, s, flags=_re.M)
+
+    s = _re.sub(r"\*\*([^*\n]+)\*\*", r"<strong>\1</strong>", s)
+    s = _re.sub(r"(^|[^*])\*([^*\n]+)\*(?!\*)", r"\1<em>\2</em>", s)
+    s = _re.sub(r"`([^`\n]+)`", r'<code class="md-inline">\1</code>', s)
+
+    partes = [p.strip() for p in _re.split(r"\n{2,}", s) if p.strip()]
+    html = "".join(p if p.startswith("<") else '<p class="md-p">%s</p>' % p.replace("\n", "<br>")
+                   for p in partes)
+
+    for i, (leng, cod) in enumerate(bloques):
+        html = html.replace("\x00B%d\x00" % i,
+                            '<pre class="md-code"><code>%s</code></pre>' % escape(cod))
+    return Markup(html)
+
+
 @app.template_filter("parrafos")
 def filtro_parrafos(texto):
     """Convierte texto plano en HTML estructurado.
