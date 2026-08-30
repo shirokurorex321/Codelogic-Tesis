@@ -196,9 +196,16 @@ def registrar_gasto(action, details, user_id):
     """
     if action not in OPERACIONES_CON_COSTE or not isinstance(details, dict):
         return
+    # Lo servido desde cache no se pago y no debe anotarse. Hay que mirar el
+    # indicador "cached", NO si vienen tokens: la cache guarda la respuesta
+    # entera, usage incluido, asi que una respuesta cacheada trae los tokens
+    # de la llamada original y colarse por aqui inflaba el gasto y ademas
+    # gastaba cupo al alumno que reenviaba el mismo pseudocodigo.
+    if details.get("cached"):
+        return
     usage = details.get("usage") or {}
     if not usage.get("total_tokens"):
-        return          # cacheada o sin consumo: no hay nada que cobrar
+        return          # sin consumo: no hay nada que cobrar
     try:
         from gemini_service import coste_usd, salida_facturable
         db.session.add(GastoIA(
@@ -209,7 +216,7 @@ def registrar_gasto(action, details, user_id):
             tokens_entrada=int(usage.get("prompt_tokens") or 0),
             tokens_salida=salida_facturable(usage),
             coste_usd=round(coste_usd(usage), 8),
-            desde_cache=bool(details.get("cached")),
+            desde_cache=False,   # si llega aqui, no vino de cache
             exercise_id=details.get("exercise_id"),
         ))
     except Exception:
