@@ -440,6 +440,27 @@ def validar_pseudocodigo(texto: str):
     return True, None
 
 
+@app.after_request
+def no_guardar_en_cache(resp):
+    """Prohibe cachear todo lo que no sea un recurso estatico.
+
+    El 30/08/2026 se descubrio que Cloudflare estaba cacheando
+    /api/admin/export/research.csv: por la extension .csv le ponia
+    max-age=14400 por su cuenta, y servia el fichero -nombres, correos y datos
+    del estudio de todos los estudiantes- a CUALQUIERA, incluso sin sesion,
+    porque un HIT nunca llega hasta aqui para que se compruebe el permiso.
+
+    Sin cabeceras explicitas el CDN decide por su cuenta. Aqui se le dice que
+    no guarde nada: esta aplicacion sirve datos personales y cada respuesta
+    depende de quien la pide.
+    """
+    if not request.path.startswith("/static/"):
+        resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, private"
+        resp.headers["Pragma"] = "no-cache"
+        resp.headers["Expires"] = "0"
+    return resp
+
+
 @app.context_processor
 def inyectar_version_css():
     """Versión del CSS basada en su fecha de modificación.
