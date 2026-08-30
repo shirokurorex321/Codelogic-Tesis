@@ -23,13 +23,35 @@
     </div>
 </div>
 
-<!-- Acciones rápidas -->
-<div class="grid-2 mb-3">
-    <a href="{{ url_for('editor') }}" class="card" style="text-align:center; text-decoration:none; color:var(--text);">
-        <span style="font-size:2.5rem; display:block; margin-bottom:0.5rem;">✏️</span>
-        <strong>Editor Libre</strong>
+<!-- Acciones rápidas. El orden importa: son estudiantes de primer semestre
+     que llegan sin saber nada, y la accion mas visible tiene que ser aprender,
+     no un editor en blanco. Antes la primera tarjeta era el Editor Libre
+     ("practica sin restricciones"), que a quien no sabe que es un pseudocodigo
+     no le dice nada y reproduce justo el problema que la seccion Aprender
+     vino a resolver. -->
+{% if total_submissions == 0 %}
+<div class="card mb-3" style="border-left:4px solid var(--primary);">
+    <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+        <span style="font-size:2.5rem;">👋</span>
+        <div style="flex:1; min-width:15rem;">
+            <strong style="font-size:1.05rem;">¿Primera vez aquí? Empieza por Aprender.</strong>
+            <p style="font-size:0.88rem; color:var(--text-light); margin-top:0.35rem;">
+                No hace falta que sepas nada todavía. Cada tema te explica qué es,
+                cómo se escribe y un ejemplo resuelto línea por línea. Los ejercicios
+                vienen después, cuando ya lo hayas visto.
+            </p>
+        </div>
+        <a href="{{ url_for('aprender') }}" class="btn btn-primary">Empezar a aprender →</a>
+    </div>
+</div>
+{% endif %}
+
+<div class="grid-3 mb-3">
+    <a href="{{ url_for('aprender') }}" class="card" style="text-align:center; text-decoration:none; color:var(--text);">
+        <span style="font-size:2.5rem; display:block; margin-bottom:0.5rem;">📚</span>
+        <strong>Aprender</strong>
         <p style="font-size:0.85rem; color:var(--text-light); margin-top:0.25rem;">
-            Practica pseudocódigo sin restricciones
+            Mira cómo se hace antes de practicar
         </p>
     </a>
     <a href="{{ url_for('exercises') }}" class="card" style="text-align:center; text-decoration:none; color:var(--text);">
@@ -37,6 +59,13 @@
         <strong>Ejercicios</strong>
         <p style="font-size:0.85rem; color:var(--text-light); margin-top:0.25rem;">
             Resuelve ejercicios guiados por tema
+        </p>
+    </a>
+    <a href="{{ url_for('editor') }}" class="card" style="text-align:center; text-decoration:none; color:var(--text);">
+        <span style="font-size:2.5rem; display:block; margin-bottom:0.5rem;">✏️</span>
+        <strong>Editor Libre</strong>
+        <p style="font-size:0.85rem; color:var(--text-light); margin-top:0.25rem;">
+            Prueba tus propias ideas cuando quieras
         </p>
     </a>
 </div>

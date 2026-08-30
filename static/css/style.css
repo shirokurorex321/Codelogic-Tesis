@@ -1381,6 +1381,9 @@ tr:hover td { background: #f9fafb; }
 .flex { display: flex; }
 .flex-between { display: flex; justify-content: space-between; align-items: center; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+/* auto-fit en vez de tres columnas fijas: en el movil se apilan solas,
+   y muchos estudiantes entran desde el telefono. */
+.grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 1rem; }
 
 /* ─── RESPONSIVE ─────────────────────────────── */
 @media (max-width: 768px) {

@@ -378,6 +378,32 @@ def validar_pseudocodigo(texto: str):
     claves = {k for k in _CLAVES_PSEUDO if re.search(rf"\b{k}\b", bajo)}
 
     if len(lineas) < _MIN_LINEAS or len(claves) < _MIN_CLAVES:
+        # Se distinguen dos fallos que antes compartian mensaje. Quien escribe
+        # `Escribir "Hola Mundo"` SI esta escribiendo pseudocodigo, solo que
+        # corto: decirle que "parece una descripcion en espanol" es falso y
+        # desconcierta justo en el primer ejercicio del curso. Los verbos de
+        # abajo son los que la prosa no usa para empezar una linea ("si" y
+        # "para" quedan fuera a proposito: son palabras corrientes).
+        VERBOS = ("leer", "escribir", "imprimir", "mostrar", "definir",
+                  "algoritmo", "finalgoritmo", "proceso", "finproceso",
+                  "inicio", "fin", "dimension")
+        estructura = any(
+            l.strip().lower().split()[0].strip(":;") in VERBOS
+            for l in lineas if l.strip()
+        ) or ("<-" in texto)
+
+        if estructura:
+            return False, (
+                "Vas bien, pero tu algoritmo está incompleto: aún es muy corto "
+                "para poder traducirlo.\n\n"
+                "Un algoritmo necesita al menos abrirse, hacer algo y cerrarse. "
+                "Por ejemplo:\n\n"
+                "Algoritmo MiPrograma\n"
+                "    Escribir \"Hola Mundo\"\n"
+                "FinAlgoritmo\n\n"
+                "Añade las líneas que te falten y vuelve a intentarlo."
+            )
+
         return False, (
             "Eso parece una descripción en español, no pseudocódigo. "
             "La plataforma traduce algoritmos que TÚ escribes: ahí está el "
