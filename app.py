@@ -1040,7 +1040,7 @@ def aprender_tema(topic_id):
     leccion = LECCIONES[topic_id]
     ejercicios = (Exercise.query
                   .filter_by(topic_id=topic_id, is_active=True)
-                  .order_by(Exercise.difficulty, Exercise.id).all())
+                  .order_by(Exercise.difficulty, Exercise.orden, Exercise.id).all())
     # Temas anterior y siguiente, para poder recorrerlos en orden.
     # Solo dentro del MISMO semestre: encadenarlos todos hacia que la
     # ultima leccion de una asignatura llevara a la primera de la otra.
@@ -1079,7 +1079,7 @@ def topic_exercises(topic_id):
     # (basico, intermedio, avanzado), asi que MySQL ordena por su indice.
     exercises = (Exercise.query
                  .filter_by(topic_id=topic_id, is_active=True)
-                 .order_by(Exercise.difficulty, Exercise.id)
+                 .order_by(Exercise.difficulty, Exercise.orden, Exercise.id)
                  .all())
 
     # Marcar cuáles ya completó el estudiante

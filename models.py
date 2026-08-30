@@ -117,7 +117,12 @@ class Exercise(db.Model):
     # La salida guardada no esta escrita a mano: se obtuvo ejecutando cada
     # ejemplo traducido a Python.
     ejemplo_entrada = db.Column(db.String(200))   # datos que se suponen tecleados
-    ejemplo_salida = db.Column(db.Text)           # lo que imprime de verdad
+    ejemplo_salida = db.Column(db.Text)
+    # Orden pedagogico dentro de su dificultad. Sin esto se ordenaba por id,
+    # asi que un ejercicio anadido despues salia al final aunque enseñara lo
+    # primero: en Selección el Segun-Hacer aparecia antes que el Si, que es lo
+    # que la leccion explica primero. 0 = sin preferencia (se ordena por id).
+    orden = db.Column(db.Integer, default=0, nullable=False)           # lo que imprime de verdad
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
