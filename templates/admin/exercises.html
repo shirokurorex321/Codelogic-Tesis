@@ -52,9 +52,66 @@
                 </select>
             </div>
             <div class="form-group">
+                <button type="button" id="btn-redactar" class="btn btn-outline btn-block">
+                    ✨ Que la IA redacte el resto
+                </button>
+                <p style="font-size:0.78rem; color:var(--text-light); margin-top:0.4rem;">
+                    Escribe el tema, el título y el enunciado, y la IA rellena los campos
+                    de abajo. <strong>Es un borrador:</strong> léelo y corrígelo antes de crear.
+                </p>
+                <p id="redactar-estado" style="font-size:0.8rem; margin-top:0.4rem;"></p>
+            </div>
+
+            <hr style="border:none; border-top:1px solid var(--border); margin:1.2rem 0;">
+            <p style="font-size:0.8rem; color:var(--text-light); margin-bottom:0.8rem;">
+                Sin estos campos el ejercicio le sale al estudiante sin ejemplo resuelto,
+                sin pasos y <strong>sin la caja de predicción</strong>.
+            </p>
+
+            <div class="form-group">
+                <label class="form-label">Qué va a practicar</label>
+                <textarea name="concepto" class="form-textarea" rows="3"
+                    placeholder="La idea que practica y por qué importa. Se muestra bajo 🎯"></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Cómo puede abordarlo</label>
+                <textarea name="pasos" class="form-textarea" rows="4"
+                    placeholder="Un paso por línea, sin numerar. Guían sin dar la solución."></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Ejemplo resuelto (de un problema PARECIDO)</label>
+                <textarea name="ejemplo_resuelto" class="form-textarea" rows="6"
+                    style="font-family:'JetBrains Mono',monospace; font-size:0.8rem;"
+                    placeholder="// Qué hace&#10;Algoritmo Ejemplo&#10;    ...&#10;FinAlgoritmo"></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Entrada de ejemplo</label>
+                <input type="text" name="ejemplo_entrada" class="form-input"
+                       placeholder="Ej: base 5 y altura 3 — o «no pide datos»">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Salida esperada</label>
+                <textarea name="ejemplo_salida" class="form-textarea" rows="3"
+                    placeholder="Exactamente lo que imprime, sin las líneas que piden datos."></textarea>
+                <p style="font-size:0.75rem; color:var(--text-light); margin-top:0.3rem;">
+                    Con esto se corrige la predicción del estudiante. Si no cuadra, se le
+                    dirá que falló cuando acertó.
+                </p>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Solución de referencia</label>
+                <textarea name="expected_pseudocode" class="form-textarea" rows="6"
+                    style="font-family:'JetBrains Mono',monospace; font-size:0.8rem;"
+                    placeholder="El pseudocódigo correcto. No se le muestra al estudiante."></textarea>
+            </div>
+            <div class="form-group">
                 <label class="form-label">Pistas (opcional)</label>
                 <textarea name="hints" class="form-textarea" rows="2"
                     placeholder="Pistas que se mostrarán al estudiante si las solicita..."></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Orden dentro de su dificultad (0 = al final)</label>
+                <input type="number" name="orden" class="form-input" value="0" min="0">
             </div>
             <button type="submit" class="btn btn-primary btn-block">Crear Ejercicio</button>
         </form>
@@ -93,4 +150,61 @@
         </div>
     </div>
 </div>
+
+<script>
+/* Pide a la IA un borrador y lo vuelca en los campos. No guarda nada: el
+   docente lo revisa y decide. */
+document.getElementById('btn-redactar').addEventListener('click', async function () {
+    const form = this.closest('form');
+    const estado = document.getElementById('redactar-estado');
+    const dato = n => form.querySelector('[name="' + n + '"]');
+    const titulo = dato('title').value.trim();
+    const enunciado = dato('description').value.trim();
+    if (!titulo || !enunciado) {
+        estado.style.color = 'var(--error)';
+        estado.textContent = 'Escribe primero el título y el enunciado.';
+        return;
+    }
+    const llenos = ['concepto','pasos','ejemplo_resuelto','ejemplo_salida','expected_pseudocode']
+        .filter(n => dato(n) && dato(n).value.trim());
+    if (llenos.length && !confirm('Ya escribiste ' + llenos.length + ' campo(s). El borrador los va a reemplazar. ¿Sigo?')) return;
+
+    this.disabled = true;
+    const textoOriginal = this.textContent;
+    this.textContent = '✨ Redactando…';
+    estado.style.color = 'var(--text-light)';
+    estado.textContent = 'Puede tardar unos segundos.';
+    try {
+        const r = await fetch('/api/admin/redactar-ejercicio', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({
+                title: titulo, description: enunciado,
+                topic_id: dato('topic_id').value, difficulty: dato('difficulty').value
+            })
+        });
+        const d = await r.json();
+        if (d.success) {
+            let puestos = 0;
+            for (const [campo, valor] of Object.entries(d.borrador || {})) {
+                const el = dato(campo);
+                if (el && valor) { el.value = valor; puestos++; }
+            }
+            estado.style.color = 'var(--success, #16a34a)';
+            estado.textContent = puestos + ' campo(s) redactados. Léelos y corrige lo que haga falta antes de crear.';
+        } else {
+            estado.style.color = 'var(--error)';
+            estado.textContent = d.error || 'No se pudo redactar.';
+        }
+    } catch (e) {
+        estado.style.color = 'var(--error)';
+        estado.textContent = 'Error de conexión.';
+    }
+    this.disabled = false;
+    this.textContent = textoOriginal;
+});
+</script>
 {% endblock %}

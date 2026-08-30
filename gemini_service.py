@@ -108,6 +108,7 @@ THINKING_POR_OPERACION = {
     "diagram": "LOW",
     "explain": THINKING_LEVEL,
     "feedback": THINKING_LEVEL,
+    "borrador": THINKING_LEVEL,   # redactar un ejercicio es tarea de calidad
 }
 
 # ── OpenCode Zen (primario) ─────────────────────────────────────
@@ -334,6 +335,18 @@ def _generar_con_modelo(GEMINI_MODEL: str, system_instruction: str, user_prompt:
         ),
     )
     text = (response.text or "").strip()
+
+    # Si el modelo se quedo sin espacio, el texto llega cortado a media
+    # palabra. Sin esta comprobacion se daba por buena una conversion
+    # truncada ("nota = float(inpu") y se guardaba en cache, condenando a
+    # todo el que enviara ese pseudocodigo a recibir codigo roto.
+    try:
+        razon = str(getattr(response.candidates[0], "finish_reason", "") or "")
+    except Exception:
+        razon = ""
+    if razon and "STOP" not in razon.upper():
+        raise RuntimeError("respuesta incompleta del modelo (%s)" % razon)
+
     meta = getattr(response, "usage_metadata", None)
     usage = {
         "model": GEMINI_MODEL,
@@ -477,7 +490,18 @@ def _respuesta_util(response: dict) -> bool:
         return False
     for campo in ("code", "feedback", "explanation", "diagram"):
         if campo in response:
-            return len((response.get(campo) or "").strip()) >= 10
+            texto = (response.get(campo) or "").strip()
+            if len(texto) < 10:
+                return False
+            # Una conversion truncada pasaba este filtro solo por ser larga.
+            # Se comprueba que el codigo este COMPLETO antes de condenarlo a
+            # la cache: en Python basta con que compile.
+            if campo == "code" and response.get("language") == "python":
+                try:
+                    compile(texto, "<conversion>", "exec")
+                except SyntaxError:
+                    return False
+            return True
     return True
 
 
@@ -657,7 +681,10 @@ Genera ÚNICAMENTE el código en {lang_name}, sin markdown, sin explicaciones, s
 
         code = _respetar_constantes(code, pseudocode, target_language)
 
-        result = {"success": True, "code": code, "usage": usage}
+        # "language" hace falta para poder comprobar, antes de cachear, que el
+        # codigo generado esta completo (ver _respuesta_util).
+        result = {"success": True, "code": code, "language": target_language,
+                  "usage": usage}
         cache_put("convert", key, result)
         return {**result, "cached": False}
 
@@ -769,6 +796,52 @@ Analiza el pseudocódigo y proporciona retroalimentación."""
 
     except Exception as e:
         return {"success": False, "error": str(e), "cached": False}
+
+
+BORRADOR_SYSTEM_PROMPT = """Eres un docente de algoritmos de primer semestre en la Institución Universitaria del Putumayo. Redactas ejercicios para estudiantes que NO saben programar todavía.
+
+Devuelves SOLO un JSON con estas claves, sin texto alrededor y sin ```:
+{
+ "concepto": "Qué va a practicar y POR QUÉ importa. Dos o tres frases. Explica la idea, no el enunciado.",
+ "pasos": "Los pasos para abordarlo, uno por línea, sin numerar. Guían sin dar la solución.",
+ "ejemplo_resuelto": "Un algoritmo COMPLETO de un problema PARECIDO pero DISTINTO, para que vea el patrón sin poder copiarlo. Empieza con un comentario // que diga qué hace.",
+ "ejemplo_entrada": "Los datos de ejemplo, en lenguaje llano. Ej: 'base 5 y altura 3'. Si no pide datos: 'no pide datos'.",
+ "ejemplo_salida": "EXACTAMENTE lo que imprime el programa con esa entrada, sin las líneas que piden los datos. Una línea por cada cosa que imprima.",
+ "hints": "Una o dos frases de ayuda para quien se atasca. Sin dar el código.",
+ "expected_pseudocode": "La solución de referencia, completa y correcta."
+}
+
+REGLAS:
+- Pseudocódigo estilo PSeInt: Algoritmo/FinAlgoritmo, Definir ... Como Entero/Real/Cadena/Logico, Leer, Escribir, Si-Entonces-Sino-FinSi, Mientras-FinMientras, Para-FinPara, Segun-FinSegun. Asignación con <-.
+- ejemplo_salida tiene que cuadrar EXACTAMENTE con lo que imprime expected_pseudocode al recibir ejemplo_entrada. Es lo que la plataforma usa para corregir la predicción del estudiante: si no cuadra, se le dice que falló cuando acertó.
+- El ejemplo_resuelto NO puede resolver el mismo problema del enunciado.
+- Español de Colombia, cercano y sin condescendencia.
+- Respeta las constantes que pida el enunciado (si dice 3.1416, no uses PI)."""
+
+
+def redactar_ejercicio(tema: str, titulo: str, enunciado: str,
+                       dificultad: str = "basico") -> dict:
+    """Redacta el resto del ejercicio a partir del tema, titulo y enunciado.
+
+    Es un BORRADOR: lo revisa el docente antes de guardarlo. Se factura como
+    cualquier otra llamada y queda en el libro de gasto.
+    """
+    prompt = ("TEMA: %s\nNIVEL: %s\nTÍTULO: %s\nENUNCIADO: %s\n\n"
+              "Redacta el ejercicio completo." % (tema, dificultad, titulo, enunciado))
+    try:
+        texto, usage = _generate(BORRADOR_SYSTEM_PROMPT, prompt,
+                                 model=OPENCODE_MODEL_TUTOR, operacion="borrador")
+        limpio = texto.strip()
+        if "```" in limpio:
+            limpio = re.sub(r"```(?:json)?", "", limpio).strip()
+        i, j = limpio.find("{"), limpio.rfind("}")
+        datos = json.loads(limpio[i:j + 1]) if i >= 0 and j > i else {}
+        campos = ("concepto", "pasos", "ejemplo_resuelto", "ejemplo_entrada",
+                  "ejemplo_salida", "hints", "expected_pseudocode")
+        return {"success": True, "usage": usage,
+                "borrador": {k: str(datos.get(k, "") or "").strip() for k in campos}}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 
 def convert_to_all_languages(pseudocode: str) -> dict:

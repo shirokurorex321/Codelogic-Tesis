@@ -31,7 +31,7 @@ from models import (
 )
 from gemini_service import (
     convert_pseudocode, get_ai_feedback, convert_to_all_languages,
-    explain_code, grade_submission,
+    explain_code, grade_submission, redactar_ejercicio,
     convert_to_diagram,
 )
 from questions import (
@@ -189,7 +189,7 @@ def client_ip():
 # las estadisticas del docente llevaban desde entonces sin contar ni un solo
 # diagrama, que es de las operaciones que mas cuesta. Cualquier operacion
 # nueva se anade AQUI y solo aqui.
-OPERACIONES_IA = ("convert", "feedback", "explain", "grade", "diagram")
+OPERACIONES_IA = ("convert", "feedback", "explain", "grade", "diagram", "borrador")
 
 # Las que ademas se anotan en el libro de gasto (hoy, todas).
 OPERACIONES_CON_COSTE = OPERACIONES_IA
@@ -1834,27 +1834,79 @@ def admin_dashboard():
 @role_required(*ROLES_DOCENCIA)
 def admin_exercises():
     if request.method == "POST":
-        topic_id = request.form.get("topic_id")
-        title = request.form.get("title", "").strip()
-        description = request.form.get("description", "").strip()
-        difficulty = request.form.get("difficulty", "basico")
-        hints = request.form.get("hints", "").strip()
+        # Antes solo se guardaban 5 campos y los demas quedaban vacios, asi
+        # que un ejercicio creado aqui salia SIN ejemplo resuelto, SIN pasos y
+        # -lo peor- sin ejemplo_salida, que es lo que hace funcionar la caja de
+        # prediccion. Eran ejercicios de segunda frente a los de la base.
+        campos = ("title", "description", "hints", "concepto", "pasos",
+                  "ejemplo_resuelto", "ejemplo_entrada", "ejemplo_salida",
+                  "expected_pseudocode")
+        datos = {c: request.form.get(c, "").strip() for c in campos}
+        datos["topic_id"] = request.form.get("topic_id")
+        datos["difficulty"] = request.form.get("difficulty", "basico")
+        try:
+            datos["orden"] = int(request.form.get("orden") or 0)
+        except ValueError:
+            datos["orden"] = 0
 
-        exercise = Exercise(
-            topic_id=topic_id,
-            title=title,
-            description=description,
-            difficulty=difficulty,
-            hints=hints
-        )
+        if not datos["title"] or not datos["description"]:
+            flash("El título y el enunciado son obligatorios.", "error")
+            return redirect(url_for("admin_exercises"))
+
+        exercise = Exercise(**datos)
         db.session.add(exercise)
         db.session.commit()
-        flash("Ejercicio creado exitosamente.", "success")
+        faltan = [c for c in ("concepto", "pasos", "ejemplo_resuelto",
+                              "ejemplo_salida", "expected_pseudocode")
+                  if not datos[c]]
+        if faltan:
+            flash("Ejercicio creado, pero le faltan campos y el estudiante los "
+                  "va a echar en falta: %s. Puedes completarlos editándolo."
+                  % ", ".join(faltan), "error")
+        else:
+            flash("Ejercicio creado con todas sus ayudas.", "success")
         return redirect(url_for("admin_exercises"))
 
     topics = Topic.query.order_by(Topic.order).all()
     exercises = Exercise.query.order_by(Exercise.created_at.desc()).all()
     return render_template("admin/exercises.html", topics=topics, exercises=exercises)
+
+
+@app.route("/api/admin/redactar-ejercicio", methods=["POST"])
+@login_required
+@role_required(*ROLES_DOCENCIA)
+def api_redactar_ejercicio():
+    """Pide a la IA un borrador del ejercicio a partir del enunciado.
+
+    Es una ayuda para el docente, no un generador automatico: devuelve el
+    borrador a los campos del formulario para que lo lea, lo corrija y decida.
+    Nada se guarda hasta que le da a crear.
+    """
+    datos = request.get_json(silent=True) or {}
+    titulo = (datos.get("title") or "").strip()
+    enunciado = (datos.get("description") or "").strip()
+    topic_id = datos.get("topic_id")
+    dificultad = (datos.get("difficulty") or "basico").strip()
+
+    if not titulo or not enunciado:
+        return jsonify({"success": False,
+                        "error": "Escribe al menos el título y el enunciado: "
+                                 "la IA redacta a partir de ahí."}), 400
+
+    tema = Topic.query.get(topic_id)
+    resultado = redactar_ejercicio(tema.name if tema else "Algoritmos",
+                                   titulo, enunciado, dificultad)
+    log_activity("borrador", {
+        "topic_id": topic_id,
+        "success": resultado.get("success"),
+        "cached": resultado.get("cached", False),
+        "usage": resultado.get("usage", {}),
+    })
+    if not resultado.get("success"):
+        return jsonify({"success": False,
+                        "error": "La IA no pudo redactarlo: %s"
+                                 % str(resultado.get("error"))[:150]}), 502
+    return jsonify(resultado)
 
 
 @app.route("/admin/exercises/<int:exercise_id>/delete", methods=["POST"])

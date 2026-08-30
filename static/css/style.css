@@ -1336,6 +1336,13 @@ a:hover { color: var(--primary); }
 
 .table-container { overflow-x: auto; }
 
+/* Sin esto la tabla se sale de su tarjeta y se corta por la derecha sin
+   barra de desplazamiento: un hijo de grid trae min-width:auto, asi que no
+   encoge por debajo de su contenido y el overflow-x del contenedor nunca
+   llega a activarse. Se veia en Gestionar Ejercicios, con la columna
+   "Acción" cortada a la mitad. */
+.admin-grid > * { min-width: 0; }
+
 table {
     width: 100%;
     border-collapse: collapse;
