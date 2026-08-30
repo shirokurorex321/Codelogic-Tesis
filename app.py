@@ -250,7 +250,7 @@ def feedback_gastadas(user_id, exercise_id):
 def feedback_cupo(user, exercise_id):
     """(quedan, tope). quedan=None significa sin limite."""
     tope = app.config.get("FEEDBACK_MAX_POR_EJERCICIO", 0)
-    if not tope or not exercise_id or user.role in ("docente", "admin"):
+    if not tope or not exercise_id or user.role in ROLES_DOCENCIA:
         return None, tope
     return max(tope - feedback_gastadas(user.id, exercise_id), 0), tope
 
@@ -535,6 +535,26 @@ def filtro_parrafos(texto):
 
     cerrar_lista()
     return Markup("".join(bloques))
+
+
+# ─── Reparto de permisos ───────────────────────────────────────────
+#
+# DOCENTE: lo que necesita para dar su clase. Ve a sus estudiantes y su
+#   progreso, y manda sobre el curriculo (crear, editar y retirar ejercicios).
+#
+# ADMINISTRADOR: todo lo del docente, mas lo que no es dar clase:
+#   - cuentas: activar, desactivar, restablecer claves
+#   - dinero: consumo y coste de la IA
+#   - sistema: cache y registros de actividad
+#   - datos personales: las exportaciones del estudio (registros, envios,
+#     resultados de los instrumentos) y la asignacion de grupos. Salen de la
+#     plataforma en CSV y caen bajo la Ley 1581/2012; no es material de clase.
+#
+# Hasta el 30/08/2026 el docente tenia TODO esto: podia exportar el conjunto
+# de datos completo del estudio y ver el gasto. Se separo para que el rol
+# coincida con lo que la persona hace de verdad.
+ROLES_DOCENCIA = ("docente", "admin")   # admin siempre incluye al docente
+ROLES_ADMIN = ("admin",)
 
 
 def role_required(*roles):
@@ -840,7 +860,7 @@ def logout():
 @app.route("/dashboard")
 @login_required
 def dashboard():
-    if current_user.role in ("docente", "admin"):
+    if current_user.role in ROLES_DOCENCIA:
         return redirect(url_for("admin_dashboard"))
 
     # Estadísticas del estudiante
@@ -1749,7 +1769,7 @@ def perfil():
 
 @app.route("/admin")
 @login_required
-@role_required("docente", "admin")
+@role_required(*ROLES_DOCENCIA)
 def admin_dashboard():
     total_students = User.query.filter_by(role="estudiante").count()
     total_submissions = Submission.query.count()
@@ -1790,7 +1810,7 @@ def admin_dashboard():
 
 @app.route("/admin/exercises", methods=["GET", "POST"])
 @login_required
-@role_required("docente", "admin")
+@role_required(*ROLES_DOCENCIA)
 def admin_exercises():
     if request.method == "POST":
         topic_id = request.form.get("topic_id")
@@ -1818,7 +1838,7 @@ def admin_exercises():
 
 @app.route("/admin/exercises/<int:exercise_id>/delete", methods=["POST"])
 @login_required
-@role_required("docente", "admin")
+@role_required(*ROLES_DOCENCIA)
 def delete_exercise(exercise_id):
     exercise = Exercise.query.get_or_404(exercise_id)
     exercise.is_active = False
@@ -1829,7 +1849,7 @@ def delete_exercise(exercise_id):
 
 @app.route("/admin/students")
 @login_required
-@role_required("docente", "admin")
+@role_required(*ROLES_DOCENCIA)
 def admin_students():
     students = User.query.filter_by(role="estudiante").order_by(User.name).all()
     return render_template("admin/students.html", students=students)
@@ -1837,7 +1857,7 @@ def admin_students():
 
 @app.route("/admin/students/<int:user_id>/group", methods=["POST"])
 @login_required
-@role_required("docente", "admin")
+@role_required(*ROLES_ADMIN)
 def assign_group(user_id):
     user = User.query.get_or_404(user_id)
     group = request.form.get("group")
@@ -1850,7 +1870,7 @@ def assign_group(user_id):
 
 @app.route("/admin/logs")
 @login_required
-@role_required("docente", "admin")
+@role_required(*ROLES_ADMIN)
 def admin_logs():
     """Exportar logs de actividad para análisis."""
     from sqlalchemy import func
@@ -1877,7 +1897,7 @@ def admin_logs():
 
 @app.route("/api/admin/export-logs")
 @login_required
-@role_required("docente", "admin")
+@role_required(*ROLES_ADMIN)
 def export_logs():
     """Exportar logs en formato JSON para análisis en R/SPSS."""
     logs = ActivityLog.query.order_by(ActivityLog.created_at).all()
@@ -1956,7 +1976,7 @@ def _research_rows():
 
 @app.route("/admin/research")
 @login_required
-@role_required("docente", "admin")
+@role_required(*ROLES_ADMIN)
 def admin_research():
     """Resultados de los instrumentos del estudio, por estudiante."""
     rows = _research_rows()
@@ -1972,7 +1992,7 @@ def admin_research():
 
 @app.route("/api/admin/export/research.csv")
 @login_required
-@role_required("docente", "admin")
+@role_required(*ROLES_ADMIN)
 def export_research_csv():
     """CSV listo para R/SPSS: una fila por estudiante."""
     header = [
@@ -2011,7 +2031,7 @@ def export_research_csv():
 
 @app.route("/api/admin/export/logs.csv")
 @login_required
-@role_required("docente", "admin")
+@role_required(*ROLES_ADMIN)
 def export_logs_csv():
     """CSV de logs de actividad (una fila por evento)."""
     import json as _json
@@ -2027,7 +2047,7 @@ def export_logs_csv():
 
 @app.route("/api/admin/export/submissions.csv")
 @login_required
-@role_required("docente", "admin")
+@role_required(*ROLES_ADMIN)
 def export_submissions_csv():
     """CSV de envíos de ejercicios (una fila por envío)."""
     header = ["id", "id_estudiante", "id_ejercicio", "ejercicio", "intento",
@@ -2049,7 +2069,7 @@ def export_submissions_csv():
 
 @app.route("/admin/tokens")
 @login_required
-@role_required("docente", "admin")
+@role_required(*ROLES_ADMIN)
 def admin_tokens():
     """Panel de uso de tokens IA por usuario + stats globales."""
     from sqlalchemy import func
@@ -2160,7 +2180,7 @@ def admin_tokens():
 
 @app.route("/admin/cache")
 @login_required
-@role_required("docente", "admin")
+@role_required(*ROLES_ADMIN)
 def admin_cache():
     """Vista de la caché IA."""
     from models import AICache
@@ -2170,7 +2190,7 @@ def admin_cache():
 
 @app.route("/admin/cache/clear", methods=["POST"])
 @login_required
-@role_required("admin")
+@role_required(*ROLES_ADMIN)
 def admin_cache_clear():
     """Borra TODA la caché IA. Solo admin."""
     from models import AICache
@@ -2182,7 +2202,7 @@ def admin_cache_clear():
 
 @app.route("/admin/users/<int:user_id>/toggle-active", methods=["POST"])
 @login_required
-@role_required("admin")
+@role_required(*ROLES_ADMIN)
 def admin_toggle_active(user_id):
     user = User.query.get_or_404(user_id)
     if user.id == current_user.id:
@@ -2196,7 +2216,7 @@ def admin_toggle_active(user_id):
 
 @app.route("/admin/users/<int:user_id>/reset-password", methods=["POST"])
 @login_required
-@role_required("admin")
+@role_required(*ROLES_ADMIN)
 def admin_reset_password(user_id):
     user = User.query.get_or_404(user_id)
     new_pwd = request.form.get("new_password", "").strip()

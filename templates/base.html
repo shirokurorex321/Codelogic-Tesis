@@ -37,9 +37,14 @@
                 <a href="{{ url_for('admin_dashboard') }}" class="nav-link {% if request.endpoint == 'admin_dashboard' %}active{% endif %}">Panel</a>
                 <a href="{{ url_for('admin_exercises') }}" class="nav-link {% if request.endpoint == 'admin_exercises' %}active{% endif %}">Ejercicios</a>
                 <a href="{{ url_for('admin_students') }}" class="nav-link {% if request.endpoint == 'admin_students' %}active{% endif %}">Estudiantes</a>
+                {# Investigacion, coste y registros son de administracion: al
+                   docente le rebotaban con "no tienes permiso", asi que no se
+                   le ensenan. #}
+                {% if current_user.role == 'admin' %}
                 <a href="{{ url_for('admin_research') }}" class="nav-link {% if request.endpoint == 'admin_research' %}active{% endif %}">Investigación</a>
                 <a href="{{ url_for('admin_tokens') }}" class="nav-link {% if request.endpoint in ('admin_tokens','admin_cache') %}active{% endif %}">Tokens IA</a>
                 <a href="{{ url_for('admin_logs') }}" class="nav-link {% if request.endpoint == 'admin_logs' %}active{% endif %}">Logs</a>
+                {% endif %}
                 {% endif %}
             </div>
             <div class="nav-user">
