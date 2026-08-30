@@ -886,8 +886,27 @@ FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %
                 const cacheNote = data.cached
                     ? '<div style="margin-bottom:0.5rem; font-size:0.78rem; color:var(--text-muted);">⚡ Servido desde caché (0 tokens)</div>'
                     : '';
-                document.getElementById('tab-feedback').innerHTML = cacheNote + formatFeedback(data.feedback);
+                /* El cupo se muestra solo cuando queda poco: recordarselo en
+                   cada revision presiona al estudiante sin necesidad. */
+                let cupoNota = '';
+                if (data.cupo && data.cupo.quedan <= 1) {
+                    cupoNota = '<div style="margin-bottom:0.5rem; font-size:0.78rem; color:var(--warning, #d97706);">'
+                        + (data.cupo.quedan === 1
+                            ? '⚠️ Te queda 1 revisión con IA para este ejercicio.'
+                            : '⚠️ Era tu última revisión con IA para este ejercicio.')
+                        + '</div>';
+                }
+                document.getElementById('tab-feedback').innerHTML = cacheNote + cupoNota + formatFeedback(data.feedback);
                 refreshUsage();
+            } else if (data.sin_cupo) {
+                document.getElementById('tab-feedback').innerHTML =
+                    '<div style="line-height:1.6;">'
+                  + '<p style="font-weight:600; margin-bottom:0.5rem;">🎯 Ya usaste tus '
+                  + (data.cupo ? data.cupo.tope : '') + ' revisiones con IA para este ejercicio.</p>'
+                  + '<p style="color:var(--text-muted);">No es un castigo: a partir de aquí se aprende más '
+                  + 'releyendo la lección y probando tu algoritmo paso a paso. Puedes seguir '
+                  + '<strong>ejecutando tu código</strong> y <strong>entregarlo</strong> con normalidad, '
+                  + 'y si te atascas, tu docente puede ayudarte.</p></div>';
             } else {
                 document.getElementById('tab-feedback').innerHTML =
                     '<span style="color:var(--error);">Error: ' + escapeHtml(data.error) + '</span>';

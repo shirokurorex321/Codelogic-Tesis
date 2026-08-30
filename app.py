@@ -217,6 +217,29 @@ def registrar_gasto(action, details, user_id):
                                    exc_info=True)
 
 
+def feedback_gastadas(user_id, exercise_id):
+    """Retroalimentaciones DE PAGO que lleva este alumno en este ejercicio.
+
+    Se cuenta sobre gasto_ia y no sobre activity_logs a proposito: ahi solo
+    entra lo que realmente se facturo, asi que lo servido desde cache no
+    descuenta cupo. Es la misma pregunta que responde el libro de gasto
+    ("cuanto me ha costado este alumno en este ejercicio"), expresada en
+    numero de llamadas.
+    """
+    if not exercise_id:
+        return 0
+    return GastoIA.query.filter_by(user_id=user_id, operacion="feedback",
+                                   exercise_id=exercise_id).count()
+
+
+def feedback_cupo(user, exercise_id):
+    """(quedan, tope). quedan=None significa sin limite."""
+    tope = app.config.get("FEEDBACK_MAX_POR_EJERCICIO", 0)
+    if not tope or not exercise_id or user.role in ("docente", "admin"):
+        return None, tope
+    return max(tope - feedback_gastadas(user.id, exercise_id), 0), tope
+
+
 def log_activity(action, details=None):
     """Registra actividad del usuario para la investigación."""
     if current_user.is_authenticated:
@@ -1299,7 +1322,9 @@ def api_feedback():
         if exercise:
             exercise_description = exercise.description
 
-    result = get_ai_feedback(pseudocode, exercise_description)
+    quedan, tope = feedback_cupo(current_user, exercise_id)
+    result = get_ai_feedback(pseudocode, exercise_description,
+                             permitir_llamada=(quedan is None or quedan > 0))
 
     # Usamos "feedback" para que cuente en /api/usage
     log_activity("feedback", {
@@ -1309,6 +1334,15 @@ def api_feedback():
         "cached": result.get("cached", False),
         "usage": result.get("usage", {}),
     })
+
+    if result.get("sin_cupo"):
+        return jsonify({**result, "cupo": {"quedan": 0, "tope": tope}}), 429
+
+    if quedan is not None:
+        # log_activity ya anoto el gasto de esta llamada, asi que se vuelve a
+        # contar en vez de restar a mano: es la unica cifra que no se desvia.
+        restantes = max(tope - feedback_gastadas(current_user.id, exercise_id), 0)
+        result = {**result, "cupo": {"quedan": restantes, "tope": tope}}
 
     return jsonify(result)
 

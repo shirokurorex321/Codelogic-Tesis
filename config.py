@@ -110,6 +110,12 @@ class Config:
     # ── Rate limiting ──
     RATELIMIT_STORAGE_URI = os.getenv("RATELIMIT_STORAGE_URI", "memory://")
     RATELIMIT_AI = os.getenv("RATELIMIT_AI", "20 per hour;120 per day")
+
+    # Cuantas retroalimentaciones DE PAGO puede pedir un estudiante por
+    # ejercicio. Es el mayor gasto de la plataforma (16 COP por llamada, y la
+    # cache apenas la reaprovecha porque cada alumno escribe distinto). Las
+    # respuestas servidas desde cache no descuentan. 0 = sin limite.
+    FEEDBACK_MAX_POR_EJERCICIO = int(os.getenv("FEEDBACK_MAX_POR_EJERCICIO", "3"))
     RATELIMIT_EXEC = os.getenv("RATELIMIT_EXEC", "60 per hour")
     RATELIMIT_AUTH = os.getenv("RATELIMIT_AUTH", "10 per 15 minutes")
 

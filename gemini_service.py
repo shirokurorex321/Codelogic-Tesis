@@ -707,8 +707,15 @@ def _limpiar_mermaid(texto: str) -> str:
     return t
 
 
-def get_ai_feedback(pseudocode: str, exercise_description: str = None) -> dict:
-    """Genera retroalimentación sobre el pseudocódigo del estudiante."""
+def get_ai_feedback(pseudocode: str, exercise_description: str = None,
+                    permitir_llamada: bool = True) -> dict:
+    """Genera retroalimentación sobre el pseudocódigo del estudiante.
+
+    permitir_llamada=False sirve para el cupo por ejercicio: si la respuesta
+    ya esta en cache se entrega igual, porque no cuesta nada; solo se corta
+    cuando habria que pagar una llamada nueva. Asi el estudiante que reenvia
+    el mismo pseudocodigo no gasta cupo, y quien lo cambia si.
+    """
     if exercise_description:
         prompt = f"""EJERCICIO: {exercise_description}
 
@@ -734,6 +741,11 @@ Analiza el pseudocódigo y proporciona retroalimentación."""
     cached = cache_get("feedback", key)
     if cached:
         return {**cached, "cached": True}
+
+    if not permitir_llamada:
+        return {"success": False, "sin_cupo": True, "cached": False,
+                "error": "Se acabaron los intentos de retroalimentación para "
+                         "este ejercicio."}
 
     try:
         feedback, usage = _generate(system, prompt, model=OPENCODE_MODEL_TUTOR, operacion="feedback")
