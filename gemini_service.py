@@ -233,7 +233,7 @@ def explain_code(code: str, language: str) -> dict:
 ```"""
 
     # v2 = nuevo prompt más conciso (2026-05-12). Bumpear si vuelves a tocar el prompt.
-    key = _cache_key("explain", "v2", OPENCODE_MODEL_TUTOR, language, code.strip())
+    key = _cache_key("explain", "v2", NAMESPACE_CACHE, language, code.strip())
     cached = cache_get("explain", key)
     if cached:
         return {**cached, "cached": True}
@@ -416,6 +416,20 @@ def normalizar_pseudocodigo(texto: str) -> str:
                     frag))
         lineas.append("".join(salida))
     return "\n".join(lineas)
+
+
+# Espacio de nombres de la cache. Es un valor CONGELADO, no un ajuste.
+#
+# Antes las claves se construian con OPENCODE_MODEL_TUTOR/CONVERT, que siguen
+# siendo editables desde el panel. Pero OpenCode esta apagado desde el
+# 27/08/2026 y hoy responde Gemini: ese ajuste ya no dice quien contesta, y sin
+# embargo cambiarlo invalidaba de golpe las 647 entradas de cache y disparaba
+# una racha de llamadas de pago. Alguien tocando un ajuste que "ya no hace
+# nada" se llevaba por delante el ahorro de meses.
+#
+# El valor es el que tenian esas claves historicamente, para no perder ni una
+# entrada. Solo hay que cambiarlo si se quiere invalidar la cache A PROPOSITO.
+NAMESPACE_CACHE = "hy3-free"
 
 
 def _cache_key(*parts: str) -> str:
@@ -625,7 +639,7 @@ Genera ÚNICAMENTE el código en {lang_name}, sin markdown, sin explicaciones, s
 
     # v3 = prompt que interpreta el pseudocódigo informal en vez de auditarlo
     # (2026-08-19). Bumpear si vuelves a tocar CONVERSION_SYSTEM_PROMPT.
-    key = _cache_key("convert", "v3", OPENCODE_MODEL_CONVERT, target_language,
+    key = _cache_key("convert", "v3", NAMESPACE_CACHE, target_language,
                      normalizar_pseudocodigo(pseudocode))
     cached = cache_get("convert", key)
     if cached:
@@ -667,7 +681,7 @@ PSEUDOCODIGO:
 
 Genera UNICAMENTE el codigo Mermaid empezando por 'flowchart TD'."""
 
-    key = _cache_key("diagram", "v1", OPENCODE_MODEL_CONVERT,
+    key = _cache_key("diagram", "v1", NAMESPACE_CACHE,
                      normalizar_pseudocodigo(pseudocode))
     cached = cache_get("diagram", key)
     if cached:
@@ -735,7 +749,7 @@ Analiza si el pseudocódigo resuelve correctamente el ejercicio y proporciona re
 Analiza el pseudocódigo y proporciona retroalimentación."""
         system = FREE_MODE_SYSTEM_PROMPT
 
-    key = _cache_key("feedback", "v2", OPENCODE_MODEL_TUTOR,
+    key = _cache_key("feedback", "v2", NAMESPACE_CACHE,
                      normalizar_pseudocodigo(pseudocode),
                      (exercise_description or "").strip())
     cached = cache_get("feedback", key)
@@ -792,7 +806,7 @@ PSEUDOCÓDIGO DEL ESTUDIANTE:
 
 Califica la solución."""
 
-    key = _cache_key("grade", "v2", OPENCODE_MODEL_TUTOR,
+    key = _cache_key("grade", "v2", NAMESPACE_CACHE,
                      normalizar_pseudocodigo(pseudocode),
                      exercise_description.strip())
     cached = cache_get("grade", key)
