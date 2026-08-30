@@ -217,6 +217,10 @@ class TestResult(db.Model):
     total_questions = db.Column(db.Integer, nullable=False)
     correct_answers = db.Column(db.Integer, nullable=False)
     answers_json = db.Column(db.JSON)  # Respuestas detalladas
+    # Orden en que se le mostraron las opciones a ESTE estudiante. Sin esto no
+    # se puede reconstruir despues que vio cada uno, y el analisis por item
+    # (dificultad, discriminacion) quedaria sin base.
+    ordenes_json = db.Column(db.JSON)
     time_spent_seconds = db.Column(db.Integer)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 

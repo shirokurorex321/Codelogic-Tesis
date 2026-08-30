@@ -26,7 +26,11 @@
             <tbody>
                 {% for student in students %}
                 <tr>
-                    <td><strong>{{ student.name }}</strong></td>
+                    <td>
+                        <a href="{{ url_for('admin_estudiante', user_id=student.id) }}"
+                           style="color:var(--primary); text-decoration:none;"
+                           title="Ver lo que ha escrito"><strong>{{ student.name }}</strong></a>
+                    </td>
                     <td style="font-size:0.85rem; color:var(--text-light);">{{ student.email }}</td>
                     <td>
                         {% if student.group %}

@@ -1,6 +1,8 @@
 import os
 import re
 import logging
+import hashlib
+import random
 import secrets
 from zoneinfo import ZoneInfo
 import sys
@@ -1503,6 +1505,38 @@ def api_submit():
 
 # ─── INSTRUMENTOS DE INVESTIGACIÓN (pretest/postest + autoeficacia) ──
 
+# ─── Barajado de las opciones del test ─────────────────────────────
+#
+# Las 20 preguntas traian la respuesta correcta casi siempre en la misma
+# posicion: la B en 12 de 20 y la D en ninguna. Un estudiante que marcara B en
+# todo sacaba 60% sin saber nada, y ese ruido entraba directo en la ganancia
+# pretest→postest, que es la variable central del estudio.
+#
+# El orden se deriva del alumno, la evaluacion y la pregunta, asi que es
+# ESTABLE: si recarga la pagina ve lo mismo, y se puede recalcular al corregir
+# sin guardar nada por el medio. Aun asi se archiva en ordenes_json, porque el
+# analisis por item necesita saber que vio cada uno.
+def _orden_opciones(user_id, test_type, qid, n):
+    semilla = hashlib.sha256(("%s|%s|%s" % (user_id, test_type, qid)).encode()).digest()
+    rnd = random.Random(int.from_bytes(semilla[:8], "big"))
+    orden = list(range(n))
+    rnd.shuffle(orden)
+    return orden
+
+
+def _preguntas_barajadas(user_id, test_type):
+    """Devuelve (preguntas con las opciones barajadas, orden por pregunta).
+
+    orden[posicion_mostrada] = indice original de esa opcion.
+    """
+    preguntas, ordenes = [], {}
+    for q in TEST_QUESTIONS:
+        orden = _orden_opciones(user_id, test_type, q["id"], len(q["options"]))
+        ordenes[q["id"]] = orden
+        preguntas.append({**q, "options": [q["options"][i] for i in orden]})
+    return preguntas, ordenes
+
+
 VALID_TESTS = ("pretest", "postest")
 VALID_SCALES = ("pre", "post")
 
@@ -1517,10 +1551,11 @@ def take_test(test_type):
         user_id=current_user.id, test_type=test_type
     ).first()
     log_activity("open_test", {"test_type": test_type, "already_done": existing is not None})
+    preguntas, _ = _preguntas_barajadas(current_user.id, test_type)
     return render_template(
         "test.html",
         test_type=test_type,
-        questions=TEST_QUESTIONS,
+        questions=preguntas,
         existing=existing,
     )
 
@@ -1546,7 +1581,18 @@ def submit_test(test_type):
             "unanswered": unanswered,
         }), 400
 
-    correct = sum(1 for q in TEST_QUESTIONS if answers.get(q["id"]) == q["answer"])
+    # El alumno envia la POSICION que vio, no el indice original: hay que
+    # traducirla con su mismo barajado antes de comparar.
+    _, ordenes = _preguntas_barajadas(current_user.id, test_type)
+    correct = 0
+    for q in TEST_QUESTIONS:
+        orden = ordenes[q["id"]]
+        try:
+            elegida = orden[int(answers.get(q["id"]))]
+        except (TypeError, ValueError, IndexError):
+            continue
+        if elegida == q["answer"]:
+            correct += 1
     score = round(correct / total * 100, 1)
 
     result = TestResult(
@@ -1556,6 +1602,7 @@ def submit_test(test_type):
         total_questions=total,
         correct_answers=correct,
         answers_json=answers,
+        ordenes_json=ordenes,
         time_spent_seconds=time_spent,
     )
     db.session.add(result)
@@ -1926,6 +1973,49 @@ def delete_exercise(exercise_id):
 def admin_students():
     students = User.query.filter_by(role="estudiante").order_by(User.name).all()
     return render_template("admin/students.html", students=students)
+
+
+@app.route("/admin/estudiante/<int:user_id>")
+@login_required
+@role_required(*ROLES_DOCENCIA)
+def admin_estudiante(user_id):
+    """Lo que ha escrito un estudiante, ejercicio por ejercicio.
+
+    Hasta ahora el docente solo veia CUANTAS entregas tenia cada alumno. Si
+    uno decia "no me sale", no habia forma de mirar su pseudocodigo salvo
+    exportar un CSV, que ademas es de administracion. Esto es lo primero que
+    se necesita en clase.
+    """
+    alumno = User.query.get_or_404(user_id)
+    if alumno.role != "estudiante":
+        flash("Esa cuenta no es de un estudiante.", "error")
+        return redirect(url_for("admin_students"))
+
+    entregas = (Submission.query
+                .filter_by(user_id=user_id)
+                .order_by(Submission.created_at.desc())
+                .all())
+    titulos = {e.id: e.title for e in Exercise.query.all()}
+
+    # Progreso por tema, para ver de un vistazo por donde va
+    por_tema = []
+    for t in Topic.query.order_by(Topic.order).all():
+        ids = {e.id for e in Exercise.query.filter_by(topic_id=t.id, is_active=True).all()}
+        if not ids:
+            continue
+        hechos = {s.exercise_id for s in entregas if s.exercise_id in ids}
+        por_tema.append({"nombre": t.name, "semestre": t.semestre,
+                         "hechos": len(hechos), "total": len(ids)})
+
+    calificadas = [s.score for s in entregas if s.score is not None]
+    resumen = {
+        "entregas": len(entregas),
+        "ejercicios": len({s.exercise_id for s in entregas if s.exercise_id}),
+        "promedio": round(sum(calificadas) / len(calificadas), 1) if calificadas else None,
+    }
+    return render_template("admin/estudiante.html", alumno=alumno,
+                           entregas=entregas, titulos=titulos,
+                           por_tema=por_tema, resumen=resumen)
 
 
 @app.route("/admin/students/<int:user_id>/group", methods=["POST"])
