@@ -92,9 +92,20 @@ def salida_facturable(usage: dict) -> int:
     if not usage:
         return 0
     return max(int(usage.get("total_tokens") or 0) - int(usage.get("prompt_tokens") or 0), 0)
+# Medido caso por caso, no supuesto. Convertir, calificar y diagramar son
+# transformaciones con respuesta verificable: LOW acierta igual que HIGH
+# (12 casos de error sutil al calificar, 6 conversiones ejecutadas de verdad,
+# 5 diagramas comprobados nodo a nodo) y cuesta entre 8 y 23 veces menos.
+#
+# Retroalimentar es lo contrario y se queda en HIGH a proposito: con 8 casos
+# y un juez a ciegas, HIGH gana 6-2 tanto contra LOW como contra MEDIUM.
+# Detecta el mismo error, pero lo explica mejor, y esa explicacion es justo
+# lo que el estudiante viene a buscar. Cuesta 16 COP por llamada frente a 5;
+# se paga a sabiendas. El 30/08/2026 se probo bajarla y se descarto.
 THINKING_POR_OPERACION = {
     "convert": "LOW",
     "grade": "LOW",
+    "diagram": "LOW",
     "explain": THINKING_LEVEL,
     "feedback": THINKING_LEVEL,
 }
