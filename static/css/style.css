@@ -124,6 +124,26 @@ a:hover { color: var(--primary); }
     background: rgba(255,255,255,0.1);
 }
 
+/* Boton de menu del movil. Oculto en escritorio; la media query de 768px
+   lo enciende y convierte .nav-links en un panel desplegable. */
+.nav-toggle {
+    display: none;
+    width: 40px; height: 38px;
+    flex-direction: column; justify-content: center; align-items: center;
+    gap: 5px; padding: 0;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 9px; cursor: pointer;
+}
+.nav-toggle span {
+    display: block; width: 18px; height: 2px;
+    background: #fff; border-radius: 2px;
+    transition: transform .2s ease, opacity .2s ease;
+}
+.nav-toggle.abierto span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.nav-toggle.abierto span:nth-child(2) { opacity: 0; }
+.nav-toggle.abierto span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
 .nav-user {
     display: flex;
     align-items: center;
@@ -1387,7 +1407,9 @@ tr:hover td { background: #f9fafb; }
 .gap-1 { gap: 0.5rem; }
 .flex { display: flex; }
 .flex-between { display: flex; justify-content: space-between; align-items: center; }
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+/* auto-fit, por lo mismo que .grid-3: con dos columnas fijas las tarjetas
+   se salian de la pantalla en el movil (461px de contenido en 390 de ancho). */
+.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 1rem; }
 /* auto-fit en vez de tres columnas fijas: en el movil se apilan solas,
    y muchos estudiantes entran desde el telefono. */
 .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 1rem; }
@@ -1401,7 +1423,39 @@ tr:hover td { background: #f9fafb; }
 
     .editor-panel { min-height: 350px; }
 
-    .nav-links { display: none; }
+    /* ── Barra de navegacion en el movil ──────────────────────────
+       Antes: .nav-links { display: none } y nada mas. Los cuatro enlaces
+       quedaban inalcanzables y el bloque del usuario empujaba la pagina
+       hasta 435px en una ventana de 390. */
+    .navbar { padding: 0 .9rem; }
+    .nav-container { gap: .5rem; min-width: 0; }
+    .nav-toggle { display: flex; order: 3; flex: 0 0 auto; }
+
+    .nav-links {
+        display: none;
+        position: absolute; top: 60px; left: 0; right: 0;
+        flex-direction: column; align-items: stretch;
+        gap: .15rem; padding: .6rem .9rem 1rem;
+        background: var(--bg-dark);
+        border-top: 1px solid rgba(255,255,255,.08);
+        box-shadow: 0 12px 26px rgba(0,0,0,.5);
+        max-height: calc(100vh - 60px); overflow-y: auto;
+    }
+    .nav-links.abierto { display: flex; }
+    .nav-links .nav-link { padding: .8rem .9rem; font-size: .95rem; }
+
+    .nav-user { order: 2; margin-left: auto; gap: .4rem; min-width: 0; }
+    .nav-user .user-role { display: none; }
+    .user-name { max-width: 6rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .logo-text small { display: none; }
+    .nav-logo { font-size: 1rem; }
+
+    /* Las pestanas del editor se salian: Escritorio e IA quedaban cortadas. */
+    .panel-header .tabs {
+        overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+    }
+    .panel-header .tabs::-webkit-scrollbar { display: none; }
+    .panel-header .tab { flex: 0 0 auto; white-space: nowrap; }
 
     .stats-grid { grid-template-columns: repeat(2, 1fr); }
 

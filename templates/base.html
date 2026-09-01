@@ -26,8 +26,16 @@
                 <span class="logo-text">CodeLogic <small>IUP</small></span>
             </a>
 
+            {# Boton de menu. En el movil los enlaces estaban ocultos con
+               display:none y sin nada que los sustituyera: el alumno no podia
+               llegar a Aprender, Ejercicios ni al Editor desde el telefono. #}
+            <button type="button" class="nav-toggle" id="nav-toggle"
+                    aria-label="Abrir menú" aria-expanded="false" aria-controls="nav-links">
+                <span></span><span></span><span></span>
+            </button>
+
             {% if current_user.is_authenticated %}
-            <div class="nav-links">
+            <div class="nav-links" id="nav-links">
                 {% if current_user.role == 'estudiante' %}
                 <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">Inicio</a>
                 <a href="{{ url_for('aprender') }}" class="nav-link {% if request.endpoint in ('aprender', 'aprender_tema') %}active{% endif %}">Aprender</a>
@@ -53,7 +61,7 @@
                 <a href="{{ url_for('logout') }}" class="nav-link logout-link">Salir</a>
             </div>
             {% else %}
-            <div class="nav-links">
+            <div class="nav-links" id="nav-links">
                 <a href="{{ url_for('login') }}" class="nav-link">Iniciar Sesión</a>
                 <a href="{{ url_for('register') }}" class="btn btn-primary btn-sm">Registrarse</a>
             </div>
@@ -87,6 +95,37 @@
     </footer>
 
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script>
+    /* Menu desplegable del movil. Se cierra al pulsar fuera, con Escape y al
+       volver a pantalla ancha, para que no quede colgado. */
+    (function () {
+        var boton = document.getElementById('nav-toggle');
+        var menu  = document.getElementById('nav-links');
+        if (!boton || !menu) { return; }
+        function cerrar() {
+            menu.classList.remove('abierto');
+            boton.classList.remove('abierto');
+            boton.setAttribute('aria-expanded', 'false');
+            boton.setAttribute('aria-label', 'Abrir menú');
+        }
+        boton.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var abierto = menu.classList.toggle('abierto');
+            boton.classList.toggle('abierto', abierto);
+            boton.setAttribute('aria-expanded', abierto ? 'true' : 'false');
+            boton.setAttribute('aria-label', abierto ? 'Cerrar menú' : 'Abrir menú');
+        });
+        document.addEventListener('click', function (e) {
+            if (!menu.contains(e.target) && e.target !== boton) { cerrar(); }
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') { cerrar(); }
+        });
+        window.addEventListener('resize', function () {
+            if (window.innerWidth > 768) { cerrar(); }
+        });
+    })();
+    </script>
     {% block scripts %}{% endblock %}
 </body>
 </html>
