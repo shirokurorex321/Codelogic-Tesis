@@ -581,6 +581,7 @@ FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %
                 body: JSON.stringify({
                     code: usable ? code : '',
                     pseudocode: pseudocode,
+                    exercise_id: exerciseId,
                     stdin: document.getElementById('stdin-escritorio').value || ''
                 })
             });

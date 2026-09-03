@@ -41,6 +41,7 @@ from questions import (
     COGNITIVE_LOAD_ITEMS, COGNITIVE_LOAD_LABELS,
 )
 import executor
+import a_pseudo
 import traza
 
 # Versión del texto de consentimiento informado. Súbela si cambias el texto:
@@ -1284,6 +1285,25 @@ def api_trace():
         code = conv["code"]
 
     result = traza.trazar(code, stdin)
+
+    # En primer semestre la tabla se muestra en pseudocodigo, no en Python.
+    # La asignatura de primero es aprender QUE es un pseudocodigo y como se
+    # escribe; ensenarle `n = int(input())` a quien nunca ha visto Python le
+    # anade una barrera que no le toca todavia. En tercero, donde el objetivo
+    # SI es pasar de pseudocodigo a codigo funcional, la tabla se deja en
+    # Python a proposito: ahi ver el codigo real es parte de lo que se aprende.
+    if result.get("success") and pseudocode:
+        ejercicio_id = data.get("exercise_id")
+        primero = True
+        if ejercicio_id:
+            ej = Exercise.query.get(ejercicio_id)
+            tema = Topic.query.get(ej.topic_id) if ej else None
+            primero = bool(tema and tema.semestre == 1)
+        if primero:
+            pasos, casados = a_pseudo.traducir_pasos(result.get("pasos") or [], pseudocode)
+            result["pasos"] = pasos
+            result["en_pseudocodigo"] = True
+            result["lineas_propias"] = casados
 
     log_activity("trace", {
         "code_length": len(code),
