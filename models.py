@@ -129,7 +129,13 @@ class Exercise(db.Model):
     #                semestre tiene que aprender a LEER pseudocodigo, no solo a
     #                escribirlo, y hasta ahora no habia forma de practicarlo.
     # Se corrige comparando la salida, sin gastar una sola llamada de IA.
-    tipo = db.Column(db.String(12), default="escribir", nullable=False)           # lo que imprime de verdad
+    tipo = db.Column(db.String(12), default="escribir", nullable=False)
+    # Diagrama de flujo en sintaxis Mermaid, para los ejercicios de tipo
+    # "diagrama": se le enseña el diagrama y el escribe el pseudocodigo que le
+    # corresponde. El plan de asignatura habla de "tecnicas de representacion"
+    # en plural, pero hasta ahora solo se iba en un sentido: del pseudocodigo
+    # al diagrama, nunca al reves.
+    diagrama = db.Column(db.Text)           # lo que imprime de verdad
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 

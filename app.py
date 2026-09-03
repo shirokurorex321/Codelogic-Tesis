@@ -1109,6 +1109,93 @@ def api_leer(exercise_id):
                     "intento": intentos + 1})
 
 
+@app.route("/diagrama/<int:exercise_id>")
+@login_required
+def ejercicio_diagrama(exercise_id):
+    """Del diagrama al pseudocodigo: se le enseña el diagrama y lo escribe.
+
+    El plan de asignatura habla de "tecnicas de representacion" en plural,
+    pero la plataforma solo iba en un sentido: del pseudocodigo al diagrama.
+    Traducir en la direccion contraria obliga a leer el diagrama de verdad,
+    no solo a mirarlo.
+    """
+    exercise = Exercise.query.get_or_404(exercise_id)
+    if exercise.tipo != "diagrama":
+        return redirect(url_for("ejercicio_teoria", exercise_id=exercise_id))
+    log_activity("abrir_diagrama", {"exercise_id": exercise_id})
+    hecho = (Submission.query
+             .filter_by(user_id=current_user.id, exercise_id=exercise_id)
+             .order_by(Submission.created_at.desc()).first())
+    return render_template("ejercicio_diagrama.html", exercise=exercise, hecho=hecho)
+
+
+@app.route("/api/diagrama/<int:exercise_id>", methods=["POST"])
+@limiter.limit(lambda: app.config["RATELIMIT_EXEC"])
+@login_required
+def api_diagrama(exercise_id):
+    """Comprueba que el pseudocodigo del estudiante SE COMPORTE como el diagrama.
+
+    No se compara texto contra texto: hay muchas formas validas de escribir el
+    mismo algoritmo y castigar la que no coincide con la del docente seria
+    injusto. Se ejecuta lo que escribio y se compara su salida con la que
+    produce el algoritmo del diagrama.
+    """
+    exercise = Exercise.query.get_or_404(exercise_id)
+    if exercise.tipo != "diagrama":
+        return jsonify({"success": False, "error": "Ese ejercicio no es de diagrama."}), 400
+
+    datos = request.get_json(silent=True) or {}
+    pseudocode = (datos.get("pseudocode") or "").strip()
+    ok, motivo = validar_pseudocodigo(pseudocode)
+    if not ok:
+        return jsonify({"success": False, "error": motivo, "no_es_pseudocodigo": True}), 400
+
+    conv = convert_pseudocode(pseudocode, "python")
+    log_activity("convert", {"language": "python", "pseudocode_length": len(pseudocode),
+                             "success": conv.get("success"), "via": "diagrama",
+                             "cached": conv.get("cached", False), "usage": conv.get("usage", {})})
+    if not conv.get("success"):
+        return jsonify({"success": False, "error": conv.get("error", "No se pudo comprobar.")}), 502
+
+    ejec = executor.run("python", conv["code"], _stdin_de(exercise.ejemplo_entrada))
+    obtenida = (ejec.get("stdout") or "").strip()
+    esperada = (exercise.ejemplo_salida or "").strip()
+
+    if ejec.get("exit_code") not in (0, None):
+        resultado, nota = "error", 0.0
+    elif _normalizar_salida(obtenida) == _normalizar_salida(esperada):
+        resultado, nota = "correcto", 100.0
+    elif _numeros(obtenida) == _numeros(esperada) and _numeros(esperada):
+        resultado, nota = "casi", 70.0
+    else:
+        resultado, nota = "incorrecto", 0.0
+
+    intentos = Submission.query.filter_by(
+        user_id=current_user.id, exercise_id=exercise_id).count()
+    db.session.add(Submission(
+        user_id=current_user.id, exercise_id=exercise_id, pseudocode=pseudocode,
+        converted_python=conv["code"], score=nota, attempt_number=intentos + 1,
+        time_spent_seconds=int(datos.get("segundos") or 0)))
+    db.session.commit()
+    log_activity("diagrama_respuesta", {"exercise_id": exercise_id, "resultado": resultado})
+
+    mensajes = {
+        "correcto": "Tu algoritmo hace exactamente lo mismo que el diagrama. "
+                    "Da igual que lo hayas escrito con otras palabras: lo importante "
+                    "es que se comporta igual.",
+        "casi": "Los números salen bien, así que la lógica la seguiste. Revisa los "
+                "textos que imprimes: no coinciden del todo con los del diagrama.",
+        "incorrecto": "Todavía no hace lo mismo que el diagrama. Vuelve a recorrerlo "
+                      "rombo por rombo y comprueba que tu algoritmo tome los mismos "
+                      "caminos.",
+        "error": "Tu algoritmo no llegó a ejecutarse. Revisa que esté completo: "
+                 "que cada Si tenga su FinSi y cada ciclo su cierre.",
+    }
+    return jsonify({"success": True, "resultado": resultado, "mensaje": mensajes[resultado],
+                    "tu_salida": obtenida or None,
+                    "salida_esperada": esperada if resultado != "incorrecto" else None})
+
+
 @app.route("/ejercicio/<int:exercise_id>")
 @login_required
 def ejercicio_teoria(exercise_id):
@@ -1122,6 +1209,8 @@ def ejercicio_teoria(exercise_id):
     exercise = Exercise.query.get_or_404(exercise_id)
     if exercise.tipo == "leer":
         return redirect(url_for("ejercicio_leer", exercise_id=exercise_id))
+    if exercise.tipo == "diagrama":
+        return redirect(url_for("ejercicio_diagrama", exercise_id=exercise_id))
     log_activity("abrir_teoria", {"exercise_id": exercise_id})
     return render_template("ejercicio_teoria.html", exercise=exercise,
                            ya_predijo=_ya_predijo(exercise_id))
@@ -2683,6 +2772,19 @@ with app.app_context():
 #
 # No puntúa. Es formativo, y lo que importa para la investigación es la
 # tasa de acierto, que queda registrada en cada intento.
+
+def _stdin_de(entrada):
+    """Convierte la entrada en lenguaje llano en algo que tragarse por stdin.
+
+    ejemplo_entrada se escribe para que lo lea una persona ("base 5 y altura
+    3"), asi que para ejecutar hay que quedarse con los valores en su orden.
+    """
+    import re as _r
+    if not entrada or "no pide datos" in entrada.lower():
+        return ""
+    vals = _r.findall(r"-?\d+(?:[.,]\d+)?", entrada)
+    return "\n".join(v.replace(",", ".") for v in vals) + ("\n" if vals else "")
+
 
 def _normalizar_salida(texto):
     """Deja la salida comparable sin ser permisivo de más.

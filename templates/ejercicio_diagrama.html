@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}{{ exercise.title }} — CodeLogic IUP{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('topic_exercises', topic_id=exercise.topic_id) }}" class="btn btn-outline btn-sm mb-3">← Volver</a>
+
+<div class="card mb-3">
+    <span class="diff-badge diff-{{ exercise.difficulty }}">{{ exercise.difficulty }}</span>
+    <h1 style="margin:0.5rem 0 1rem;">{{ exercise.title }}</h1>
+
+    <div style="border-left:3px solid var(--primary); padding-left:1rem; margin-bottom:1.2rem;">
+        <p style="font-weight:600; color:var(--primary); margin-bottom:0.4rem;">🔀 Este ejercicio va del diagrama al pseudocódigo</p>
+        <p>{{ exercise.description }}</p>
+    </div>
+
+    {% if exercise.concepto %}
+    <p style="font-weight:600; color:var(--primary); margin-bottom:0.4rem;">🎯 Qué vas a practicar</p>
+    <p style="margin-bottom:1.2rem;">{{ exercise.concepto }}</p>
+    {% endif %}
+
+    <p style="font-weight:600; color:var(--primary); margin-bottom:0.4rem;">📊 El diagrama</p>
+    <div id="diagrama" style="background:var(--bg-code,#0d1117); padding:1rem; border-radius:6px; overflow-x:auto; text-align:center;">
+        <p style="color:var(--text-light);">Dibujando el diagrama…</p>
+    </div>
+    <pre id="fuente-diagrama" hidden>{{ exercise.diagrama }}</pre>
+
+    {% set entrada = exercise.ejemplo_entrada or '' %}
+    {% if entrada and 'no pide datos' not in entrada %}
+    <p style="margin-top:1rem; font-size:0.9rem;">
+        <strong>Para comprobarlo se usará:</strong> <code class="md-inline">{{ entrada }}</code>
+    </p>
+    {% endif %}
+</div>
+
+<div class="card mb-3">
+    <p style="font-weight:600; color:var(--primary); margin-bottom:0.5rem;">✍️ Escribe el pseudocódigo que le corresponde</p>
+    <p style="font-size:0.85rem; color:var(--text-light); margin-bottom:0.6rem;">
+        No tiene que quedar palabra por palabra como el mío: <strong>lo que se comprueba
+        es que tu algoritmo haga lo mismo</strong> que el del diagrama.
+    </p>
+    <textarea id="pseudo" class="form-textarea" rows="12"
+              placeholder="Algoritmo MiAlgoritmo&#10;    ...&#10;FinAlgoritmo"
+              style="font-family:'JetBrains Mono',monospace; font-size:0.88rem;"></textarea>
+    <button id="btn-comprobar" class="btn btn-primary mt-2" onclick="comprobar()">Comprobar</button>
+    <div id="veredicto" style="margin-top:1rem;"></div>
+</div>
+
+<script src="{{ url_for('static', filename='js/mermaid.min.js') }}"></script>
+<script>
+const EJ = {{ exercise.id }};
+const CSRF = document.querySelector('meta[name="csrf-token"]').content;
+const inicio = Date.now();
+
+mermaid.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'strict' });
+(async function pintar() {
+    const fuente = document.getElementById('fuente-diagrama').textContent.trim();
+    const caja = document.getElementById('diagrama');
+    if (!fuente) { caja.innerHTML = '<p style="color:var(--error);">Este ejercicio no tiene diagrama cargado.</p>'; return; }
+    try {
+        const { svg } = await mermaid.render('svg-ej-' + EJ, fuente);
+        caja.innerHTML = svg;
+    } catch (e) {
+        caja.innerHTML = '<p style="color:var(--error);">No se pudo dibujar el diagrama.</p>';
+    }
+})();
+
+async function comprobar() {
+    const txt = document.getElementById('pseudo').value.trim();
+    const v = document.getElementById('veredicto');
+    if (!txt) { v.innerHTML = '<span style="color:var(--error);">Escribe primero tu algoritmo.</span>'; return; }
+    const btn = document.getElementById('btn-comprobar');
+    btn.disabled = true;
+    v.innerHTML = '<span style="color:var(--text-light);">Ejecutando tu algoritmo…</span>';
+    try {
+        const r = await fetch('/api/diagrama/' + EJ, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+            body: JSON.stringify({ pseudocode: txt, segundos: Math.round((Date.now() - inicio) / 1000) })
+        });
+        const d = await r.json();
+        const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+        if (!d.success) {
+            v.innerHTML = '<div style="color:var(--error); white-space:pre-wrap;">' + esc(d.error || 'Error') + '</div>';
+        } else {
+            const color = d.resultado === 'correcto' ? 'var(--success,#16a34a)'
+                        : d.resultado === 'casi' ? 'var(--warning,#d97706)' : 'var(--error)';
+            const icono = { correcto: '✅', casi: '🟡', incorrecto: '❌', error: '⚠️' }[d.resultado] || '';
+            let h = '<p style="color:' + color + '; font-weight:600;">' + icono + ' ' + esc(d.mensaje) + '</p>';
+            if (d.tu_salida) h += '<p style="font-size:0.85rem; margin-top:0.6rem;">Lo que imprime <strong>tu</strong> algoritmo:</p>'
+                               + '<pre style="background:var(--bg-code,#0d1117); padding:0.7rem; border-radius:6px;"><code>' + esc(d.tu_salida) + '</code></pre>';
+            if (d.salida_esperada) h += '<p style="font-size:0.85rem; margin-top:0.4rem;">Lo que imprime el del diagrama:</p>'
+                                      + '<pre style="background:var(--bg-code,#0d1117); padding:0.7rem; border-radius:6px;"><code>' + esc(d.salida_esperada) + '</code></pre>';
+            v.innerHTML = h;
+        }
+    } catch (e) {
+        v.innerHTML = '<span style="color:var(--error);">Error de conexión.</span>';
+    }
+    btn.disabled = false;
+}
+</script>
+{% endblock %}
