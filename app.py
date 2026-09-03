@@ -1067,7 +1067,16 @@ def editor_exercise(exercise_id):
         .first()
     )
 
+    # En primer semestre la asignatura es aprender QUE es un pseudocodigo y
+    # como se escribe; la traduccion a Python, C++ o PHP es materia de tercero.
+    # Teniendolas delante, el estudiante convierte y ejecuta en vez de pensar,
+    # que es justo el trabajo que se le pide. Se ocultan, no se quitan: quien
+    # quiera asomarse las despliega con un boton.
+    tema = Topic.query.get(exercise.topic_id) if exercise else None
+    primer_semestre = bool(tema and tema.semestre == 1)
+
     return render_template("editor.html", exercise=exercise, last_submission=last_submission,
+                           primer_semestre=primer_semestre,
                            cc_items=COGNITIVE_LOAD_ITEMS)
 
 

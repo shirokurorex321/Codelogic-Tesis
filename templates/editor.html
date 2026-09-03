@@ -81,25 +81,56 @@
 FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %}</textarea>
         </div>
         <div class="editor-toolbar">
-            <button class="btn btn-primary" onclick="convertCode()" id="btn-convert">🔄 Convertir</button>
+            <button class="btn btn-primary" onclick="convertCode()" id="btn-convert"{% if primer_semestre %} hidden{% endif %}>🔄 Convertir</button>
             <button class="btn btn-accent" onclick="getFeedback()" id="btn-feedback">🤖 Retroalimentación IA</button>
+            {% if not primer_semestre %}
             <button class="btn btn-outline" onclick="convertAll()" id="btn-convert-all">📋 Convertir a todos</button>
+            {% endif %}
             {% if exercise %}
             <button class="btn btn-primary" onclick="submitSolution()" id="btn-submit" style="margin-left:auto;">✅ Enviar solución</button>
             {% endif %}
         </div>
+        {% if primer_semestre %}
+        {# La puerta hacia tercer semestre: quien tenga curiosidad se asoma,
+           pero no le estorba mientras aprende a escribir el algoritmo. #}
+        <div style="margin-top:0.6rem;">
+            <button type="button" id="btn-ver-codigo" class="btn btn-outline btn-sm"
+                    onclick="mostrarCodigo()">
+                🔎 ¿Quieres ver en qué se convierte tu algoritmo?
+            </button>
+            <p id="nota-codigo" hidden
+               style="font-size:0.78rem; color:var(--text-light); margin-top:0.4rem;">
+                Esto ya es materia de tercer semestre. Míralo si te pica la curiosidad,
+                pero <strong>lo que se te evalúa es el pseudocódigo</strong>: que el algoritmo
+                esté bien pensado y bien escrito.
+            </p>
+        </div>
+        {% endif %}
     </div>
 
     <!-- DERECHA: salida con tabs por lenguaje -->
     <div class="editor-panel">
         <div class="panel-header">
             <div class="tabs">
+            {% if primer_semestre %}
+                {# Primer semestre: primero lo que enseña a leer y escribir
+                   pseudocodigo. Los lenguajes quedan detras del boton de abajo. #}
+                <button class="tab active" data-tab="escritorio" onclick="switchTab('escritorio')">📋 Prueba de escritorio</button>
+                <button class="tab" data-tab="diagrama" onclick="switchTab('diagrama')">Diagrama de flujo</button>
+                <button class="tab" data-tab="feedback" onclick="switchTab('feedback')">Revisión</button>
+                <span id="tabs-codigo" hidden>
+                    <button class="tab" data-tab="python" onclick="switchTab('python')">Python</button>
+                    <button class="tab" data-tab="cpp" onclick="switchTab('cpp')">C++</button>
+                    <button class="tab" data-tab="php" onclick="switchTab('php')">PHP</button>
+                </span>
+            {% else %}
                 <button class="tab active" data-tab="python" onclick="switchTab('python')">Python</button>
                 <button class="tab" data-tab="cpp" onclick="switchTab('cpp')">C++</button>
                 <button class="tab" data-tab="php" onclick="switchTab('php')">PHP</button>
                 <button class="tab" data-tab="diagrama" onclick="switchTab('diagrama')">Diagrama</button>
                 <button class="tab" data-tab="escritorio" onclick="switchTab('escritorio')">Escritorio</button>
                 <button class="tab" data-tab="feedback" onclick="switchTab('feedback')">IA</button>
+            {% endif %}
             </div>
         </div>
         <div class="panel-body">
@@ -250,7 +281,32 @@ FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %
 {% endblock %}
 
 {% block scripts %}
+</div>
+
 <script>
+{% if primer_semestre %}
+/* La pestaña activa era "Prueba de escritorio" pero el panel seguia
+   mostrando el de Python: los paneles de lenguaje son los visibles por
+   defecto. Se usa el propio switchTab al cargar en vez de tocar estilos a
+   mano, para no tener dos formas distintas de decir lo mismo. */
+document.addEventListener('DOMContentLoaded', function () {
+    if (typeof switchTab === 'function') switchTab('escritorio');
+});
+{% endif %}
+
+function mostrarCodigo() {
+    const tabs = document.getElementById('tabs-codigo');
+    if (tabs) tabs.hidden = false;
+    const conv = document.getElementById('btn-convert');
+    if (conv) conv.hidden = false;
+    const nota = document.getElementById('nota-codigo');
+    if (nota) nota.hidden = false;
+    const btn = document.getElementById('btn-ver-codigo');
+    if (btn) btn.remove();
+    switchTab('python');
+    if (typeof convertCode === 'function') convertCode();
+}
+
     const exerciseId = {{ exercise.id if exercise else 'null' }};
     const startTime = Date.now();
     let convertedCode = { python: '', cpp: '', php: '' };
