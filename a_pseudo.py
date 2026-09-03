@@ -107,6 +107,19 @@ def _clave(txt: str) -> str:
     return re.sub(r"\s*([<>=+\-*/,])\s*", r"\1", t)
 
 
+# Lineas que el conversor añade por su cuenta y que NO estan en el algoritmo
+# del estudiante: envolver todo en una funcion y llamarla es idiomatico en
+# Python, pero en la tabla de primer semestre son ruido puro. El alumno no
+# escribio ningun "def", asi que no tiene por que verlo.
+_ANDAMIAJE = re.compile(
+    r"^\s*(?:def\s+\w+\s*\(.*\)\s*:"          # def main():
+    r"|if\s+__name__\s*==.*:"                     # if __name__ == "__main__":
+    r"|return\b.*"                                 # return
+    r"|\w+\s*\(\s*\)\s*$"                        # main()
+    r"|import\b.*|from\s+\w+\s+import\b.*)\s*$"
+)
+
+
 def traducir_pasos(pasos, pseudocodigo: str):
     """Reescribe cada paso de la traza con la linea del propio estudiante.
 
@@ -119,12 +132,16 @@ def traducir_pasos(pasos, pseudocodigo: str):
 
     fuera, casados = [], 0
     for p in pasos or []:
-        traducida = a_pseudo(p.get("instruccion", ""))
+        bruta = p.get("instruccion", "")
+        if _ANDAMIAJE.match(bruta):
+            continue
+        traducida = a_pseudo(bruta)
         suya = indice.get(_clave(traducida))
         if suya:
             casados += 1
         nuevo = dict(p)
         nuevo["instruccion"] = suya or traducida
         nuevo["textual"] = bool(suya)      # True = es la linea que el escribio
+        nuevo["paso"] = len(fuera) + 1     # sin huecos tras quitar el andamiaje
         fuera.append(nuevo)
     return fuera, casados
