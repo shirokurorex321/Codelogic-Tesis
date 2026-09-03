@@ -140,6 +140,12 @@ REGLAS IMPORTANTES:
    - "Dimension arreglo[N]" = declarar arreglo
    - "FinAlgoritmo" o "FinProceso" = fin del programa
 
+7. FIDELIDAD: traduce lo que el pseudocódigo dice, NI UNA LÍNEA MÁS. En concreto:
+   - NO añadas try/except, comprobaciones ni validaciones que el pseudocódigo no tenga. Si el algoritmo divide entre cero, se sale de un vector o falla por lo que sea, el programa DEBE fallar ahí. El estudiante tiene que ver lo que hace su algoritmo de verdad: si se lo arreglas por su cuenta, nunca aprende que estaba mal.
+   - NO inventes mensajes. Si el pseudocódigo hace "Leer edad" sin un Escribir delante, el código lee SIN pedir nada por pantalla: nada de input("Ingrese la edad: "). Y si sí hay un Escribir antes, respétalo tal cual está escrito, con sus mismas palabras, como una línea aparte.
+   - El programa debe imprimir EXACTAMENTE lo que imprime el pseudocódigo, ni más ni menos. El estudiante predice esa salida antes de ejecutar y se le corrige comparándola: cualquier línea de más se la da por fallada.
+   - NO añadas funciones, clases ni envoltorios que el pseudocódigo no pida. Si es una secuencia de instrucciones, el código es una secuencia de instrucciones.
+
 Responde ÚNICAMENTE con el código convertido, sin explicaciones fuera de los comentarios del propio código."""
 
 DIAGRAM_SYSTEM_PROMPT = """Eres un experto en diagramas de flujo que trabaja con estudiantes principiantes.
@@ -663,7 +669,7 @@ Genera ÚNICAMENTE el código en {lang_name}, sin markdown, sin explicaciones, s
 
     # v3 = prompt que interpreta el pseudocódigo informal en vez de auditarlo
     # (2026-08-19). Bumpear si vuelves a tocar CONVERSION_SYSTEM_PROMPT.
-    key = _cache_key("convert", "v3", NAMESPACE_CACHE, target_language,
+    key = _cache_key("convert", "v4", NAMESPACE_CACHE, target_language,
                      normalizar_pseudocodigo(pseudocode))
     cached = cache_get("convert", key)
     if cached:

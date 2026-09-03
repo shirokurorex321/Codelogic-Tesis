@@ -56,6 +56,34 @@ def log(msg):
     print(msg, flush=True)
 
 
+def _anotar_gasto(r):
+    """Deja el coste del precalentado en el libro, como cualquier otra llamada.
+
+    Corre fuera de una peticion, asi que no puede pasar por log_activity: se
+    escribe directo con user_id nulo, porque el gasto no es de ningun alumno
+    sino de la plataforma. Sin esto, precalentar 180 conversiones -unos 340
+    pesos- no aparecia por ningun lado y el panel decia que no se habia
+    gastado nada.
+    """
+    if not r.get("success") or r.get("cached"):
+        return
+    u = r.get("usage") or {}
+    if not u.get("total_tokens"):
+        return
+    try:
+        from models import GastoIA
+        db.session.add(GastoIA(
+            user_id=None, operacion="convert",
+            proveedor=u.get("provider"), modelo=u.get("model"),
+            tokens_entrada=int(u.get("prompt_tokens") or 0),
+            tokens_salida=g.salida_facturable(u),
+            coste_usd=round(g.coste_usd(u), 8),
+            desde_cache=False))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+
 def es_limite(err):
     e = str(err).lower()
     return any(t in e for t in ("freeusagelimit", "rate limit", "429", "quota",
@@ -99,6 +127,7 @@ with app.app_context():
                 r = {"success": False, "error": "%s: %s" % (type(exc).__name__, exc)}
 
             if r.get("success") or not es_limite(r.get("error")):
+                _anotar_gasto(r)
                 break
             # Cupo agotado: se prueba el siguiente modelo, que tiene el suyo.
             if g._gemini_client and idx + 1 < len(MODELOS_GEMINI):
