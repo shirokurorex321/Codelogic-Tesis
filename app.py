@@ -1036,6 +1036,79 @@ def registrar_ayuda():
     return jsonify({"success": True})
 
 
+@app.route("/leer/<int:exercise_id>")
+@login_required
+def ejercicio_leer(exercise_id):
+    """Ejercicio de LECTURA: se le da el algoritmo y dice que imprime.
+
+    Primer semestre tiene que aprender a leer pseudocodigo, no solo a
+    escribirlo: seguir un algoritmo ajeno linea por linea es lo que enseña
+    que un programa es una secuencia de pasos con estado. Hasta ahora todos
+    los ejercicios pedian escribir.
+
+    No gasta IA: se corrige comparando la salida con la misma normalizacion
+    que ya usa la caja de prediccion.
+    """
+    exercise = Exercise.query.get_or_404(exercise_id)
+    if exercise.tipo != "leer":
+        return redirect(url_for("ejercicio_teoria", exercise_id=exercise_id))
+    log_activity("abrir_lectura", {"exercise_id": exercise_id})
+    hecho = (Submission.query
+             .filter_by(user_id=current_user.id, exercise_id=exercise_id)
+             .order_by(Submission.created_at.desc()).first())
+    return render_template("ejercicio_leer.html", exercise=exercise, hecho=hecho)
+
+
+@app.route("/api/leer/<int:exercise_id>", methods=["POST"])
+@login_required
+def api_leer(exercise_id):
+    """Corrige lo que el estudiante cree que imprime el algoritmo."""
+    exercise = Exercise.query.get_or_404(exercise_id)
+    if exercise.tipo != "leer":
+        return jsonify({"success": False, "error": "Ese ejercicio no es de lectura."}), 400
+
+    datos = request.get_json(silent=True) or {}
+    respuesta = (datos.get("respuesta") or "").strip()
+    if not respuesta:
+        return jsonify({"success": False, "error": "Escribe lo que crees que imprime."}), 400
+    if len(respuesta) > 2000:
+        return jsonify({"success": False, "error": "La respuesta es demasiado larga."}), 400
+
+    esperada = exercise.ejemplo_salida or ""
+    if _normalizar_salida(respuesta) == _normalizar_salida(esperada):
+        resultado, nota = "correcto", 100.0
+    elif _numeros(respuesta) == _numeros(esperada) and _numeros(esperada):
+        # Los numeros cuadran pero el texto no: siguio bien el algoritmo.
+        resultado, nota = "casi", 70.0
+    else:
+        resultado, nota = "incorrecto", 0.0
+
+    intentos = Submission.query.filter_by(
+        user_id=current_user.id, exercise_id=exercise_id).count()
+    db.session.add(Submission(
+        user_id=current_user.id, exercise_id=exercise_id,
+        pseudocode=exercise.expected_pseudocode or "(ejercicio de lectura)",
+        ai_feedback="Respondio: %s" % respuesta[:500],
+        score=nota, attempt_number=intentos + 1,
+        time_spent_seconds=int(datos.get("segundos") or 0)))
+    db.session.commit()
+
+    log_activity("leer_respuesta", {"exercise_id": exercise_id,
+                                    "resultado": resultado, "intento": intentos + 1})
+    mensajes = {
+        "correcto": "Exacto. Seguiste el algoritmo paso a paso y llegaste a lo que hace.",
+        "casi": "Los números están bien: seguiste bien la lógica. Mira el texto que "
+                "acompaña, que no coincide del todo.",
+        "incorrecto": "Todavía no. No te quedes adivinando: dale a la prueba de "
+                      "escritorio y sigue el algoritmo línea por línea, viendo cómo "
+                      "cambia cada variable.",
+    }
+    return jsonify({"success": True, "resultado": resultado,
+                    "mensaje": mensajes[resultado],
+                    "salida_real": esperada if resultado != "incorrecto" else None,
+                    "intento": intentos + 1})
+
+
 @app.route("/ejercicio/<int:exercise_id>")
 @login_required
 def ejercicio_teoria(exercise_id):
@@ -1047,6 +1120,8 @@ def ejercicio_teoria(exercise_id):
     a la práctica sin preparación.
     """
     exercise = Exercise.query.get_or_404(exercise_id)
+    if exercise.tipo == "leer":
+        return redirect(url_for("ejercicio_leer", exercise_id=exercise_id))
     log_activity("abrir_teoria", {"exercise_id": exercise_id})
     return render_template("ejercicio_teoria.html", exercise=exercise,
                            ya_predijo=_ya_predijo(exercise_id))

@@ -122,7 +122,14 @@ class Exercise(db.Model):
     # asi que un ejercicio anadido despues salia al final aunque enseñara lo
     # primero: en Selección el Segun-Hacer aparecia antes que el Si, que es lo
     # que la leccion explica primero. 0 = sin preferencia (se ordena por id).
-    orden = db.Column(db.Integer, default=0, nullable=False)           # lo que imprime de verdad
+    orden = db.Column(db.Integer, default=0, nullable=False)
+    # Que se le pide al estudiante:
+    #   "escribir" — el de siempre: le dan un enunciado y escribe el algoritmo.
+    #   "leer"     — le dan el algoritmo YA ESCRITO y dice que imprime. Primer
+    #                semestre tiene que aprender a LEER pseudocodigo, no solo a
+    #                escribirlo, y hasta ahora no habia forma de practicarlo.
+    # Se corrige comparando la salida, sin gastar una sola llamada de IA.
+    tipo = db.Column(db.String(12), default="escribir", nullable=False)           # lo que imprime de verdad
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 

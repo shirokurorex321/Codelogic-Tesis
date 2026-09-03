@@ -48,6 +48,11 @@
                     <span class="completed-badge" title="Completado">✓</span>
                 {% endif %}
                 {{ ex.title }}
+                {% if ex.tipo == 'leer' %}
+                {# Que se vea ANTES de entrar que aqui no se escribe, se lee:
+                   es un tipo de trabajo distinto y conviene saberlo. #}
+                <span class="diff-badge" style="background:var(--primary-pale); color:var(--primary);">👀 leer</span>
+                {% endif %}
             </h4>
             <p>{{ ex.description[:120] }}{% if ex.description|length > 120 %}...{% endif %}</p>
         </div>
@@ -56,8 +61,10 @@
             {% if ex.attempts > 0 %}
             <span style="font-size:0.8rem; color:var(--text-muted);">{{ ex.attempts }} intentos</span>
             {% endif %}
-            <a href="{{ url_for('ejercicio_teoria', exercise_id=ex.id) }}" class="btn btn-primary btn-sm">
-                {% if ex.completed %}Practicar{% else %}Resolver{% endif %}
+            <a href="{{ url_for('ejercicio_leer' if ex.tipo == 'leer' else 'ejercicio_teoria', exercise_id=ex.id) }}"
+               class="btn btn-primary btn-sm">
+                {% if ex.tipo == 'leer' %}{% if ex.completed %}Repasar{% else %}Leerlo{% endif %}
+                {% else %}{% if ex.completed %}Practicar{% else %}Resolver{% endif %}{% endif %}
             </a>
         </div>
     </div>

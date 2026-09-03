@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}{{ exercise.title }} — CodeLogic IUP{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('topic_exercises', topic_id=exercise.topic_id) }}" class="btn btn-outline btn-sm mb-3">← Volver</a>
+
+<div class="card mb-3">
+    <span class="diff-badge diff-{{ exercise.difficulty }}">{{ exercise.difficulty }}</span>
+    <h1 style="margin:0.5rem 0 1rem;">{{ exercise.title }}</h1>
+
+    <div style="border-left:3px solid var(--primary); padding-left:1rem; margin-bottom:1.2rem;">
+        <p style="font-weight:600; color:var(--primary); margin-bottom:0.4rem;">👀 Este ejercicio es de leer</p>
+        <p>{{ exercise.description }}</p>
+    </div>
+
+    {% if exercise.concepto %}
+    <p style="font-weight:600; color:var(--primary); margin-bottom:0.4rem;">🎯 Qué vas a practicar</p>
+    <p style="margin-bottom:1.2rem;">{{ exercise.concepto }}</p>
+    {% endif %}
+
+    <p style="font-weight:600; color:var(--primary); margin-bottom:0.4rem;">📄 El algoritmo</p>
+    <p style="font-size:0.85rem; color:var(--text-light); margin-bottom:0.5rem;">
+        Este algoritmo <strong>ya está escrito</strong>. Tu trabajo es seguirlo con la cabeza,
+        línea por línea, y decir qué aparece en pantalla.
+    </p>
+    <pre id="algoritmo" style="background:var(--bg-code,#0d1117); padding:1rem; border-radius:6px; overflow-x:auto;"><code>{{ exercise.expected_pseudocode }}</code></pre>
+
+    {# "El usuario escribe: no pide datos" se contradecia a si mismo. En los
+       ejercicios de lectura los valores van dentro del algoritmo justamente
+       para que no haya ambiguedad sobre que imprime. #}
+    {% set entrada = exercise.ejemplo_entrada or '' %}
+    <p style="margin-top:1rem; font-size:0.9rem;">
+    {% if 'no pide datos' in entrada %}
+        <strong>No pide datos:</strong>
+        <span style="color:var(--text-light);">
+            {{ entrada.split(':', 1)[1].strip() if ':' in entrada else 'los valores ya están dentro del algoritmo.' }}
+        </span>
+    {% elif entrada %}
+        <strong>El usuario escribe:</strong> <code class="md-inline">{{ entrada }}</code>
+    {% endif %}
+    </p>
+</div>
+
+<div class="card mb-3">
+    <p style="font-weight:600; color:var(--primary); margin-bottom:0.5rem;">✍️ ¿Qué imprime en pantalla?</p>
+    <p style="font-size:0.85rem; color:var(--text-light); margin-bottom:0.6rem;">
+        Escríbelo tal y como crees que va a salir, una línea por cada cosa que imprima.
+    </p>
+    <textarea id="respuesta" class="form-textarea" rows="4"
+              placeholder="Escribe aquí lo que crees que aparece…"
+              style="font-family:'JetBrains Mono',monospace;"></textarea>
+    <button id="btn-comprobar" class="btn btn-primary mt-2" onclick="comprobar()">Comprobar</button>
+    <div id="veredicto" style="margin-top:1rem;"></div>
+</div>
+
+<div class="card" id="caja-escritorio" hidden>
+    <div class="card-header">
+        <span class="card-title">📋 Prueba de escritorio</span>
+        <button class="btn btn-outline btn-sm" onclick="trazar()">▶ Seguir el algoritmo paso a paso</button>
+    </div>
+    <p style="font-size:0.85rem; color:var(--text-light);">
+        Aquí puedes ver cómo cambia cada variable en cada línea. Es la forma de
+        descubrir dónde se te fue, en vez de adivinar.
+    </p>
+    <div id="tabla-traza" style="margin-top:0.8rem; overflow-x:auto;"></div>
+</div>
+
+<script>
+const EJ = {{ exercise.id }};
+const CSRF = document.querySelector('meta[name="csrf-token"]').content;
+const inicio = Date.now();
+
+async function comprobar() {
+    const txt = document.getElementById('respuesta').value.trim();
+    const v = document.getElementById('veredicto');
+    if (!txt) { v.innerHTML = '<span style="color:var(--error);">Escribe primero tu respuesta.</span>'; return; }
+    const btn = document.getElementById('btn-comprobar');
+    btn.disabled = true;
+    try {
+        const r = await fetch('/api/leer/' + EJ, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+            body: JSON.stringify({ respuesta: txt, segundos: Math.round((Date.now() - inicio) / 1000) })
+        });
+        const d = await r.json();
+        if (!d.success) {
+            v.innerHTML = '<span style="color:var(--error);">' + (d.error || 'Error') + '</span>';
+        } else {
+            const color = d.resultado === 'correcto' ? 'var(--success,#16a34a)'
+                        : d.resultado === 'casi' ? 'var(--warning,#d97706)' : 'var(--error)';
+            const icono = d.resultado === 'correcto' ? '✅' : d.resultado === 'casi' ? '🟡' : '❌';
+            let h = '<p style="color:' + color + '; font-weight:600;">' + icono + ' ' + d.mensaje + '</p>';
+            if (d.salida_real) {
+                h += '<p style="font-size:0.85rem; margin-top:0.4rem;">Lo que imprime de verdad:</p>'
+                   + '<pre style="background:var(--bg-code,#0d1117); padding:0.7rem; border-radius:6px;"><code>'
+                   + d.salida_real.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</code></pre>';
+            }
+            v.innerHTML = h;
+            /* Falle o acierte, se le ofrece la traza: al que acierta le confirma
+               el razonamiento, y al que falla le da dónde mirar. */
+            document.getElementById('caja-escritorio').hidden = false;
+        }
+    } catch (e) {
+        v.innerHTML = '<span style="color:var(--error);">Error de conexión.</span>';
+    }
+    btn.disabled = false;
+}
+
+async function trazar() {
+    const cont = document.getElementById('tabla-traza');
+    cont.innerHTML = '<p style="color:var(--text-light);">Siguiendo el algoritmo…</p>';
+    try {
+        const r = await fetch('/api/trace', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+            body: JSON.stringify({
+                pseudocode: document.getElementById('algoritmo').innerText,
+                exercise_id: EJ,
+                stdin: {{ (exercise.ejemplo_entrada or '') | tojson }}
+                        .replace(/[^0-9.,\-]/g, ' ').trim().split(/[\s,]+/).join('\n')
+            })
+        });
+        const d = await r.json();
+        if (!d.success) { cont.innerHTML = '<span style="color:var(--error);">' + (d.error || 'No se pudo') + '</span>'; return; }
+        let h = '<table><thead><tr><th>Paso</th><th>Instrucción</th><th>Variables</th></tr></thead><tbody>';
+        for (const p of d.pasos || []) {
+            const vars = Object.entries(p.vars || {}).map(([k, val]) => k + ' = ' + val).join(' · ');
+            h += '<tr><td>' + p.paso + '</td><td><code>' + p.instruccion.replace(/</g,'&lt;') + '</code></td><td>' + vars + '</td></tr>';
+        }
+        h += '</tbody></table>';
+        if (d.salida) h += '<p style="margin-top:0.6rem;"><strong>Imprime:</strong> <code>' + d.salida.replace(/</g,'&lt;') + '</code></p>';
+        cont.innerHTML = h;
+    } catch (e) {
+        cont.innerHTML = '<span style="color:var(--error);">Error de conexión.</span>';
+    }
+}
+</script>
+{% endblock %}
