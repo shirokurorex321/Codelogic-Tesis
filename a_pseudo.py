@@ -145,3 +145,58 @@ def traducir_pasos(pasos, pseudocodigo: str):
         nuevo["paso"] = len(fuera) + 1     # sin huecos tras quitar el andamiaje
         fuera.append(nuevo)
     return fuera, casados
+
+
+# ── Errores de ejecucion, dichos en su idioma ──────────────────────
+#
+# La traza mostraba la excepcion de Python tal cual: "EOFError: EOF when
+# reading a line" delante de un estudiante de primer semestre que ni siquiera
+# ha visto Python. Peor aun: ese error concreto casi nunca es un fallo suyo,
+# sino que ejecuto un algoritmo con Leer sin escribir los datos de entrada, y
+# el mensaje no le decia ni eso ni donde ponerlos.
+#
+# Cada entrada: (patron, mensaje). El mensaje explica QUE paso y QUE hacer.
+_ERRORES = [
+    (r"EOFError",
+     "Tu algoritmo pide datos con Leer, pero no le diste ninguno. "
+     "Abre «datos de entrada» aquí arriba y escribe un valor por línea, "
+     "en el mismo orden en que tu algoritmo los lee."),
+    (r"invalid literal for int\(\)|could not convert string to float",
+     "Tu algoritmo esperaba un número y recibió otra cosa. Revisa los datos "
+     "de entrada: si el algoritmo hace Leer sobre una variable Entero, ahí "
+     "tiene que ir un número."),
+    (r"ZeroDivisionError",
+     "El algoritmo intentó dividir entre cero. Comprueba el valor que tiene "
+     "el divisor justo antes de esa división: mira la tabla de arriba."),
+    (r"IndexError|list index out of range",
+     "El algoritmo intentó usar una posición que no existe en el vector. "
+     "Si lo dimensionaste con N casillas, las posiciones válidas van de 1 a N."),
+    (r"NameError.*'(\w+)'",
+     "Estás usando la variable «%s» antes de darle un valor. Toda variable "
+     "necesita recibir algo -con Leer o con una asignación- antes de poder "
+     "usarla."),
+    (r"TypeError.*str.*int|TypeError.*int.*str",
+     "Estás mezclando un texto con un número en la misma operación. Revisa si "
+     "alguna variable que declaraste Como Cadena la estás usando para calcular."),
+    (r"RecursionError|maximum recursion",
+     "El algoritmo se llamó a sí mismo sin parar. Comprueba que la condición "
+     "que lo detiene llegue a cumplirse."),
+]
+
+
+def error_amable(bruto: str) -> str:
+    """Traduce una excepcion de Python a algo que un principiante entienda.
+
+    Si no se reconoce, se devuelve tal cual: es preferible un mensaje raro a
+    inventarse una explicacion que puede ser falsa y mandarlo a buscar donde
+    no es.
+    """
+    if not bruto:
+        return bruto
+    for patron, mensaje in _ERRORES:
+        m = re.search(patron, bruto)
+        if m:
+            if "%s" in mensaje and m.groups():
+                return mensaje % m.group(1)
+            return mensaje
+    return bruto

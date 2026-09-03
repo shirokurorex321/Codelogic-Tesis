@@ -1477,6 +1477,12 @@ def api_trace():
             result["pasos"] = pasos
             result["en_pseudocodigo"] = True
             result["lineas_propias"] = casados
+            # El error tambien se dice en su idioma. Un "EOFError: EOF when
+            # reading a line" no le dice nada a quien no ha visto Python, y ese
+            # en concreto casi nunca es culpa suya: es que ejecuto un algoritmo
+            # con Leer sin escribir los datos de entrada.
+            if result.get("error"):
+                result["error"] = a_pseudo.error_amable(result["error"])
 
     log_activity("trace", {
         "code_length": len(code),
@@ -1564,6 +1570,15 @@ def api_execute():
         return jsonify({"success": False, "error": "El stdin excede 10.000 caracteres."}), 400
 
     result = executor.run(language, code, stdin)
+
+    # Una pista en castellano por encima del error tecnico. No se sustituye el
+    # stderr -en tercer semestre leer el traceback es parte del oficio- pero
+    # nadie deberia tener que descifrar "EOFError" para enterarse de que
+    # simplemente no escribio los datos de entrada.
+    if (result.get("stderr") or "").strip():
+        pista = a_pseudo.error_amable(result["stderr"].strip().splitlines()[-1])
+        if pista != result["stderr"].strip().splitlines()[-1]:
+            result["pista"] = pista
 
     log_activity("execute", {
         "language": language,

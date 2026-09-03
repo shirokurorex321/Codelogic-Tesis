@@ -588,6 +588,12 @@ function mostrarCodigo() {
         if (data.stdout) {
             html += `<div class="exec-block-label">stdout</div><pre class="exec-stdout">${escapeHtml(data.stdout)}</pre>`;
         }
+        if (data.pista) {
+            /* Una pista en castellano por encima del error tecnico: nadie
+               deberia descifrar "EOFError" para enterarse de que no escribio
+               los datos de entrada. El stderr se deja debajo. */
+            html += `<div class="exec-block-label">qué pasó</div><pre class="exec-stderr" style="white-space:pre-wrap; color:var(--warning,#d97706);">${escapeHtml(data.pista)}</pre>`;
+        }
         if (data.stderr) {
             html += `<div class="exec-block-label">stderr</div><pre class="exec-stderr">${escapeHtml(data.stderr)}</pre>`;
         }
