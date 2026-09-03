@@ -2146,8 +2146,10 @@ def admin_exercises():
         # prediccion. Eran ejercicios de segunda frente a los de la base.
         campos = ("title", "description", "hints", "concepto", "pasos",
                   "ejemplo_resuelto", "ejemplo_entrada", "ejemplo_salida",
-                  "expected_pseudocode")
+                  "expected_pseudocode", "diagrama")
         datos = {c: request.form.get(c, "").strip() for c in campos}
+        tipo = request.form.get("tipo", "escribir")
+        datos["tipo"] = tipo if tipo in ("escribir", "leer", "diagrama") else "escribir"
         datos["topic_id"] = request.form.get("topic_id")
         datos["difficulty"] = request.form.get("difficulty", "basico")
         try:
@@ -2162,9 +2164,16 @@ def admin_exercises():
         exercise = Exercise(**datos)
         db.session.add(exercise)
         db.session.commit()
-        faltan = [c for c in ("concepto", "pasos", "ejemplo_resuelto",
-                              "ejemplo_salida", "expected_pseudocode")
-                  if not datos[c]]
+        # Cada tipo necesita cosas distintas: un ejercicio de lectura vive de
+        # su algoritmo y su salida, y uno de diagrama no arranca sin diagrama.
+        exigidos = {
+            "escribir": ("concepto", "pasos", "ejemplo_resuelto",
+                         "ejemplo_salida", "expected_pseudocode"),
+            "leer":     ("concepto", "expected_pseudocode", "ejemplo_salida"),
+            "diagrama": ("concepto", "diagrama", "expected_pseudocode",
+                         "ejemplo_salida"),
+        }[datos["tipo"]]
+        faltan = [c for c in exigidos if not datos[c]]
         if faltan:
             flash("Ejercicio creado, pero le faltan campos y el estudiante los "
                   "va a echar en falta: %s. Puedes completarlos editándolo."

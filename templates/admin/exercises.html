@@ -35,6 +35,15 @@
                 </select>
             </div>
             <div class="form-group">
+                <label class="form-label">Tipo de ejercicio</label>
+                <select name="tipo" id="sel-tipo" class="form-select" onchange="cambiarTipo()">
+                    <option value="escribir">✍️ Escribir — le dan el enunciado y redacta el algoritmo</option>
+                    <option value="leer">👀 Leer — le dan el algoritmo y dice qué imprime</option>
+                    <option value="diagrama">🔀 Diagrama — le dan el diagrama y escribe el pseudocódigo</option>
+                </select>
+                <p id="nota-tipo" style="font-size:0.78rem; color:var(--text-light); margin-top:0.4rem;"></p>
+            </div>
+            <div class="form-group">
                 <label class="form-label">Título</label>
                 <input type="text" name="title" class="form-input" required placeholder="Ej: Suma de dos números">
             </div>
@@ -104,6 +113,20 @@
                     style="font-family:'JetBrains Mono',monospace; font-size:0.8rem;"
                     placeholder="El pseudocódigo correcto. No se le muestra al estudiante."></textarea>
             </div>
+            <div class="form-group" id="caja-diagrama" hidden>
+                <label class="form-label">Diagrama de flujo (Mermaid)</label>
+                <textarea name="diagrama" id="campo-diagrama" class="form-textarea" rows="8"
+                    style="font-family:'JetBrains Mono',monospace; font-size:0.8rem;"
+                    placeholder="flowchart TD&#10;    A([&quot;Inicio&quot;]) --> ..."></textarea>
+                <button type="button" class="btn btn-outline btn-sm mt-2" onclick="generarDiagrama()">
+                    🔀 Generarlo desde la solución de referencia
+                </button>
+                <p style="font-size:0.78rem; color:var(--text-light); margin-top:0.4rem;">
+                    Generarlo desde tu propia solución es lo más seguro: así el diagrama
+                    y el algoritmo dicen lo mismo por construcción.
+                </p>
+                <p id="estado-diagrama" style="font-size:0.8rem; margin-top:0.3rem;"></p>
+            </div>
             <div class="form-group">
                 <label class="form-label">Pistas (opcional)</label>
                 <textarea name="hints" class="form-textarea" rows="2"
@@ -154,6 +177,44 @@
 <script>
 /* Pide a la IA un borrador y lo vuelca en los campos. No guarda nada: el
    docente lo revisa y decide. */
+const NOTAS = {
+    escribir: 'Necesita concepto, pasos, ejemplo resuelto, salida esperada y solución de referencia.',
+    leer:     'La solución de referencia ES el algoritmo que se le muestra. Pon los valores DENTRO del algoritmo, no con Leer: así no hay duda de qué imprime.',
+    diagrama: 'Necesita el diagrama y la solución de referencia. Se corrige ejecutando lo que escriba el alumno y comparando la salida, no el texto.'
+};
+function cambiarTipo() {
+    const t = document.getElementById('sel-tipo').value;
+    document.getElementById('caja-diagrama').hidden = (t !== 'diagrama');
+    document.getElementById('nota-tipo').textContent = NOTAS[t] || '';
+}
+document.addEventListener('DOMContentLoaded', cambiarTipo);
+
+async function generarDiagrama() {
+    const form = document.getElementById('sel-tipo').closest('form');
+    const ps = form.querySelector('[name="expected_pseudocode"]').value.trim();
+    const est = document.getElementById('estado-diagrama');
+    if (!ps) { est.style.color = 'var(--error)'; est.textContent = 'Escribe primero la solución de referencia.'; return; }
+    est.style.color = 'var(--text-light)'; est.textContent = 'Generando…';
+    try {
+        const r = await fetch('/api/diagram', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json',
+                       'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content },
+            body: JSON.stringify({ pseudocode: ps })
+        });
+        const d = await r.json();
+        if (d.success) {
+            document.getElementById('campo-diagrama').value = d.diagram;
+            est.style.color = 'var(--success,#16a34a)';
+            est.textContent = 'Listo. Revísalo antes de crear el ejercicio.';
+        } else {
+            est.style.color = 'var(--error)'; est.textContent = d.error || 'No se pudo generar.';
+        }
+    } catch (e) {
+        est.style.color = 'var(--error)'; est.textContent = 'Error de conexión.';
+    }
+}
+
 document.getElementById('btn-redactar').addEventListener('click', async function () {
     const form = this.closest('form');
     const estado = document.getElementById('redactar-estado');
