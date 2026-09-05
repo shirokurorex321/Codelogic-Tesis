@@ -36,7 +36,7 @@
             </div>
             <div class="form-group">
                 <label class="form-label">Tipo de ejercicio</label>
-                <select name="tipo" id="sel-tipo" class="form-select" onchange="cambiarTipo()">
+                <select name="tipo" id="sel-tipo" class="form-select" data-cambio="cambiarTipo">
                     <option value="escribir">✍️ Escribir — le dan el enunciado y redacta el algoritmo</option>
                     <option value="leer">👀 Leer — le dan el algoritmo y dice qué imprime</option>
                     <option value="diagrama">🔀 Diagrama — le dan el diagrama y escribe el pseudocódigo</option>
@@ -118,7 +118,7 @@
                 <textarea name="diagrama" id="campo-diagrama" class="form-textarea" rows="8"
                     style="font-family:'JetBrains Mono',monospace; font-size:0.8rem;"
                     placeholder="flowchart TD&#10;    A([&quot;Inicio&quot;]) --> ..."></textarea>
-                <button type="button" class="btn btn-outline btn-sm mt-2" onclick="generarDiagrama()">
+                <button type="button" class="btn btn-outline btn-sm mt-2" data-accion="generarDiagrama">
                     🔀 Generarlo desde la solución de referencia
                 </button>
                 <p style="font-size:0.78rem; color:var(--text-light); margin-top:0.4rem;">
@@ -160,7 +160,7 @@
                         <td><span class="diff-badge diff-{{ ex.difficulty }}">{{ ex.difficulty }}</span></td>
                         <td>
                             <form method="POST" action="{{ url_for('delete_exercise', exercise_id=ex.id) }}" style="display:inline;"
-                                  onsubmit="return confirm('¿Desactivar este ejercicio?');">
+                                  data-confirmar="¿Desactivar este ejercicio?">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="btn btn-danger btn-sm">Desactivar</button>
                             </form>
@@ -174,7 +174,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 /* Pide a la IA un borrador y lo vuelca en los campos. No guarda nada: el
    docente lo revisa y decide. */
 const NOTAS = {

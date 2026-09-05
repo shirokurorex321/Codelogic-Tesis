@@ -49,14 +49,14 @@
     <textarea id="respuesta" class="form-textarea" rows="4"
               placeholder="Escribe aquí lo que crees que aparece…"
               style="font-family:'JetBrains Mono',monospace;"></textarea>
-    <button id="btn-comprobar" class="btn btn-primary mt-2" onclick="comprobar()">Comprobar</button>
+    <button id="btn-comprobar" class="btn btn-primary mt-2" data-accion="comprobar">Comprobar</button>
     <div id="veredicto" style="margin-top:1rem;"></div>
 </div>
 
 <div class="card" id="caja-escritorio" hidden>
     <div class="card-header">
         <span class="card-title">📋 Prueba de escritorio</span>
-        <button class="btn btn-outline btn-sm" onclick="trazar()">▶ Seguir el algoritmo paso a paso</button>
+        <button class="btn btn-outline btn-sm" data-accion="trazar">▶ Seguir el algoritmo paso a paso</button>
     </div>
     <p style="font-size:0.85rem; color:var(--text-light);">
         Aquí puedes ver cómo cambia cada variable en cada línea. Es la forma de
@@ -65,7 +65,7 @@
     <div id="tabla-traza" style="margin-top:0.8rem; overflow-x:auto;"></div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 const EJ = {{ exercise.id }};
 const CSRF = document.querySelector('meta[name="csrf-token"]').content;
 const inicio = Date.now();

@@ -67,7 +67,7 @@
                     {% if current_user.role == 'admin' %}
                     <td style="display:flex; gap:0.3rem; flex-wrap:wrap;">
                         <form method="POST" action="{{ url_for('admin_toggle_active', user_id=student.id) }}"
-                              onsubmit="return confirm('¿{{ 'Desactivar' if student.is_active else 'Activar' }} a {{ student.name }}?');">
+                              data-confirmar="¿{{ 'Desactivar' if student.is_active else 'Activar' }} a {{ student.name }}?">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button class="btn btn-outline btn-sm" title="{{ 'Desactivar' if student.is_active else 'Activar' }} usuario">
                                 {% if student.is_active %}🔒{% else %}🔓{% endif %}

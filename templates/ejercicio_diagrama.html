@@ -41,12 +41,12 @@
     <textarea id="pseudo" class="form-textarea" rows="12"
               placeholder="Algoritmo MiAlgoritmo&#10;    ...&#10;FinAlgoritmo"
               style="font-family:'JetBrains Mono',monospace; font-size:0.88rem;"></textarea>
-    <button id="btn-comprobar" class="btn btn-primary mt-2" onclick="comprobar()">Comprobar</button>
+    <button id="btn-comprobar" class="btn btn-primary mt-2" data-accion="comprobar">Comprobar</button>
     <div id="veredicto" style="margin-top:1rem;"></div>
 </div>
 
 <script src="{{ url_for('static', filename='js/mermaid.min.js') }}"></script>
-<script>
+<script nonce="{{ csp_nonce }}">
 const EJ = {{ exercise.id }};
 const CSRF = document.querySelector('meta[name="csrf-token"]').content;
 const inicio = Date.now();

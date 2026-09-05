@@ -80,7 +80,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
     function alternarLeccion() {
         const c = document.getElementById('cuerpo-leccion');
         const b = document.getElementById('btn-leccion');

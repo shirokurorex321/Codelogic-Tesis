@@ -2479,3 +2479,14 @@ pre code,
     font-size: .82rem;
 }
 .aviso-sintaxis .nota { margin: .5rem 0 0; color: var(--text-light); font-size: .85rem; }
+
+
+/* El resaltado al pasar el raton estaba como onmouseover= en el HTML, lo que
+   obligaba a permitir scripts en linea en la CSP. Es puro estilo: aqui lo hace
+   el navegador solo, sin JavaScript, y ademas funciona con el teclado. */
+.opcion-test:hover, .opcion-escala:hover { background: rgba(128,128,128,.08); }
+.opcion-test:focus-within, .opcion-escala:focus-within {
+    background: rgba(128,128,128,.08);
+    outline: 2px solid var(--primary);
+    outline-offset: 1px;
+}

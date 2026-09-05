@@ -15,7 +15,7 @@
     </div>
     {% if exercise.concepto or exercise.pasos or exercise.ejemplo_resuelto or exercise.hints %}
     <div class="ayudas">
-        <button type="button" class="ayudas-toggle" onclick="alternarAyudas()" id="btn-ayudas">
+        <button type="button" class="ayudas-toggle" data-accion="alternarAyudas" id="btn-ayudas">
             🆘 Me trabé, mostrar ayudas
         </button>
 
@@ -81,13 +81,13 @@
 FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %}</textarea>
         </div>
         <div class="editor-toolbar">
-            <button class="btn btn-primary" onclick="convertCode()" id="btn-convert"{% if primer_semestre %} hidden{% endif %}>🔄 Convertir</button>
-            <button class="btn btn-accent" onclick="getFeedback()" id="btn-feedback">🤖 Retroalimentación IA</button>
+            <button class="btn btn-primary" data-accion="convertCode" id="btn-convert"{% if primer_semestre %} hidden{% endif %}>🔄 Convertir</button>
+            <button class="btn btn-accent" data-accion="getFeedback" id="btn-feedback">🤖 Retroalimentación IA</button>
             {% if not primer_semestre %}
-            <button class="btn btn-outline" onclick="convertAll()" id="btn-convert-all">📋 Convertir a todos</button>
+            <button class="btn btn-outline" data-accion="convertAll" id="btn-convert-all">📋 Convertir a todos</button>
             {% endif %}
             {% if exercise %}
-            <button class="btn btn-primary" onclick="submitSolution()" id="btn-submit" style="margin-left:auto;">✅ Enviar solución</button>
+            <button class="btn btn-primary" data-accion="submitSolution" id="btn-submit" style="margin-left:auto;">✅ Enviar solución</button>
             {% endif %}
         </div>
         {% if primer_semestre %}
@@ -95,7 +95,7 @@ FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %
            pero no le estorba mientras aprende a escribir el algoritmo. #}
         <div style="margin-top:0.6rem;">
             <button type="button" id="btn-ver-codigo" class="btn btn-outline btn-sm"
-                    onclick="mostrarCodigo()">
+                    data-accion="mostrarCodigo">
                 🔎 ¿Quieres ver en qué se convierte tu algoritmo?
             </button>
             <p id="nota-codigo" hidden
@@ -115,21 +115,21 @@ FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %
             {% if primer_semestre %}
                 {# Primer semestre: primero lo que enseña a leer y escribir
                    pseudocodigo. Los lenguajes quedan detras del boton de abajo. #}
-                <button class="tab active" data-tab="escritorio" onclick="switchTab('escritorio')">📋 Prueba de escritorio</button>
-                <button class="tab" data-tab="diagrama" onclick="switchTab('diagrama')">Diagrama de flujo</button>
-                <button class="tab" data-tab="feedback" onclick="switchTab('feedback')">Revisión</button>
+                <button class="tab active" data-tab="escritorio" data-accion="switchTab" data-args='["escritorio"]'>📋 Prueba de escritorio</button>
+                <button class="tab" data-tab="diagrama" data-accion="switchTab" data-args='["diagrama"]'>Diagrama de flujo</button>
+                <button class="tab" data-tab="feedback" data-accion="switchTab" data-args='["feedback"]'>Revisión</button>
                 <span id="tabs-codigo" hidden>
-                    <button class="tab" data-tab="python" onclick="switchTab('python')">Python</button>
-                    <button class="tab" data-tab="cpp" onclick="switchTab('cpp')">C++</button>
-                    <button class="tab" data-tab="php" onclick="switchTab('php')">PHP</button>
+                    <button class="tab" data-tab="python" data-accion="switchTab" data-args='["python"]'>Python</button>
+                    <button class="tab" data-tab="cpp" data-accion="switchTab" data-args='["cpp"]'>C++</button>
+                    <button class="tab" data-tab="php" data-accion="switchTab" data-args='["php"]'>PHP</button>
                 </span>
             {% else %}
-                <button class="tab active" data-tab="python" onclick="switchTab('python')">Python</button>
-                <button class="tab" data-tab="cpp" onclick="switchTab('cpp')">C++</button>
-                <button class="tab" data-tab="php" onclick="switchTab('php')">PHP</button>
-                <button class="tab" data-tab="diagrama" onclick="switchTab('diagrama')">Diagrama</button>
-                <button class="tab" data-tab="escritorio" onclick="switchTab('escritorio')">Escritorio</button>
-                <button class="tab" data-tab="feedback" onclick="switchTab('feedback')">IA</button>
+                <button class="tab active" data-tab="python" data-accion="switchTab" data-args='["python"]'>Python</button>
+                <button class="tab" data-tab="cpp" data-accion="switchTab" data-args='["cpp"]'>C++</button>
+                <button class="tab" data-tab="php" data-accion="switchTab" data-args='["php"]'>PHP</button>
+                <button class="tab" data-tab="diagrama" data-accion="switchTab" data-args='["diagrama"]'>Diagrama</button>
+                <button class="tab" data-tab="escritorio" data-accion="switchTab" data-args='["escritorio"]'>Escritorio</button>
+                <button class="tab" data-tab="feedback" data-accion="switchTab" data-args='["feedback"]'>IA</button>
             {% endif %}
             </div>
         </div>
@@ -145,7 +145,7 @@ FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %
                                 <summary>📥 datos de entrada</summary>
                                 <textarea class="stdin-input" id="stdin-escritorio" rows="3" placeholder="Un dato por linea, igual que si los tecleara el usuario."></textarea>
                             </details>
-                            <button class="btn-mini btn-mini-primary" onclick="generarTraza()" id="btn-escritorio">▶ Ejecutar paso a paso</button>
+                            <button class="btn-mini btn-mini-primary" data-accion="generarTraza" id="btn-escritorio">▶ Ejecutar paso a paso</button>
                         </div>
                     </header>
                     <div class="traza-block" id="traza-salida"><span style="color:var(--text-muted);">(Pulsa ▶ Ejecutar paso a paso para seguir tu algoritmo instruccion por instruccion, viendo como cambia cada variable)</span></div>
@@ -158,8 +158,8 @@ FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %
                     <header class="lang-section-header">
                         <span>🔷 Diagrama de flujo</span>
                         <div class="lang-actions">
-                            <button class="btn-mini btn-mini-primary" onclick="generateDiagram()" id="btn-diagrama">🔄 Generar diagrama</button>
-                            <button class="btn-mini" onclick="toggleMermaid()" title="Ver el codigo Mermaid del diagrama">&lt;/&gt;</button>
+                            <button class="btn-mini btn-mini-primary" data-accion="generateDiagram" id="btn-diagrama">🔄 Generar diagrama</button>
+                            <button class="btn-mini" data-accion="toggleMermaid" title="Ver el codigo Mermaid del diagrama">&lt;/&gt;</button>
                         </div>
                     </header>
                     <div class="diagrama-block" id="diagrama-salida"><span style="color:var(--text-muted);">(Escribe tu pseudocodigo y pulsa 🔄 Generar diagrama)</span></div>
@@ -186,20 +186,20 @@ FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %
                         <span>📄 Código {{ label }}</span>
                         <div class="lang-actions">
                             <span class="code-editado" id="editado-{{ lang }}" hidden>✏️ editado
-                                <button class="btn-restaurar" onclick="restoreCode('{{ lang }}')"
+                                <button class="btn-restaurar" data-accion="restoreCode" data-args='["{{ lang }}"]'
                                         title="Volver al código original de la IA">↩</button>
                             </span>
-                            <button class="btn-mini btn-mini-primary" onclick="runCode('{{ lang }}')" id="btn-run-{{ lang }}">▶ Ejecutar</button>
-                            <button class="btn-mini btn-mini-accent" onclick="explainCode('{{ lang }}')" id="btn-explain-{{ lang }}">💬 Explicar</button>
-                            <button class="btn-mini" onclick="copyCode('{{ lang }}')" title="Copiar código">📋</button>
+                            <button class="btn-mini btn-mini-primary" data-accion="runCode" data-args='["{{ lang }}"]' id="btn-run-{{ lang }}">▶ Ejecutar</button>
+                            <button class="btn-mini btn-mini-accent" data-accion="explainCode" data-args='["{{ lang }}"]' id="btn-explain-{{ lang }}">💬 Explicar</button>
+                            <button class="btn-mini" data-accion="copyCode" data-args='["{{ lang }}"]' title="Copiar código">📋</button>
                         </div>
                     </header>
                     <pre class="code-output" id="code-{{ lang }}"
                          contenteditable="plaintext-only" spellcheck="false"
                          autocorrect="off" autocapitalize="off"
                          aria-label="Código {{ label }} (editable)"
-                         oninput="onCodeEdited('{{ lang }}')"
-                         onkeydown="handleCodeKeys(event)"><span style="color:#585b70;">// El código convertido aparecerá aquí. Pulsa "🔄 Convertir" en el panel izquierdo.
+                         data-entrada="onCodeEdited" data-args='["{{ lang }}"]'
+                         data-tecla="handleCodeKeys"><span style="color:#585b70;">// El código convertido aparecerá aquí. Pulsa "🔄 Convertir" en el panel izquierdo.
 // Este panel es editable: puedes retocar el código y darle a ▶ Ejecutar.</span></pre>
                 </section>
 
@@ -271,7 +271,7 @@ FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %
       </div>
       {% endfor %}
       <div class="cc-actions">
-        <button type="button" class="btn btn-outline btn-sm" onclick="skipCognitiveLoad()">Ahora no</button>
+        <button type="button" class="btn btn-outline btn-sm" data-accion="skipCognitiveLoad">Ahora no</button>
         <button type="submit" class="btn btn-primary btn-sm">Enviar</button>
       </div>
     </form>
@@ -283,7 +283,7 @@ FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %
 {% block scripts %}
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 {% if primer_semestre %}
 /* La pestaña activa era "Prueba de escritorio" pero el panel seguia
    mostrando el de Python: los paneles de lenguaje son los visibles por
@@ -609,7 +609,7 @@ function mostrarCodigo() {
             html += `<div class="exec-rerun">
                 <span class="exec-rerun-label">Ejecutado con:</span>
                 <code class="exec-rerun-values">${escapeHtml(used) || '(sin datos)'}</code>
-                <button class="btn-mini" onclick="rerunWithNewInputs('${lang}')">🔁 Otros datos</button>
+                <button class="btn-mini" data-accion="rerunWithNewInputs" data-args='["${lang}"]'>🔁 Otros datos</button>
             </div>`;
         }
         target.innerHTML = html;

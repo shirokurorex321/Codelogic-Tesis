@@ -21,7 +21,7 @@
 </div>
 {% else %}
 
-<form id="scale-form" onsubmit="return false;">
+<form id="scale-form" data-sin-enviar>
     {% for it in items %}
     <div class="card mb-3">
         <div style="font-weight:600; margin-bottom:0.75rem;">
@@ -30,8 +30,7 @@
         </div>
         <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
             {% for n in range(1, 6) %}
-            <label style="flex:1; min-width:110px; text-align:center; padding:0.55rem 0.4rem; border:1px solid rgba(128,128,128,0.25); border-radius:10px; cursor:pointer; font-size:0.78rem;"
-                   onmouseover="this.style.background='rgba(128,128,128,0.08)'" onmouseout="if(!this.querySelector('input').checked) this.style.background='transparent'">
+            <label class="opcion-escala" style="flex:1; min-width:110px; text-align:center; padding:0.55rem 0.4rem; border:1px solid rgba(128,128,128,0.25); border-radius:10px; cursor:pointer; font-size:0.78rem;">
                 <input type="radio" name="{{ it.id }}" value="{{ n }}" style="display:block; margin:0 auto 0.3rem;">
                 <strong>{{ n }}</strong><br>
                 <span style="color:var(--text-light);">{{ likert_labels[n-1] }}</span>
@@ -45,7 +44,7 @@
         <div id="scale-progress" style="margin-bottom:0.75rem; color:var(--text-light); font-size:0.9rem;">
             0 de {{ items|length }} respondidas
         </div>
-        <button class="btn btn-primary" id="btn-send-scale" onclick="submitScale()">✅ Enviar respuestas</button>
+        <button class="btn btn-primary" id="btn-send-scale" data-accion="submitScale">✅ Enviar respuestas</button>
         <div id="scale-error" style="color:#f38ba8; margin-top:0.6rem; display:none;"></div>
     </div>
 </form>
@@ -57,7 +56,7 @@
 
 {% block scripts %}
 {% if not existing %}
-<script>
+<script nonce="{{ csp_nonce }}">
     const totalItems = {{ items | length }};
 
     document.querySelectorAll('#scale-form input[type=radio]').forEach(r => {

@@ -95,7 +95,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
 (function () {
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const lines = [

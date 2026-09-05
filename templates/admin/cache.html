@@ -9,7 +9,7 @@
     </div>
     {% if current_user.role == 'admin' %}
     <form method="POST" action="{{ url_for('admin_cache_clear') }}"
-          onsubmit="return confirm('¿Borrar TODA la caché? Las próximas conversiones llamarán a la API y consumirán tokens.');">
+          data-confirmar="¿Borrar TODA la caché? Las próximas conversiones llamarán a la API y consumirán tokens.">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn btn-danger">🗑️ Vaciar caché</button>
     </form>

@@ -16,7 +16,7 @@ import unicodedata
 from sqlalchemy import func
 from flask import (
     Flask, render_template, request, redirect, url_for,
-    flash, jsonify, session, current_app
+    flash, jsonify, session, current_app, g
 )
 from flask_login import (
     LoginManager, login_user, logout_user,
@@ -85,10 +85,16 @@ csrf = CSRFProtect(app)
 
 CSP = {
     "default-src": "'self'",
-    # 'unsafe-inline' es necesario mientras existan los onclick= de las
-    # plantillas. Quitarlos y pasar a addEventListener permitiria eliminarlo,
-    # que es la mejora de seguridad real pendiente.
-    "script-src": ["'self'", "'unsafe-inline'"],
+    # Sin 'unsafe-inline': los 43 manejadores onclick= de las plantillas se
+    # pasaron a atributos declarativos (data-accion) que conecta acciones.js,
+    # y los bloques <script> llevan nonce. Con esto, un XSS que se cuele NO
+    # puede ejecutar nada: no puede adivinar el nonce, que cambia en cada
+    # peticion. Era la mejora de seguridad de verdad pendiente.
+    #
+    # style-src conserva 'unsafe-inline' porque hay ~150 atributos style= en
+    # las plantillas. Es mucho menos grave: un estilo inyectado puede afear la
+    # pagina, no ejecutar codigo.
+    "script-src": ["'self'"],
     "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
     "font-src": ["'self'", "https://fonts.gstatic.com", "data:"],
     "img-src": ["'self'", "data:"],
@@ -98,6 +104,20 @@ CSP = {
     "form-action": "'self'",
     "object-src": "'none'",
 }
+
+# Se registra ANTES de crear el Talisman a proposito: Flask ejecuta los
+# after_request en orden INVERSO al de registro, asi que este corre DESPUES
+# que el de Talisman y encuentra la cabecera ya puesta para reescribirla.
+@app.after_request
+def _csp_con_nonce(resp):
+    politica = resp.headers.get("Content-Security-Policy")
+    nonce = getattr(g, "csp_nonce", None)
+    if politica and nonce and "script-src" in politica:
+        resp.headers["Content-Security-Policy"] = politica.replace(
+            "script-src 'self'", "script-src 'self' 'nonce-%s'" % nonce, 1)
+    return resp
+
+
 
 Talisman(
     app,
@@ -442,6 +462,27 @@ def validar_pseudocodigo(texto: str):
         )
 
     return True, None
+
+
+# ─── Nonce para los <script> en linea ──────────────────────────────
+#
+# Quitar 'unsafe-inline' de script-src es la mejora de seguridad de verdad:
+# mientras este, un XSS que se cuele puede ejecutar lo que quiera. Pero al
+# quitarlo dejarian de ejecutarse los 12 bloques <script> de las plantillas.
+#
+# La solucion estandar es un nonce: un numero al azar por peticion que va en
+# la cabecera y en cada etiqueta <script>. El navegador ejecuta solo los
+# bloques que lo llevan, asi que un script inyectado -que no puede adivinarlo-
+# queda bloqueado. Talisman en esta version no lo gestiona, asi que se genera
+# aqui y se reescribe la cabecera al salir.
+@app.before_request
+def _generar_nonce():
+    g.csp_nonce = secrets.token_urlsafe(16)
+
+
+@app.context_processor
+def _exponer_nonce():
+    return {"csp_nonce": getattr(g, "csp_nonce", "")}
 
 
 @app.after_request

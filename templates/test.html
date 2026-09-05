@@ -21,7 +21,7 @@
 </div>
 {% else %}
 
-<form id="test-form" onsubmit="return false;">
+<form id="test-form" data-sin-enviar>
     {% for q in questions %}
     <div class="card mb-3 question-card" id="card-{{ q.id }}">
         <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.4rem;">
@@ -29,8 +29,7 @@
         </div>
         <div style="font-weight:600; white-space:pre-wrap; margin-bottom:0.9rem;">{{ q.text }}</div>
         {% for opt in q.options %}
-        <label style="display:flex; gap:0.6rem; align-items:flex-start; padding:0.5rem 0.6rem; border-radius:8px; cursor:pointer;"
-               onmouseover="this.style.background='rgba(128,128,128,0.08)'" onmouseout="this.style.background='transparent'">
+        <label class="opcion-test" style="display:flex; gap:0.6rem; align-items:flex-start; padding:0.5rem 0.6rem; border-radius:8px; cursor:pointer;">
             <input type="radio" name="{{ q.id }}" value="{{ loop.index0 }}" style="margin-top:0.2rem;">
             <span style="white-space:pre-wrap;">{{ opt }}</span>
         </label>
@@ -42,7 +41,7 @@
         <div id="test-progress" style="margin-bottom:0.75rem; color:var(--text-light); font-size:0.9rem;">
             0 de {{ questions|length }} respondidas
         </div>
-        <button class="btn btn-primary" id="btn-send-test" onclick="submitTest()">✅ Enviar respuestas</button>
+        <button class="btn btn-primary" id="btn-send-test" data-accion="submitTest">✅ Enviar respuestas</button>
         <div id="test-error" style="color:#f38ba8; margin-top:0.6rem; display:none;"></div>
     </div>
 </form>
@@ -54,7 +53,7 @@
 
 {% block scripts %}
 {% if not existing %}
-<script>
+<script nonce="{{ csp_nonce }}">
     const startTime = Date.now();
     const totalQuestions = {{ questions | length }};
 

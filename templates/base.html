@@ -76,7 +76,7 @@
         {% for category, message in messages %}
         <div class="flash flash-{{ category }}">
             {{ message }}
-            <button class="flash-close" onclick="this.parentElement.remove()">&times;</button>
+            <button class="flash-close" data-cerrar>&times;</button>
         </div>
         {% endfor %}
     </div>
@@ -95,7 +95,7 @@
     </footer>
 
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
-    <script>
+    <script nonce="{{ csp_nonce }}">
     /* Menu desplegable del movil. Se cierra al pulsar fuera, con Escape y al
        volver a pantalla ancha, para que no quede colgado. */
     (function () {
@@ -126,6 +126,9 @@
         });
     })();
     </script>
+    {# Conecta los data-accion del HTML con las funciones. Va ANTES del bloque
+       de scripts de cada pagina para que ya este escuchando cuando se pinten. #}
+    <script src="{{ url_for('static', filename='js/acciones.js') }}?v={{ css_version }}"></script>
     {% block scripts %}{% endblock %}
 </body>
 </html>
