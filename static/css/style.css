@@ -2454,3 +2454,28 @@ pre code,
     outline-offset: 2px;
     transition: outline-color .3s;
 }
+
+
+/* Avisos de sintaxis del pseudocodigo. En ambar: no es un error del sistema
+   ni una nota, es trabajo pendiente del propio algoritmo. */
+.aviso-sintaxis {
+    border-left: 3px solid var(--warning, #d97706);
+    background: rgba(217, 119, 6, .08);
+    padding: .9rem 1rem;
+    border-radius: 6px;
+    font-size: .9rem;
+    line-height: 1.55;
+}
+.aviso-sintaxis ul { margin: .6rem 0 .4rem; padding-left: 1.2rem; }
+.aviso-sintaxis li { margin-bottom: .7rem; }
+.aviso-sintaxis .sug { color: var(--text-light); }
+.aviso-sintaxis code {
+    display: inline-block;
+    margin-top: .25rem;
+    background: rgba(127,127,127,.18);
+    padding: .1rem .4rem;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .82rem;
+}
+.aviso-sintaxis .nota { margin: .5rem 0 0; color: var(--text-light); font-size: .85rem; }

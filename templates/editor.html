@@ -624,7 +624,37 @@ function mostrarCodigo() {
     // La tabla NO se la inventa la IA: el backend ejecuta el codigo de
     // verdad con sys.settrace y anota el valor real de cada variable
     // despues de cada linea.
-    /* Variables que el algoritmo lee. "Leer a, b" cuenta como dos. */
+    /* Revisa la sintaxis antes de hacer nada con el pseudocodigo.
+   El conversor interpreta lo que el estudiante quiso decir, asi que un Si sin
+   Entonces se convertia sin rechistar. En primer semestre eso es justo lo que
+   NO debe pasar: la asignatura es aprender a escribirlo bien. */
+async function revisarAntes(pseudo, destino) {
+    try {
+        const r = await fetch('/api/revisar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json',
+                       'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content },
+            body: JSON.stringify({ pseudocode: pseudo })
+        });
+        const d = await r.json();
+        if (!d.success || !d.problemas || !d.problemas.length) return false;
+        const esc = t => String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+        let h = '<div class="aviso-sintaxis"><strong>Revisa tu pseudocódigo antes de seguir'
+              + (d.total > d.problemas.length ? ' (' + d.total + ' cosas, te muestro las primeras)' : '')
+              + ':</strong><ul>';
+        for (const p of d.problemas) {
+            h += '<li><strong>Línea ' + p.linea + ':</strong> ' + esc(p.problema)
+               + '<br><span class="sug">' + esc(p.sugerencia) + '</span>'
+               + (p.texto ? '<br><code>' + esc(p.texto) + '</code>' : '') + '</li>';
+        }
+        h += '</ul><p class="nota">Arréglalo y vuelve a intentarlo. '
+           + 'Aquí lo importante es que el algoritmo esté bien escrito.</p></div>';
+        if (destino) document.getElementById(destino).innerHTML = h;
+        return true;
+    } catch (e) { return false; }   /* si la revision falla, no se estorba */
+}
+
+/* Variables que el algoritmo lee. "Leer a, b" cuenta como dos. */
 function variablesQueLee(pseudo) {
     const vars = [];
     for (const linea of (pseudo || '').split('\n')) {
@@ -668,6 +698,8 @@ async function generarTraza() {
         const code = getCode('python');
         const usable = code && !code.trim().startsWith('//');
         if (!usable && !pseudocode) return alert('Escribe algo de pseudocódigo primero.');
+
+        if (pseudocode && await revisarAntes(pseudocode, 'traza-salida')) return;
 
         const aviso = faltanDatos(pseudocode, 'stdin-escritorio');
         if (aviso) {

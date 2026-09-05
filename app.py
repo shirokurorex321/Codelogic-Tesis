@@ -42,6 +42,7 @@ from questions import (
 )
 import executor
 import a_pseudo
+import revisar
 import traza
 
 # Versión del texto de consentimiento informado. Súbela si cambias el texto:
@@ -1400,6 +1401,31 @@ def topic_exercises(topic_id):
 
 
 # ─── API ENDPOINTS ──────────────────────────────────────────────────
+
+@app.route("/api/revisar", methods=["POST"])
+@login_required
+def api_revisar():
+    """Revisa la sintaxis del pseudocodigo. Sin IA: no cuesta y responde ya.
+
+    El conversor esta hecho para ser tolerante e interpretar lo que el
+    estudiante quiso decir. En tercer semestre eso ayuda; en primero, donde la
+    asignatura es aprender a ESCRIBIR pseudocodigo, es contraproducente: un Si
+    sin Entonces se convertia sin rechistar y el estudiante nunca se enteraba.
+    """
+    datos = request.get_json(silent=True) or {}
+    pseudocode = (datos.get("pseudocode") or "")
+    if len(pseudocode) > 50_000:
+        return jsonify({"success": False, "error": "El pseudocódigo es demasiado largo."}), 400
+
+    problemas = revisar.revisar(pseudocode)
+    # Se muestran unos pocos: un principiante no puede con ocho a la vez, y
+    # despues del primer fallo de estructura los siguientes suelen ser su eco.
+    MAX = 3
+    return jsonify({"success": True,
+                    "problemas": problemas[:MAX],
+                    "total": len(problemas),
+                    "hay_mas": max(len(problemas) - MAX, 0)})
+
 
 @app.route("/api/convert", methods=["POST"])
 @limiter.limit(lambda: app.config["RATELIMIT_AI"])
