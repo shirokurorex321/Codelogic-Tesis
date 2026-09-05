@@ -1348,10 +1348,20 @@ a:hover { color: var(--primary); }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ─── ADMIN ──────────────────────────────────── */
+/* El formulario es estrecho por naturaleza y la lista es la que necesita
+   sitio: partir la pantalla en dos mitades iguales dejaba la tabla de
+   ejercicios en unos 600 px, donde no caben sus cinco columnas y la de
+   "Acción" quedaba cortada por el borde. Ahora el formulario ocupa lo suyo
+   y el resto es para la lista. Por debajo de 900 px se apilan. */
 .admin-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
     gap: 1.5rem;
+    align-items: start;
+}
+
+@media (max-width: 900px) {
+    .admin-grid { grid-template-columns: 1fr; }
 }
 
 .table-container { overflow-x: auto; }
