@@ -2420,3 +2420,27 @@ pre code,
     font-variant-ligatures: none;
     font-feature-settings: "liga" 0, "calt" 0;
 }
+
+
+/* Aviso de que al algoritmo le faltan datos de entrada. NO es un error del
+   estudiante -no ha hecho nada mal- asi que ni rojo ni tono de fallo: es una
+   indicacion de que falta un paso previo. */
+.aviso-datos {
+    border-left: 3px solid var(--primary);
+    background: var(--primary-pale, rgba(139,92,246,.08));
+    padding: .9rem 1rem;
+    border-radius: 6px;
+    line-height: 1.55;
+    font-size: .9rem;
+}
+.aviso-datos code {
+    background: rgba(127,127,127,.18);
+    padding: .05rem .35rem;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+}
+.stdin-input.resaltado {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    transition: outline-color .3s;
+}
