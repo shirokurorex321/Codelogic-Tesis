@@ -4,14 +4,17 @@
 {% block content %}
 <div class="dash-header">
     <h1>🔢 Uso de Tokens IA</h1>
-    <p>Consumo del plan free de OpenCode Zen (200 reqs / 5h). Solo visible para docentes/admin.</p>
+    <p>Quién responde, cuánto se está gastando y en qué. Solo visible para administradores.</p>
 </div>
 
 <!-- ── Stats globales ── -->
 <div class="stats-grid">
+    {# Aqui se mostraba "x/200 (cupo OpenCode)". Ese cupo era del plan gratuito
+       de OpenCode, apagado desde el 27/08: ni limita nada ni se acerca a lo que
+       hoy importa, que es cuanto se lleva gastado de un saldo que se agota. #}
     <div class="stat-card">
-        <div class="stat-value">{{ stats_5h.real }}/200</div>
-        <div class="stat-label">últimas 5 horas (cupo OpenCode)</div>
+        <div class="stat-value">{{ ia_real.hoy.llamadas }}</div>
+        <div class="stat-label">llamadas de pago en 24 h</div>
     </div>
     <div class="stat-card">
         <div class="stat-value">{{ stats_24h.tokens|int }}</div>
@@ -50,14 +53,72 @@
         </div>
     </div>
 
+    {# Lo que responde de verdad y lo que cuesta. Antes aqui se listaban los
+       modelos de OpenCode, que llevan sin usarse desde que se apago el
+       respaldo: el panel decia que el gasto iba por un plan gratuito mientras
+       el dinero se iba por Gemini, que es de pago. #}
     <div class="card">
-        <div class="card-header"><span class="card-title">⚙️ Configuración actual de modelos</span></div>
+        <div class="card-header"><span class="card-title">💰 Gasto real</span></div>
+        <div style="padding:1rem;">
+            <div class="stats-grid" style="margin-bottom:0;">
+                <div class="stat-card">
+                    <div class="stat-value">{{ ia_real.hoy.cop | round | int }}</div>
+                    <div class="stat-label">COP · últimas 24 h ({{ ia_real.hoy.llamadas }} llamadas)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ ia_real.mes.cop | round | int }}</div>
+                    <div class="stat-label">COP · 30 días ({{ ia_real.mes.llamadas }} llamadas)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ ia_real.total.cop | round | int }}</div>
+                    <div class="stat-label">COP · total ({{ ia_real.total.llamadas }} llamadas)</div>
+                </div>
+            </div>
+            {% if ia_real.por_operacion %}
+            <table style="margin-top:1rem;">
+                <thead><tr><th>Operación</th><th>Llamadas</th><th>COP</th><th>Razonamiento</th></tr></thead>
+                <tbody>
+                {% for op, v in ia_real.por_operacion | dictsort %}
+                    <tr>
+                        <td>{{ op }}</td>
+                        <td>{{ v.llamadas }}</td>
+                        <td>{{ v.cop | round | int }}</td>
+                        <td><code>{{ ia_real.razonamiento.get(op, '—') }}</code></td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p style="color:var(--text-muted); margin-top:1rem;">Todavía no hay gasto registrado.</p>
+            {% endif %}
+            <p style="margin-top:0.7rem; color:var(--text-muted); font-size:0.8rem;">
+                Las respuestas servidas desde caché no cuentan: no se pagan.
+                Cambio orientativo a {{ ia_real.trm | round | int }} COP por dólar.
+            </p>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><span class="card-title">⚙️ Quién responde</span></div>
         <div style="padding:1rem; font-size:0.88rem;">
-            <p><strong>Convertir:</strong> <code>{{ models_config.convert }}</code></p>
-            <p><strong>Feedback + Explain:</strong> <code>{{ models_config.tutor }}</code></p>
-            <p><strong>Fallback general:</strong> <code>{{ models_config.fallback }}</code></p>
-            <p style="margin-top:0.5rem; color:var(--text-muted); font-size:0.8rem;">
-                Para cambiar editar <code>.env</code> y reiniciar el servicio.
+            <p><strong>Proveedor:</strong> {{ ia_real.proveedor }}</p>
+            <p><strong>Modelos, en orden:</strong>
+               {% for m in ia_real.modelos %}<code>{{ m }}</code>{% if not loop.last %} → {% endif %}{% endfor %}
+            </p>
+            <p style="color:var(--text-muted); font-size:0.82rem;">
+                Si el primero no está disponible se pasa al siguiente.
+            </p>
+            <p style="margin-top:0.6rem;"><strong>Respaldo OpenCode:</strong>
+               {% if ia_real.opencode_activo %}activo (<code>{{ ia_real.opencode_modelo }}</code>)
+               {% else %}<span style="color:var(--text-muted);">apagado</span>{% endif %}
+            </p>
+            <p><strong>Revisiones con IA por ejercicio:</strong>
+               {% if ia_real.cupo_feedback %}{{ ia_real.cupo_feedback }}{% else %}sin límite{% endif %}
+            </p>
+            <p style="margin-top:0.6rem; color:var(--text-muted); font-size:0.8rem;">
+                Precio por millón de tokens:
+                {% for m, p in ia_real.precios | dictsort %}<code>{{ m }}</code> {{ p.entrada }}/{{ p.salida }} USD{% if not loop.last %} · {% endif %}{% endfor %}.
+                La salida incluye los tokens de razonamiento.
             </p>
         </div>
     </div>

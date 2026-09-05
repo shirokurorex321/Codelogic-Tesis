@@ -2539,6 +2539,46 @@ def export_submissions_csv():
 
 # ─── ADMIN: TOKENS / IA / USUARIOS ─────────────────────────────────
 
+def _estado_ia():
+    """Quien responde de verdad, con que nivel de razonamiento y a que precio."""
+    import gemini_service as _g
+    from sqlalchemy import func as _f
+    from datetime import datetime as _dt, timezone as _tz, timedelta as _td
+    trm = float(os.getenv("CODELOGIC_TRM_COP", "4100"))
+    ahora = _dt.now(_tz.utc)
+
+    def _gasto(desde):
+        usd = db.session.query(_f.sum(GastoIA.coste_usd))
+        if desde is not None:
+            usd = usd.filter(GastoIA.created_at >= desde)
+        usd = float(usd.scalar() or 0)
+        n = GastoIA.query.filter(GastoIA.created_at >= desde).count() if desde is not None \
+            else GastoIA.query.count()
+        return {"cop": round(usd * trm, 1), "usd": round(usd, 6), "llamadas": n}
+
+    por_op = {}
+    for op, n, usd in (db.session.query(GastoIA.operacion, _f.count(GastoIA.id),
+                                        _f.sum(GastoIA.coste_usd))
+                       .group_by(GastoIA.operacion).all()):
+        por_op[op] = {"llamadas": int(n), "cop": round(float(usd or 0) * trm, 1)}
+
+    return {
+        "proveedor": "Gemini" if _g._gemini_client else "sin configurar",
+        "modelos": _g.MODELOS_GEMINI,
+        "opencode_activo": bool(_g.USAR_RESPALDO_OPENCODE),
+        "opencode_modelo": _g.OPENCODE_MODEL_TUTOR,
+        "razonamiento": dict(_g.THINKING_POR_OPERACION),
+        "precios": {m: {"entrada": p[0], "salida": p[1]}
+                    for m, p in _g.PRECIOS_POR_MILLON.items()},
+        "trm": trm,
+        "hoy": _gasto(ahora - _td(days=1)),
+        "mes": _gasto(ahora - _td(days=30)),
+        "total": _gasto(None),
+        "por_operacion": por_op,
+        "cupo_feedback": app.config.get("FEEDBACK_MAX_POR_EJERCICIO", 0),
+    }
+
+
 @app.route("/admin/tokens")
 @login_required
 @role_required(*ROLES_ADMIN)
@@ -2640,11 +2680,11 @@ def admin_tokens():
         stats_5h=stats_5h, stats_24h=stats_24h, stats_7d=stats_7d,
         max_user=max_user, max_calls_user=max_calls_user,
         by_model=by_model_list,
-        models_config={
-            "convert": os.getenv("OPENCODE_MODEL_CONVERT", "minimax-m2.5-free"),
-            "tutor": os.getenv("OPENCODE_MODEL_TUTOR", "deepseek-v4-flash-free"),
-            "fallback": os.getenv("OPENCODE_MODEL", "deepseek-v4-flash-free"),
-        },
+        # Lo que responde DE VERDAD. Antes se listaban los modelos de OpenCode
+        # -minimax, deepseek, hy3- que llevan sin usarse desde que se apago el
+        # respaldo: el panel decia que el gasto iba por un plan gratuito
+        # mientras el dinero se iba por Gemini, que es de pago.
+        ia_real=_estado_ia(),
         cache_entries=cache_entries,
         cache_hits_total=cache_hits_total,
     )
