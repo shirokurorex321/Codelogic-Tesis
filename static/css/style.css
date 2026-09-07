@@ -2498,6 +2498,47 @@ pre code,
 }
 
 
+/* ── Avisos sobre el ejercicio ────────────────────────────────────
+   Distintos de los de sintaxis a proposito: aquellos dicen que el algoritmo
+   esta mal escrito y hay que arreglarlo; estos dicen que lo escrito no cubre
+   el ejercicio -o se sale de el- y NO impiden nada. Por eso van en azul y no
+   en ambar, y viven bajo la barra de botones y no en el panel de salida: no
+   dependen de que boton pulso. */
+#avisos-ejercicio { margin-top: 0.7rem; display: grid; gap: 0.5rem; }
+.aviso-ejercicio {
+    padding: 0.6rem 0.85rem;
+    border-radius: 8px;
+    border-left: 3px solid var(--info, #60a5fa);
+    background: rgba(96, 165, 250, 0.08);
+    font-size: 0.82rem;
+}
+.aviso-ejercicio strong {
+    display: block;
+    font-size: 0.72rem;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: var(--info, #60a5fa);
+    margin-bottom: 0.25rem;
+}
+.aviso-ejercicio p { margin: 0; color: var(--text); }
+.aviso-ejercicio .aviso-detalle { margin-top: 0.25rem; color: var(--text-light); font-size: 0.78rem; }
+/* El de "esto no entra" es el que mas importa: se sale del temario. */
+.aviso-ejercicio.aviso-fuera {
+    border-left-color: var(--accent, #a78bfa);
+    background: rgba(167, 139, 250, 0.09);
+}
+.aviso-ejercicio.aviso-fuera strong { color: var(--accent, #a78bfa); }
+
+.envio-incompleto {
+    margin: 0.75rem auto 0;
+    max-width: 460px;
+    padding: 0.5rem 0.8rem;
+    border-radius: 8px;
+    background: rgba(96, 165, 250, 0.1);
+    color: var(--text-light);
+    font-size: 0.82rem;
+}
+
 /* Avisos de sintaxis del pseudocodigo. En ambar: no es un error del sistema
    ni una nota, es trabajo pendiente del propio algoritmo. */
 .aviso-sintaxis {

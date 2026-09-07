@@ -90,6 +90,13 @@ FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %
             <button class="btn btn-primary" data-accion="submitSolution" id="btn-submit" style="margin-left:auto;">✅ Enviar solución</button>
             {% endif %}
         </div>
+        {% if exercise %}
+        {# Lo que tiene que ver con ESTE ejercicio: si se salio del tema o si
+           le falta algo de lo que se le pide. Va aqui y no en el panel de
+           salida porque no depende de que boton pulso: es sobre el ejercicio,
+           y tiene que seguir a la vista mientras lo corrige. #}
+        <div id="avisos-ejercicio" hidden></div>
+        {% endif %}
         {% if primer_semestre %}
         {# La puerta hacia tercer semestre: quien tenga curiosidad se asoma,
            pero no le estorba mientras aprende a escribir el algoritmo. #}
@@ -364,6 +371,10 @@ function mostrarCodigo() {
         if (activeTab === 'escritorio') return generarTraza();
 
         const lang = activeTab === 'feedback' ? 'python' : activeTab;
+
+        /* La revision va antes de gastar la llamada: de paso deja a la vista
+           los avisos de este ejercicio, que no dependen de la conversion. */
+        if (await revisarAntes(pseudocode, 'code-' + lang)) return;
 
         // ─── Cortocircuito: input no cambió desde la última conversión ───
         if (lastConvertedInput[lang] === pseudocode && convertedCode[lang]) {
@@ -713,15 +724,39 @@ function pintarProblemas(d, titulo) {
     return h + '</ul></div>';
 }
 
+/* Los avisos del ejercicio: se salio del tema, o le falta algo de lo que se
+   pide. NO son errores y no paran nada -puede ejecutar y puede entregar-, asi
+   que van en su propia caja y con otro tono. */
+function pintarAlcance(avisos) {
+    const caja = document.getElementById('avisos-ejercicio');
+    if (!caja) return;
+    if (!avisos || !avisos.length) { caja.hidden = true; caja.innerHTML = ''; return; }
+    const esc = t => String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    let h = '';
+    for (const a of avisos) {
+        h += '<div class="aviso-ejercicio aviso-' + esc(a.tipo) + '">'
+           + '<strong>' + (a.tipo === 'fuera' ? 'Esto no entra en el ejercicio' : 'Te falta algo')
+           + '</strong>'
+           + '<p>' + esc(a.mensaje) + '</p>'
+           + '<p class="aviso-detalle">' + esc(a.detalle) + '</p>'
+           + '</div>';
+    }
+    caja.innerHTML = h;
+    caja.hidden = false;
+}
+
 async function revisarAntes(pseudo, destino) {
     try {
         const r = await fetch('/api/revisar', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json',
                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content },
-            body: JSON.stringify({ pseudocode: pseudo })
+            body: JSON.stringify({ pseudocode: pseudo, exercise_id: exerciseId })
         });
         const d = await r.json();
+        /* Los avisos del ejercicio se pintan siempre, haya o no fallos de
+           sintaxis: son cosas distintas y se miran en sitios distintos. */
+        pintarAlcance(d.alcance);
         if (!d.success || !d.problemas || !d.problemas.length) return false;
         const h = pintarProblemas(d, 'Revisa tu pseudocódigo antes de seguir:')
                + '<p class="nota-sintaxis">Arréglalo y vuelve a intentarlo. Aquí lo importante es que el algoritmo esté bien escrito.</p>';
@@ -906,6 +941,8 @@ async function generarTraza() {
     async function generateDiagram() {
         const pseudocode = editor.value.trim();
         if (!pseudocode) return alert('Escribe algo de pseudocódigo primero.');
+
+        if (await revisarAntes(pseudocode, 'diagrama-salida')) return;
 
         const salida = document.getElementById('diagrama-salida');
         if (lastDiagramInput === pseudocode && ultimoMermaid) {
@@ -1188,6 +1225,7 @@ async function generarTraza() {
             const data = await res.json();
 
             if (data.success) {
+                pintarAlcance(data.alcance);
                 showGradeResult(data);
                 refreshUsage();
                 askCognitiveLoad(data.submission_id);
@@ -1213,6 +1251,9 @@ async function generarTraza() {
                 + '<p style="color:var(--text-muted); font-size:0.85rem;">No se pudo calificar automáticamente esta vez; tu docente podrá revisarla.</p></div>';
             return;
         }
+        /* Se acepta el envio siempre -lo decide el estudiante- pero si le
+           falta parte del ejercicio se le dice aqui, no solo arriba. */
+        const incompleto = data.completo === false;
         const passed = data.passed;
         const color = passed ? '#a6e3a1' : (data.score >= 40 ? '#f9e2af' : '#f38ba8');
         const emoji = passed ? '🎉' : (data.score >= 40 ? '💪' : '📚');
@@ -1225,6 +1266,10 @@ async function generarTraza() {
             + (data.grade_reason
                 ? '<p style="color:var(--text-light); font-size:0.9rem; max-width:480px; margin:0.5rem auto;">'
                   + escapeHtml(data.grade_reason) + '</p>'
+                : '')
+            + (incompleto
+                ? '<p class="envio-incompleto">Se guardó tu envío, pero no está completo: '
+                  + 'mira arriba lo que le falta para cubrir el ejercicio.</p>'
                 : '')
             + (passed
                 ? '<a href="/exercises" class="btn btn-primary btn-sm" style="margin-top:0.75rem;">Siguiente ejercicio →</a>'

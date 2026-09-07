@@ -43,6 +43,7 @@ from questions import (
 import executor
 import a_pseudo
 import revisar
+import alcance
 import traza
 
 # Versión del texto de consentimiento informado. Súbela si cambias el texto:
@@ -269,6 +270,42 @@ def feedback_gastadas(user_id, exercise_id):
         return 0
     return GastoIA.query.filter_by(user_id=user_id, operacion="feedback",
                                    exercise_id=exercise_id).count()
+
+
+def nivel_del_tema(topic_id):
+    """Hasta que escalon del temario llega un tema.
+
+    No esta escrito a mano en ningun sitio: sale de lo que de verdad necesitan
+    las soluciones de referencia de sus ejercicios. Si el docente añade un
+    ejercicio con Mientras a un tema, el tema sube de nivel solo, sin que haya
+    que acordarse de tocar una lista.
+    """
+    soluciones = [e.expected_pseudocode for e in
+                  Exercise.query.filter_by(topic_id=topic_id).all()]
+    return alcance.nivel_de(soluciones)
+
+
+def avisos_de_alcance(pseudocode, exercise):
+    """Lo que el estudiante escribio de mas o de menos PARA ESTE ejercicio.
+
+    Nunca bloquea: puede ejecutar y puede entregar. Solo se le dice.
+    """
+    if not exercise:
+        return []
+    try:
+        nivel = nivel_del_tema(exercise.topic_id)
+        # Lo que este ejercicio concreto usa se permite siempre, aunque el
+        # resto del tema no llegue ahi. Y tambien lo que use su ejemplo
+        # resuelto: si se le enseña como modelo un algoritmo con Si -en
+        # "Operadores aritmeticos" el ejemplo del MOD lo lleva-, no se le
+        # puede decir despues que el Si no entra aqui.
+        propias = (alcance.inventario(exercise.expected_pseudocode or "")["estructuras"]
+                   | alcance.inventario(exercise.ejemplo_resuelto or "")["estructuras"])
+        return alcance.revisar_alcance(pseudocode, exercise.expected_pseudocode,
+                                       nivel, propias)
+    except Exception:
+        app.logger.exception("fallo calculando el alcance del ejercicio %s", exercise.id)
+        return []
 
 
 def feedback_cupo(user, exercise_id):
@@ -1471,10 +1508,17 @@ def api_revisar():
     # Se muestran unos pocos: un principiante no puede con ocho a la vez, y
     # despues del primer fallo de estructura los siguientes suelen ser su eco.
     MAX = 3
+    # Y aparte, lo que tiene que ver con ESTE ejercicio: si se salio del tema
+    # o si le falta algo de lo que se le pide. Eso no es un error de sintaxis
+    # y no impide nada, asi que va en su propia clave.
+    ejercicio = None
+    if datos.get("exercise_id"):
+        ejercicio = db.session.get(Exercise, datos["exercise_id"])
     return jsonify({"success": True,
                     "problemas": problemas[:MAX],
                     "total": len(problemas),
-                    "hay_mas": max(len(problemas) - MAX, 0)})
+                    "hay_mas": max(len(problemas) - MAX, 0),
+                    "alcance": avisos_de_alcance(pseudocode, ejercicio)})
 
 
 @app.route("/api/convert", methods=["POST"])
@@ -1901,11 +1945,17 @@ def api_submit():
     db.session.add(submission)
     db.session.commit()
 
+    # Se entrega igual -el estudiante decide- pero se le dice si lo que mando
+    # no cubre el ejercicio o se salio del tema. Antes se entregaba media
+    # solucion y no se enteraba hasta la nota.
+    avisos = avisos_de_alcance(pseudocode, exercise)
+
     log_activity("submit", {
         "exercise_id": exercise_id,
         "attempt": attempt,
         "submission_id": submission.id,
         "score": score,
+        "alcance": [a["tipo"] for a in avisos],
     })
 
     return jsonify({
@@ -1914,6 +1964,8 @@ def api_submit():
         "score": score,
         "grade_reason": grade_reason,
         "passed": (score is not None and score >= 60),
+        "alcance": avisos,
+        "completo": not any(a["tipo"] == "falta" for a in avisos),
     })
 
 
