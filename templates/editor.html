@@ -628,6 +628,31 @@ function mostrarCodigo() {
    El conversor interpreta lo que el estudiante quiso decir, asi que un Si sin
    Entonces se convertia sin rechistar. En primer semestre eso es justo lo que
    NO debe pasar: la asignatura es aprender a escribirlo bien. */
+/* Pinta los problemas de sintaxis mostrando, cuando se puede, la linea del
+   propio estudiante ya corregida. Decirle "falta Entonces" es señalar el
+   fallo; enseñarle su linea tal como deberia quedar es ayudarle a arreglarlo,
+   que es lo que hace falta cuando esta atascado. */
+function pintarProblemas(d, titulo) {
+    const esc = t => String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    let h = '<div class="aviso-sintaxis"><strong>' + esc(titulo)
+          + (d.total > (d.problemas || []).length ? ' (' + d.total + ' cosas, te muestro las primeras)' : '')
+          + '</strong><ul>';
+    for (const p of d.problemas || []) {
+        h += '<li><strong>Línea ' + p.linea + ':</strong> ' + esc(p.problema);
+        if (p.corregida) {
+            h += '<div class="arreglo">'
+               + '<div><span class="etq">escribiste</span><code>' + esc(p.texto) + '</code></div>'
+               + '<div><span class="etq ok">quedaría</span><code>' + esc(p.corregida) + '</code></div>'
+               + '</div>';
+        } else {
+            h += '<br><span class="sug">' + esc(p.sugerencia) + '</span>'
+               + (p.texto ? '<br><code>' + esc(p.texto) + '</code>' : '');
+        }
+        h += '</li>';
+    }
+    return h + '</ul></div>';
+}
+
 async function revisarAntes(pseudo, destino) {
     try {
         const r = await fetch('/api/revisar', {
@@ -638,17 +663,8 @@ async function revisarAntes(pseudo, destino) {
         });
         const d = await r.json();
         if (!d.success || !d.problemas || !d.problemas.length) return false;
-        const esc = t => String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;');
-        let h = '<div class="aviso-sintaxis"><strong>Revisa tu pseudocódigo antes de seguir'
-              + (d.total > d.problemas.length ? ' (' + d.total + ' cosas, te muestro las primeras)' : '')
-              + ':</strong><ul>';
-        for (const p of d.problemas) {
-            h += '<li><strong>Línea ' + p.linea + ':</strong> ' + esc(p.problema)
-               + '<br><span class="sug">' + esc(p.sugerencia) + '</span>'
-               + (p.texto ? '<br><code>' + esc(p.texto) + '</code>' : '') + '</li>';
-        }
-        h += '</ul><p class="nota">Arréglalo y vuelve a intentarlo. '
-           + 'Aquí lo importante es que el algoritmo esté bien escrito.</p></div>';
+        const h = pintarProblemas(d, 'Revisa tu pseudocódigo antes de seguir:')
+               + '<p class="nota-sintaxis">Arréglalo y vuelve a intentarlo. Aquí lo importante es que el algoritmo esté bien escrito.</p>';
         if (destino) document.getElementById(destino).innerHTML = h;
         return true;
     } catch (e) { return false; }   /* si la revision falla, no se estorba */
@@ -1038,6 +1054,13 @@ async function generarTraza() {
                 }
                 document.getElementById('tab-feedback').innerHTML = cacheNote + cupoNota + formatFeedback(data.feedback);
                 refreshUsage();
+            } else if (data.sintaxis) {
+                /* Un fallo de sintaxis no gasta la revision con IA: se le
+                   enseñan las correcciones y se le dice que su intento sigue
+                   intacto, para que no crea que lo ha perdido. */
+                document.getElementById('tab-feedback').innerHTML =
+                    pintarProblemas(data, 'Arregla esto antes de pedir la revisión:')
+                  + '<p class="nota-sintaxis">' + String(data.error || '').replace(/</g,'&lt;') + '</p>';
             } else if (data.sin_cupo) {
                 document.getElementById('tab-feedback').innerHTML =
                     '<div style="line-height:1.6;">'

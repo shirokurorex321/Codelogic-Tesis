@@ -1747,6 +1747,23 @@ def api_feedback():
         if exercise:
             exercise_description = exercise.description
 
+    # Un error de sintaxis NO debe gastar la revision con IA. Con el cupo en 1,
+    # un estudiante que escribiera "Escrivir" se quedaba sin ayuda para el
+    # algoritmo, que es justo para lo que sirve la revision. Ademas la IA sobre
+    # un pseudocodigo roto responde a medias: gasta el dinero y ayuda poco.
+    # Estos fallos son mecanicos y el revisor ya le da su linea corregida.
+    problemas = revisar.revisar(pseudocode)
+    if problemas:
+        return jsonify({
+            "success": False,
+            "sintaxis": True,
+            "problemas": problemas[:3],
+            "total": len(problemas),
+            "error": "Antes de pedir la revisión, arregla esto. No te gasta el "
+                     "intento: tu revisión con IA sigue disponible para cuando "
+                     "el algoritmo esté bien escrito.",
+        }), 400
+
     quedan, tope = feedback_cupo(current_user, exercise_id)
     result = get_ai_feedback(pseudocode, exercise_description,
                              permitir_llamada=(quedan is None or quedan > 0))

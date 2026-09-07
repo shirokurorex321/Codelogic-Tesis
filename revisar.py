@@ -38,6 +38,10 @@ NOMBRE = {
     "para": "Para", "finpara": "FinPara",
     "mientras": "Mientras", "finmientras": "FinMientras",
     "segun": "Segun", "finsegun": "FinSegun",
+    "escribir": "Escribir", "leer": "Leer", "definir": "Definir",
+    "entonces": "Entonces", "sino": "Sino", "hacer": "Hacer",
+    "hasta": "Hasta", "imprimir": "Imprimir", "mostrar": "Mostrar",
+    "dimension": "Dimension", "repetir": "Repetir", "como": "Como",
 }
 
 # Palabras clave conocidas, para detectar erratas por parecido.
@@ -76,6 +80,16 @@ def _distancia(a, b):
     return ant[-1]
 
 
+def _corregir_palabra(linea, mala, buena):
+    """Cambia la palabra mal escrita conservando el resto de la linea."""
+    return re.sub(r"\b%s\b" % re.escape(mala), buena, linea, count=1, flags=re.I)
+
+
+def _anadir_al_final(linea, palabra):
+    """Anade la palabra que falta al final, respetando comentarios al vuelo."""
+    return "%s %s" % (linea.rstrip(), palabra)
+
+
 def revisar(pseudocodigo):
     """Devuelve una lista de problemas: {linea, texto, problema, sugerencia}."""
     problemas = []
@@ -96,7 +110,8 @@ def revisar(pseudocodigo):
             problemas.append({
                 "linea": n, "texto": linea,
                 "problema": "Hay unas comillas sin cerrar.",
-                "sugerencia": "Todo texto entre comillas tiene que abrirlas y cerrarlas."})
+                "sugerencia": "Todo texto entre comillas tiene que abrirlas y cerrarlas.",
+                "corregida": linea.rstrip() + '"'})
 
         # cierres
         if primera in CIERRES:
@@ -136,22 +151,26 @@ def revisar(pseudocodigo):
                 problemas.append({
                     "linea": n, "texto": linea,
                     "problema": "A este Si le falta Entonces.",
-                    "sugerencia": "Se escribe: Si condicion Entonces"})
+                    "sugerencia": "Todo Si termina con Entonces.",
+                    "corregida": _anadir_al_final(linea, "Entonces")})
             if abre == "para" and "hacer" not in bajo:
                 problemas.append({
                     "linea": n, "texto": linea,
                     "problema": "A este Para le falta Hacer.",
-                    "sugerencia": "Se escribe: Para i <- 1 Hasta 10 Hacer"})
+                    "sugerencia": "Todo Para termina con Hacer.",
+                    "corregida": _anadir_al_final(linea, "Hacer")})
             if abre == "mientras" and "hacer" not in bajo:
                 problemas.append({
                     "linea": n, "texto": linea,
                     "problema": "A este Mientras le falta Hacer.",
-                    "sugerencia": "Se escribe: Mientras condicion Hacer"})
+                    "sugerencia": "Todo Mientras termina con Hacer.",
+                    "corregida": _anadir_al_final(linea, "Hacer")})
             if abre == "segun" and "hacer" not in bajo:
                 problemas.append({
                     "linea": n, "texto": linea,
                     "problema": "A este Segun le falta Hacer.",
-                    "sugerencia": "Se escribe: Segun variable Hacer"})
+                    "sugerencia": "Todo Segun termina con Hacer.",
+                    "corregida": _anadir_al_final(linea, "Hacer")})
             break
         else:
             # erratas: una primera palabra que se parece mucho a una clave.
@@ -162,10 +181,12 @@ def revisar(pseudocodigo):
                 cercanas = [k for k in CLAVES
                             if len(k) > 3 and _distancia(primera, k) == 1]
                 if cercanas:
+                    buena = NOMBRE.get(cercanas[0], cercanas[0].capitalize())
                     problemas.append({
                         "linea": n, "texto": linea,
                         "problema": "«%s» no es una palabra del pseudocodigo." % linea.split()[0],
-                        "sugerencia": "¿Querias escribir %s?" % cercanas[0].capitalize()})
+                        "sugerencia": "La palabra correcta es %s." % buena,
+                        "corregida": _corregir_palabra(linea, linea.split()[0], buena)})
 
     # bloques que quedaron abiertos
     for abre, ln in reversed(pila):

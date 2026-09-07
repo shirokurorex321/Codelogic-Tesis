@@ -2490,3 +2490,16 @@ pre code,
     outline: 2px solid var(--primary);
     outline-offset: 1px;
 }
+
+
+/* El antes y el despues de una linea con fallo. Ver su propia linea corregida
+   es lo que convierte un aviso en una ayuda. */
+.aviso-sintaxis .arreglo { margin-top: .45rem; display: grid; gap: .25rem; }
+.aviso-sintaxis .arreglo .etq {
+    display: inline-block; min-width: 5.6rem;
+    font-size: .72rem; text-transform: uppercase; letter-spacing: .03em;
+    color: var(--text-light);
+}
+.aviso-sintaxis .arreglo .etq.ok { color: var(--success, #16a34a); }
+.aviso-sintaxis .arreglo code { font-size: .82rem; }
+.nota-sintaxis { margin: .6rem 0 0; color: var(--text-light); font-size: .85rem; }
