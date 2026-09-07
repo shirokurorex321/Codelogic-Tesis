@@ -2503,3 +2503,15 @@ pre code,
 .aviso-sintaxis .arreglo .etq.ok { color: var(--success, #16a34a); }
 .aviso-sintaxis .arreglo code { font-size: .82rem; }
 .nota-sintaxis { margin: .6rem 0 0; color: var(--text-light); font-size: .85rem; }
+
+
+/* Lo que el estudiante teclea, dentro de la consola simulada. Se distingue
+   del texto que imprime el programa para que se vea quien dijo que. */
+.exec-stdout .tecleado { color: var(--primary); font-weight: 600; }
+.exec-stdout .etq-tecleado {
+    margin-left: .6rem;
+    font-size: .7rem;
+    font-weight: 400;
+    color: var(--text-light);
+    text-transform: lowercase;
+}

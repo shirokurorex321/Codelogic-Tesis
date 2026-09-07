@@ -794,7 +794,23 @@ async function generarTraza() {
             html += '<div class="traza-aviso" style="color:#f38ba8;">El programa se detuvo con un error: '
                   + escapeHtml(data.error) + '</div>';
         }
-        if (data.salida && data.salida.trim()) {
+        /* La consola tal como se veria: lo que imprime el programa MAS lo que
+           tecleo el estudiante. Ejecutando por tuberia lo tecleado no se ve, y
+           sin ese 10 en medio la traza parece que se ha saltado algo. */
+        if (data.consola && data.consola.length) {
+            const titulo = data.consola_ordenada === false
+                ? 'Lo que imprimio el programa (y abajo, lo que escribiste)'
+                : 'En pantalla se veria asi';
+            let cons = '';
+            for (const l of data.consola) {
+                cons += l.tipo === 'tecleado'
+                    ? '<span class="tecleado">' + escapeHtml(l.t)
+                      + '<span class="etq-tecleado">lo escribiste tú</span></span>\n'
+                    : escapeHtml(l.t) + '\n';
+            }
+            html += '<div class="traza-salida-prog"><div class="exec-block-label">' + titulo + '</div>'
+                  + '<pre class="exec-stdout">' + cons + '</pre></div>';
+        } else if (data.salida && data.salida.trim()) {
             html += '<div class="traza-salida-prog"><div class="exec-block-label">Lo que imprimio el programa</div>'
                   + '<pre class="exec-stdout">' + escapeHtml(data.salida) + '</pre></div>';
         }

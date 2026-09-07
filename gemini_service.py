@@ -740,6 +740,12 @@ Genera UNICAMENTE el codigo Mermaid empezando por 'flowchart TD'."""
                      normalizar_pseudocodigo(pseudocode))
     cached = cache_get("diagram", key)
     if cached:
+        # El color se anade al limpiar, asi que lo guardado antes de que
+        # existiera saldria en gris. Se colorea tambien al servir, que es
+        # gratis, en vez de tirar la cache y pagar por regenerarla.
+        d = cached.get("diagram")
+        if d and "classDef" not in d:
+            cached = {**cached, "diagram": _colorear_mermaid(d)}
         return {**cached, "cached": True}
 
     try:
@@ -768,12 +774,72 @@ def _limpiar_mermaid(texto: str) -> str:
             lineas = lineas[:-1]
         t = "\n".join(lineas).strip()
 
-    # <- solo es peligroso dentro de las etiquetas; ahi significa asignacion
-    t = re.sub(r'(?<=")([^"]*?)<-([^"]*?)(?=")', r'\1=\2', t)
+    # Dentro de una etiqueta, <- es una asignacion. Antes se cambiaba por =,
+    # que en un diagrama significa COMPARAR: justo la confusion que hay que
+    # evitar. Se cambia por la flecha, que es lo correcto y no rompe Mermaid.
+    t = re.sub(r'(?<=")([^"]*?)<-([^"]*?)(?=")', r'\1←\2', t)
 
     if not t.lower().startswith("flowchart") and not t.lower().startswith("graph"):
         t = "flowchart TD\n" + t
-    return t
+    return _colorear_mermaid(t)
+
+
+# Un color por tipo de simbolo. Un diagrama todo del mismo gris obliga a
+# fijarse en la forma para saber que es cada caja; con color se distingue de
+# un vistazo, que es justo lo que se le pide al estudiante que aprenda.
+_PALETA = {
+    "terminal": ("#1f3d2b", "#4ade80"),   # inicio y fin      · verde
+    "entrada":  ("#12304a", "#60a5fa"),   # Leer              · azul
+    "salida":   ("#0f3b3a", "#2dd4bf"),   # Escribir          · turquesa
+    "proceso":  ("#2b2350", "#a78bfa"),   # asignaciones      · violeta
+    "decision": ("#4a3410", "#fbbf24"),   # rombos            · ambar
+    "ciclo":    ("#3d1638", "#f472b6"),   # preparacion Para  · rosa
+    "conector": ("#333a45", "#cbd5e1"),   # conectores        · gris
+}
+
+
+def _colorear_mermaid(t: str) -> str:
+    """Asigna a cada nodo una clase segun su forma, y define los colores.
+
+    Se hace aqui y no en el prompt porque es mecanico: depende solo de la
+    figura, y pedirselo al modelo saldria distinto cada vez.
+    """
+    if "classDef" in t:            # ya viene coloreado: no se toca
+        return t
+
+    reglas = [
+        # Los nodos con @{...} pueden ir a mitad de linea, detras de una
+        # flecha, asi que no se puede anclar al principio.
+        ("entrada",  r"(?:^|\s)(\w+)@\{\s*shape:\s*card\b"),
+        ("salida",   r"(?:^|\s)(\w+)@\{\s*shape:\s*docs?\b"),
+        ("ciclo",    r"(?:^|\s)(\w+)@\{\s*shape:\s*hex\b"),
+        ("terminal", r"(?:^|\s)(\w+)@\{\s*shape:\s*stadium\b"),
+        ("terminal", r"(?:^|\s)(\w+)\(\["),
+        ("conector", r"(?:^|\s)(\w+)\(\("),
+        ("decision", r"(?:^|\s)(\w+)\{\""),
+        ("entrada",  r"(?:^|\s)(\w+)\[/\"\s*(?:Leer|Ingresar)\b"),
+        ("salida",   r"(?:^|\s)(\w+)\[/\"\s*(?:Escribir|Mostrar|Imprimir)\b"),
+        ("proceso",  r"(?:^|\s)(\w+)\[\""),
+    ]
+    clase_de = {}
+    for linea in t.split("\n"):
+        for nombre, patron in reglas:
+            for m in re.finditer(patron, linea):
+                clase_de.setdefault(m.group(1), nombre)
+
+    if not clase_de:
+        return t
+
+    usados = sorted(set(clase_de.values()))
+    fuera = [t, ""]
+    for c in usados:
+        fondo, borde = _PALETA[c]
+        fuera.append("    classDef %s fill:%s,stroke:%s,stroke-width:2px,color:#e6edf3"
+                     % (c, fondo, borde))
+    for c in usados:
+        nodos = sorted(n for n, k in clase_de.items() if k == c)
+        fuera.append("    class %s %s" % (",".join(nodos), c))
+    return "\n".join(fuera)
 
 
 def get_ai_feedback(pseudocode: str, exercise_description: str = None,

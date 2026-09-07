@@ -46,7 +46,7 @@ def a_pseudo(linea: str) -> str:
 
     m = re.fullmatch(r"(\w+)\s*=\s*(?:int|float|str)?\(?\s*input\([^)]*\)\s*\)?", s)
     if m:
-        return "Leer %s" % m.group(1)
+        return "Leer %s" % m.group(1)   # el mensaje, si lo llevaba, ya salio aparte
 
     m = re.fullmatch(r"([\w,\s]+)=\s*map\(\s*\w+\s*,\s*input\([^)]*\)\.split\(\)\s*\)", s)
     if m:
@@ -130,11 +130,35 @@ def traducir_pasos(pasos, pseudocodigo: str):
     for l in lineas:
         indice.setdefault(_clave(l), l.strip())
 
+    # El conversor a veces funde un Escribir con el Leer siguiente en una sola
+    # linea: input("Ingrese un numero:"). Entonces la tabla mostraba 3 pasos
+    # para un algoritmo de 4, saltandose una instruccion que el estudiante SI
+    # escribio. Aqui se recupera: si la peticion que quedo dentro del input()
+    # coincide con un Escribir suyo, se emite tambien como su propio paso.
+    def _escribir_absorbido(bruta):
+        m = re.search(r"input\(\s*[\"']((?:[^\"'\\]|\\.)*)[\"']\s*\)", bruta)
+        if not m:
+            return None
+        texto = m.group(1).replace("\\n", "").strip()
+        if not texto:
+            return None
+        for l in lineas:
+            if re.match(r"^\s*(?:escribir|mostrar|imprimir)\b", l.strip().lower()) and \
+               _clave(texto) and _clave(texto) in _clave(l):
+                return l.strip()
+        return None
+
     fuera, casados = [], 0
     for p in pasos or []:
         bruta = p.get("instruccion", "")
         if _ANDAMIAJE.match(bruta):
             continue
+        suya_escribir = _escribir_absorbido(bruta)
+        if suya_escribir:
+            previo = dict(fuera[-1]["vars"]) if fuera else {}
+            fuera.append({**p, "instruccion": suya_escribir, "textual": True,
+                          "vars": previo, "paso": len(fuera) + 1})
+            casados += 1
         traducida = a_pseudo(bruta)
         suya = indice.get(_clave(traducida))
         if suya:
@@ -200,3 +224,40 @@ def error_amable(bruto: str) -> str:
                 return mensaje % m.group(1)
             return mensaje
     return bruto
+
+
+def consola(salida, stdin, pasos):
+    """Reconstruye lo que se veria en pantalla, con lo que TECLEO el alumno.
+
+    Ejecutando por tuberia, lo que se escribe no se ve: el programa imprime
+    "Ingrese un numero:" y salta a "Es par", sin rastro del 10. En una terminal
+    de verdad el numero aparece ahi, y su ausencia hace que la traza parezca
+    incompleta.
+
+    Se intercala cada valor tecleado detras de la linea que lo pidio. Solo
+    cuando cuadra: si hay tantos valores como lecturas y hay sitio para
+    colocarlos. Si no cuadra, se devuelven aparte antes que colocarlos mal.
+    """
+    lineas = [l for l in (salida or "").split("\n")]
+    if lineas and lineas[-1] == "":
+        lineas = lineas[:-1]
+    tecleados = [v for v in (stdin or "").replace("\r", "").split("\n") if v != ""]
+    lecturas = sum(1 for p in (pasos or [])
+                   if re.match(r"^\s*(?:Leer|Ingresar)\b", p.get("instruccion", "")))
+
+    if not tecleados:
+        return [{"t": l, "tipo": "salida"} for l in lineas], True
+    if lecturas != len(tecleados) or len(lineas) < len(tecleados):
+        # No se puede saber donde va cada uno: mejor decirlo que colocarlo mal.
+        return ([{"t": l, "tipo": "salida"} for l in lineas]
+                + [{"t": v, "tipo": "tecleado"} for v in tecleados]), False
+
+    fuera, i = [], 0
+    for l in lineas:
+        fuera.append({"t": l, "tipo": "salida"})
+        if i < len(tecleados) and (l.rstrip().endswith((":", "?")) or i == 0):
+            fuera.append({"t": tecleados[i], "tipo": "tecleado"})
+            i += 1
+    for v in tecleados[i:]:
+        fuera.append({"t": v, "tipo": "tecleado"})
+    return fuera, True

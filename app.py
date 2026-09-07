@@ -1550,6 +1550,12 @@ def api_trace():
             # con Leer sin escribir los datos de entrada.
             if result.get("error"):
                 result["error"] = a_pseudo.error_amable(result["error"])
+            # Lo que se veria en pantalla, con lo que el alumno tecleo. Por
+            # tuberia eso no se ve y la traza parecia incompleta.
+            linea_a_linea, colocado = a_pseudo.consola(
+                result.get("salida"), stdin, result.get("pasos"))
+            result["consola"] = linea_a_linea
+            result["consola_ordenada"] = colocado
 
     log_activity("trace", {
         "code_length": len(code),
