@@ -53,6 +53,12 @@ CLAVES = {
     "para", "hasta", "hacer", "finpara", "paso", "con",
     "mientras", "finmientras", "repetir",
     "segun", "finsegun", "de", "otro", "modo",
+    # Construcciones de varias palabras: "Hasta Que" en el Repetir, "Con Paso"
+    # en el Para, "Escribir Sin Saltar", "Esperar Tecla", "Limpiar Pantalla".
+    # Sin esto, el «Que» de "Hasta Que edad >= 0" se tomaba por una variable
+    # sin declarar y salia un aviso falso en un ejercicio correcto.
+    "que", "sin", "saltar", "esperar", "tecla", "segundos",
+    "limpiar", "pantalla", "borrar", "finrepetir",
 }
 
 
@@ -62,9 +68,15 @@ def _norm(t):
 
 
 def _sin_texto(linea):
-    """La linea sin lo que va entre comillas: ahi dentro no hay sintaxis."""
+    """La linea sin comillas ni comentarios: ahi dentro no hay sintaxis.
+
+    El comentario se quita DESPUES de vaciar las comillas, para no cortar por
+    un // que forme parte de un texto. Sin esto, un comentario como
+    "// x ya no vale 5" hacia creer que «vale» era una variable sin declarar.
+    """
     l = re.sub(r'"[^"]*"', '""', linea)
-    return re.sub(r"'[^']*'", "''", l)
+    l = re.sub(r"'[^']*'", "''", l)
+    return re.split(r"//", l, 1)[0]
 
 
 def _distancia(a, b):
@@ -196,5 +208,75 @@ def revisar(pseudocodigo):
             "sugerencia": "Falta escribir %s al terminar el bloque."
                           % NOMBRE[dict(BLOQUES)[abre]]})
 
+    problemas.extend(_sin_declarar(lineas))
     problemas.sort(key=lambda p: p["linea"])
     return problemas
+
+
+# Palabras que aparecen donde iria una variable pero no lo son.
+_NO_SON_VARIABLES = CLAVES | {
+    "verdadero", "falso", "mod", "div", "y", "o", "no", "raiz", "abs", "trunc",
+    "redon", "sen", "cos", "tan", "ln", "exp", "azar", "longitud", "mayusculas",
+    "minusculas", "subcadena", "concatenar", "convertiratexto", "convertiranumero",
+}
+
+
+def _sin_declarar(lineas):
+    """Variables que se usan sin haberlas declarado con Definir.
+
+    Es el error que mas se repite al empezar, y el conversor lo tapaba: se
+    inventaba un valor inicial para que el programa funcionara, asi que el
+    estudiante nunca se enteraba.
+
+    Se avisa UNA vez con todas juntas, no una por variable: nadie arregla ocho
+    avisos, y el arreglo es el mismo -anadir la linea Definir-.
+    """
+    declaradas, usadas, primera_linea = set(), {}, {}
+
+    for n, cruda in enumerate(lineas, 1):
+        linea = cruda.strip()
+        if not linea or linea.startswith("//"):
+            continue
+        limpia = _sin_texto(linea)
+        bajo = _norm(limpia)
+
+        # La cabecera no aporta variables: su identificador es el nombre del
+        # algoritmo. Antes se quitaba despues, y eso enmascaraba una variable
+        # que se llamara igual que el algoritmo.
+        if re.match(r"^\s*(?:algoritmo|proceso|finalgoritmo|finproceso)\b", bajo):
+            continue
+
+        m = re.match(r"^\s*definir\s+(.+?)\s+como\s+\w+", bajo)
+        if m:
+            for v in re.split(r"[,\s]+", m.group(1)):
+                if v:
+                    declaradas.add(v)
+            continue
+        m = re.match(r"^\s*dimension\s+(.+)$", bajo)
+        if m:
+            for v in re.findall(r"([a-z_]\w*)\s*\[", m.group(1)):
+                declaradas.add(v)
+            continue
+
+        for v in re.findall(r"\b([a-z_]\w*)\b", bajo):
+            if v in _NO_SON_VARIABLES or v.isdigit():
+                continue
+            usadas.setdefault(v, 0)
+            usadas[v] += 1
+            primera_linea.setdefault(v, n)
+
+    faltan = sorted(v for v in usadas if v not in declaradas)
+    if not faltan:
+        return []
+
+    n = min(primera_linea[v] for v in faltan)
+    nombres = ", ".join("«%s»" % v for v in faltan)
+    return [{
+        "linea": n,
+        "texto": lineas[n - 1].strip(),
+        "problema": ("Usas %s sin haberla declarado." % nombres) if len(faltan) == 1
+                    else ("Usas estas variables sin declararlas: %s." % nombres),
+        "sugerencia": "Toda variable se declara antes de usarla: "
+                      "Definir %s Como Entero (o Real, Cadena, Logico)."
+                      % ", ".join(sorted(faltan)),
+    }]
