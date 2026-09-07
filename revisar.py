@@ -163,7 +163,11 @@ def _falta_flecha(linea):
     if not m:
         return None
     sangria, nombre, _hueco, resto = m.groups()
-    if resto.rstrip().endswith(":") or resto.lstrip().startswith("("):
+    # Una llamada lleva el parentesis PEGADO al nombre -MiProceso(a, b)-, y
+    # entonces la expresion de arriba, que exige un hueco, ni siquiera casa.
+    # Descartar todo lo que empiece por parentesis dejaba escapar el fallo mas
+    # comun de todos: «promedio  (a + b) / 2», una asignacion sin su flecha.
+    if resto.rstrip().endswith(":"):
         return None
     return "%s%s <- %s" % (sangria, nombre, resto.strip())
 

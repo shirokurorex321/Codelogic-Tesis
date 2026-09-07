@@ -173,6 +173,18 @@ def revisar_alcance(pseudocodigo, referencia, nivel_tema, permitidas=()):
             "detalle": "Los carteles del tipo «Ingrese un número» no cuentan: "
                        "esto va de los Escribir que enseñan un valor calculado.",
         })
+    elif not del_profe["escribe_valor"] and suyo["escribe"] < del_profe["escribe"]:
+        # Hay ejercicios que solo escriben texto: «Hola Mundo» no calcula nada,
+        # asi que arriba no hay nada que contar y una entrega sin un solo
+        # Escribir se daba por completa. Cuando la referencia no muestra ningun
+        # valor, lo que cuenta son los Escribir a secas.
+        n = del_profe["escribe"]
+        avisos.append({
+            "tipo": "falta",
+            "mensaje": "El ejercicio escribe %d línea%s por pantalla y tu algoritmo "
+                       "escribe %d." % (n, "s" if n != 1 else "", suyo["escribe"]),
+            "detalle": "Un algoritmo que no muestra nada no resuelve el ejercicio.",
+        })
 
     faltan_ops = [nombre for signo, nombre in OPERACIONES
                   if signo in del_profe["operaciones"]
