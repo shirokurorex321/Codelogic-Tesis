@@ -106,6 +106,52 @@ def _anadir_al_final(linea, palabra):
     return "%s %s" % (linea.rstrip(), palabra)
 
 
+# Palabras que empiezan una instruccion y son largas y sin ambiguedad: si
+# aparecen PEGADAS al final de otra palabra, lo que hay es un salto de linea
+# que se perdio. Se dejan fuera "si", "sino" y "para" a proposito: aparecen
+# dentro de palabras corrientes (analiSIs, sePARAr) y darian avisos falsos.
+_PEGADAS = ("escribir", "imprimir", "mostrar", "leer", "ingresar", "definir",
+            "dimension", "mientras", "repetir", "segun", "finsi", "finpara",
+            "finmientras", "finsegun", "finalgoritmo", "finproceso")
+
+
+def _dos_instrucciones(linea, limpia, bajo):
+    """Dos instrucciones en la misma linea, por un salto de linea perdido.
+
+    Salio de un envio real: «Leer aEscribir "Ingrese un numero b:"». Al pegarse
+    las dos lineas, «aEscribir» parecia una variable y el aviso que recibia el
+    estudiante era que no la habia declarado, que no le decia nada. Lo que le
+    pasa es que le falta un salto de linea.
+    """
+    # Palabra por palabra, y NUNCA sobre una que sea clave entera: FinSegun
+    # acaba en "segun" y FinMientras en "mientras", asi que buscar el trozo
+    # suelto acusaba de fallo a la mitad de los ejercicios de seleccion y de
+    # repeticion del temario.
+    for m in re.finditer(r"[a-z0-9_]+", bajo):
+        palabra = m.group(0)
+        if palabra in CLAVES:
+            continue
+        for clave in _PEGADAS:
+            if palabra.endswith(clave) and len(palabra) > len(clave):
+                corte = m.end() - len(clave)
+                if corte >= len(linea):
+                    continue
+                sangria = re.match(r"^(\s*)", linea).group(1)
+                return {"palabra": linea[corte:corte + len(clave)],
+                        "corregida": linea[:corte].rstrip() + "\n" + sangria + linea[corte:]}
+
+    # Un Leer o un Escribir no asignan nada, asi que una flecha en esa linea
+    # es de otra instruccion que se pego. Aqui NO se ofrece la linea partida:
+    # en «Leer bsuma <- a + b» no hay forma de saber donde acaba el nombre de
+    # la variable que lee y empieza el de la que asigna, y una correccion
+    # inventada es peor que ninguna.
+    if re.match(r"^(?:leer|ingresar|escribir|imprimir|mostrar)\b", bajo) and (
+            "<-" in limpia or "\u2190" in limpia):
+        return {"palabra": None, "corregida": None}
+
+    return None
+
+
 def _falta_flecha(linea):
     """Devuelve la linea con la flecha puesta, o None si no toca avisar.
 
@@ -145,14 +191,28 @@ def revisar(pseudocodigo):
                 "sugerencia": "Todo texto entre comillas tiene que abrirlas y cerrarlas.",
                 "corregida": linea.rstrip() + '"'})
 
+        # dos instrucciones pegadas por un salto de linea perdido
+        if primera in CLAVES:
+            junto = _dos_instrucciones(linea, limpia, bajo)
+            if junto:
+                problemas.append({
+                    "linea": n, "texto": linea,
+                    "problema": ("Aquí hay dos instrucciones en la misma línea: "
+                                 "se te pegó «%s» a la anterior." % junto["palabra"])
+                                if junto["palabra"] else
+                                ("Aquí hay dos instrucciones en la misma línea: "
+                                 "un %s y una asignación." % linea.split()[0]),
+                    "sugerencia": "Cada instrucción va en su propia línea.",
+                    "corregida": junto["corregida"]})
+
         # cierres
         if primera in CIERRES:
             esperado = CIERRES[primera]
             if not pila:
                 problemas.append({
                     "linea": n, "texto": linea,
-                    "problema": "Aparece %s pero no hay ningun %s abierto." % (linea.split()[0], NOMBRE[esperado]),
-                    "sugerencia": "Un cierre solo tiene sentido si antes se abrio el bloque."})
+                    "problema": "Aparece %s pero no hay ningún %s abierto." % (linea.split()[0], NOMBRE[esperado]),
+                    "sugerencia": "Un cierre solo tiene sentido si antes se abrió el bloque."})
             elif pila[-1][0] != esperado:
                 # Lo que falta no es este cierre: son los bloques de dentro que
                 # siguen abiertos. Se avisa de cada uno y despues SI se cierra
@@ -162,9 +222,9 @@ def revisar(pseudocodigo):
                     abierto, ln = pila.pop()
                     problemas.append({
                         "linea": ln, "texto": lineas[ln - 1].strip(),
-                        "problema": "Este %s se abre en la linea %d y no se cierra."
+                        "problema": "Este %s se abre en la línea %d y no se cierra."
                                     % (NOMBRE[abierto], ln),
-                        "sugerencia": "Escribe %s antes del %s de la linea %d."
+                        "sugerencia": "Escribe %s antes del %s de la línea %d."
                                       % (NOMBRE[dict(BLOQUES)[abierto]], linea.split()[0], n)})
                 if pila and pila[-1][0] == esperado:
                     pila.pop()
@@ -218,7 +278,7 @@ def revisar(pseudocodigo):
                     buena = NOMBRE.get(cercanas[0], cercanas[0].capitalize())
                     problemas.append({
                         "linea": n, "texto": linea,
-                        "problema": "«%s» no es una palabra del pseudocodigo." % linea.split()[0],
+                        "problema": "«%s» no es una palabra del pseudocódigo." % linea.split()[0],
                         "sugerencia": "La palabra correcta es %s." % buena,
                         "corregida": _corregir_palabra(linea, linea.split()[0], buena)})
                 else:
@@ -233,7 +293,7 @@ def revisar(pseudocodigo):
                     if hueco:
                         problemas.append({
                             "linea": n, "texto": linea,
-                            "problema": "A esta linea le falta la flecha de asignacion.",
+                            "problema": "A esta línea le falta la flecha de asignación.",
                             "sugerencia": "Para guardar un valor en una variable se "
                                           "escribe nombre <- valor.",
                             "corregida": hueco})
@@ -242,7 +302,7 @@ def revisar(pseudocodigo):
                 # la asignatura quiere evitar desde el primer dia.
                 problemas.append({
                     "linea": n, "texto": linea,
-                    "problema": "En pseudocodigo se asigna con <- , no con =.",
+                    "problema": "En pseudocódigo se asigna con <- , no con =.",
                     "sugerencia": "El = sirve para comparar (dentro de un Si o "
                                   "un Mientras). Para guardar un valor va la flecha.",
                     "corregida": re.sub(r"=", "<-", linea, count=1)})
