@@ -1267,12 +1267,14 @@ a:hover { color: var(--primary); }
     overflow: auto;
 }
 
+/* Una sola barra por panel: el que scrollea es .panel-body. Si esta caja
+   tambien lleva overflow:auto quedan dos barras encajadas, y para seguir
+   bajando hay que cambiar de barra a mitad de camino. */
 .feedback-output {
     padding: 1.25rem;
     font-size: 0.9rem;
     line-height: 1.7;
-    height: 100%;
-    overflow: auto;
+    min-height: 100%;
 }
 
 /* ─── EDITOR TOOLBAR ─────────────────────────── */
@@ -1477,10 +1479,11 @@ tr:hover td { background: #f9fafb; }
 }
 
 /* ─── EDITOR: layout vertical por lenguaje ───────────────── */
+/* min-height en vez de height + overflow: la pestana crece con su contenido
+   y quien scrollea es .panel-body, uno solo. */
 .lang-pane {
     flex-direction: column;
-    height: 100%;
-    overflow: auto;
+    min-height: 100%;
 }
 
 .lang-section {
@@ -1527,9 +1530,10 @@ tr:hover td { background: #f9fafb; }
 .btn-mini-primary:hover:not(:disabled) { background: var(--primary-light); border-color: var(--primary-light); }
 .btn-mini-accent { background: var(--accent, #8b5cf6); color: #fff; border-color: var(--accent, #8b5cf6); }
 
+/* Sin max-height: el codigo se estira y se lee de corrido con la barra del
+   panel, en vez de tener su propia barra dentro de la del panel. */
 .lang-pane .code-output {
     height: auto;
-    max-height: 340px;
     min-height: 120px;
 }
 
@@ -1564,14 +1568,19 @@ tr:hover td { background: #f9fafb; }
 .code-editado[hidden] { display: none; }
 
 /* ── Diagrama de flujo ───────────────────────────────────────────
-   El SVG que dibuja Mermaid puede salir mas ancho que el panel, asi
-   que scrollea dentro de su caja en vez de romper la maquetacion. */
+   Antes esta caja tenia su propio scroll vertical (max-height 460px +
+   overflow auto) DENTRO del panel, que ya scrollea. Con un diagrama alto
+   salian dos barras, una pegada a la otra, y para seguir bajando habia que
+   cambiar de barra a mitad de camino.
+   Ahora la caja crece con su contenido y solo scrollea el panel: una sola
+   barra para todo. Lo unico que se queda con scroll propio es el ancho,
+   porque un diagrama muy ancho si romperia la maquetacion. */
 .diagrama-block {
     padding: 1rem;
     background: #1e1e2e;
     min-height: 200px;
-    max-height: 460px;
-    overflow: auto;
+    overflow-x: auto;
+    overflow-y: visible;
     text-align: center;
 }
 .diagrama-block svg { max-width: 100%; height: auto; }
@@ -1722,7 +1731,13 @@ tr:hover td { background: #f9fafb; }
    paso, asi que scrollea dentro de su caja y la cabecera se queda
    fija: sin eso, en un ciclo de 40 pasos se pierde de vista. */
 .traza-block { padding: 0; background: var(--bg-card); }
-.traza-scroll { max-height: 420px; overflow: auto; }
+/* Mismo caso que el diagrama: tenia scroll vertical propio dentro del panel
+   que ya scrollea, asi que con una traza larga salian dos barras.
+   Sin overflow ninguno: el ancho tambien lo lleva el panel. Ademas asi la
+   cabecera sticky se pega al panel y sigue visible al bajar; con overflow-x
+   auto el navegador calcula tambien overflow-y auto, esta caja pasaba a ser
+   el contenedor de scroll de la cabecera y la cabecera se iba con la tabla. */
+.traza-scroll { overflow: visible; }
 .traza-tabla {
     width: 100%;
     border-collapse: collapse;
@@ -1776,13 +1791,12 @@ tr:hover td { background: #f9fafb; }
 }
 .btn-restaurar:hover { color: #fff; }
 
+/* Igual que el codigo: crecen con su contenido, la barra es la del panel. */
 .output-block, .explain-block {
     padding: 0.85rem 1rem;
     font-size: 0.85rem;
     line-height: 1.55;
     background: var(--bg-card);
-    overflow: auto;
-    max-height: 340px;
     min-height: 80px;
 }
 
