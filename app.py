@@ -1614,6 +1614,16 @@ def api_trace():
             result["pasos"] = pasos
             result["en_pseudocodigo"] = True
             result["lineas_propias"] = casados
+            # Los logicos tambien se dicen en pseudocodigo. Una comparacion
+            # vale VERDADERO o FALSO; Python la imprime como True, y en el
+            # ejercicio de operadores relacionales el alumno leia "Son
+            # iguales: True" donde el enunciado le prometia "Verdadero".
+            result["salida"] = a_pseudo.logicos_en_pseudocodigo(result.get("salida"))
+            for paso in result["pasos"]:
+                vs = paso.get("variables")
+                if isinstance(vs, dict):
+                    paso["variables"] = {k: a_pseudo.logicos_en_pseudocodigo(v)
+                                         for k, v in vs.items()}
             # El error tambien se dice en su idioma. Un "EOFError: EOF when
             # reading a line" no le dice nada a quien no ha visto Python, y ese
             # en concreto casi nunca es culpa suya: es que ejecuto un algoritmo
@@ -1624,6 +1634,8 @@ def api_trace():
             # tuberia eso no se ve y la traza parecia incompleta.
             linea_a_linea, colocado = a_pseudo.consola(
                 result.get("salida"), stdin, result.get("pasos"))
+            for l in linea_a_linea:
+                l["t"] = a_pseudo.logicos_en_pseudocodigo(l.get("t"))
             result["consola"] = linea_a_linea
             result["consola_ordenada"] = colocado
 
@@ -3055,6 +3067,12 @@ def _normalizar_salida(texto):
         l = "".join(c for c in l if not unicodedata.combining(c))
         l = " ".join(l.split())
         l = l.replace(" = ", "=").replace(" x ", "x").replace(" , ", ",")
+        # Verdadero/Falso y True/False son lo mismo: el pseudocodigo dice una
+        # cosa y el Python que corre debajo escribe la otra, y el estudiante
+        # puede haber visto cualquiera de las dos. Marcarle mal por eso seria
+        # castigarle por un detalle de la maquina.
+        l = re.sub(r"\btrue\b", "verdadero", l)
+        l = re.sub(r"\bfalse\b", "falso", l)
         l = l.rstrip(".")
         if l:
             lineas.append(l)

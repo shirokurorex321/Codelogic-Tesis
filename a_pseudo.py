@@ -20,7 +20,7 @@ import re
 
 # Operadores, del lado Python al del pseudocodigo
 _OPS = [
-    (r"\bnot\s+", "NO "),
+    (r"\bnot\b\s*", "NO "),   # tambien not(x), que el conversor escribe pegado
     (r"\band\b", "Y"),
     (r"\bor\b", "O"),
     (r"\bTrue\b", "Verdadero"),
@@ -44,7 +44,10 @@ def a_pseudo(linea: str) -> str:
     if not s:
         return s
 
-    m = re.fullmatch(r"(\w+)\s*=\s*(?:int|float|str)?\(?\s*input\([^)]*\)\s*\)?", s)
+    # El nombre puede llevar indice: en los ejercicios de vectores la lectura
+    # es v[i], y sin esto la tabla de primer semestre enseñaba
+    # «v[i] = int(input())» en vez de «Leer v[i]».
+    m = re.fullmatch(r"(\w+(?:\[[^\]]+\])?)\s*=\s*(?:int|float|str)?\(?\s*input\([^)]*\)\s*\)?", s)
     if m:
         return "Leer %s" % m.group(1)   # el mensaje, si lo llevaba, ya salio aparte
 
@@ -104,7 +107,7 @@ def _clave(txt: str) -> str:
     """Forma comparable: sin espacios de sobra, sin mayusculas, sin comillas."""
     t = re.sub(r"\s+", " ", (txt or "").strip().lower())
     t = t.replace('"', "").replace("'", "")
-    return re.sub(r"\s*([<>=+\-*/,])\s*", r"\1", t)
+    return re.sub(r"\s*([<>=+\-*/,()])\s*", r"\1", t)
 
 
 # Lineas que el conversor añade por su cuenta y que NO estan en el algoritmo
@@ -226,6 +229,30 @@ def error_amable(bruto: str) -> str:
     return bruto
 
 
+# ── Los logicos, en el idioma del pseudocodigo ─────────────────────
+#
+# Una comparacion en pseudocodigo vale VERDADERO o FALSO; PSeInt lo escribe
+# asi. Pero aqui debajo corre Python, que imprime True y False, y eso se le
+# colaba al alumno de primer semestre en la prueba de escritorio: el ejercicio
+# de operadores relacionales prometia "Son iguales: Verdadero" y en pantalla
+# salia "Son iguales: True". No es un detalle: el curso es de pseudocodigo, y
+# ahi True no significa nada.
+#
+# Solo se toca lo que se le ENSEÑA en primer semestre. La pestaña de Python
+# sigue mostrando True, que es lo que Python escribe de verdad.
+_LOGICOS = ((re.compile(r"\bTrue\b"), "Verdadero"),
+            (re.compile(r"\bFalse\b"), "Falso"))
+
+
+def logicos_en_pseudocodigo(texto):
+    """True -> Verdadero, False -> Falso. Deja el resto igual."""
+    if not texto:
+        return texto
+    for patron, palabra in _LOGICOS:
+        texto = patron.sub(palabra, texto)
+    return texto
+
+
 def consola(salida, stdin, pasos):
     """Reconstruye lo que se veria en pantalla, con lo que TECLEO el alumno.
 
@@ -247,6 +274,30 @@ def consola(salida, stdin, pasos):
 
     if not tecleados:
         return [{"t": l, "tipo": "salida"} for l in lineas], True
+
+    # Camino bueno: los pasos de la traza dicen el orden EXACTO en que el
+    # algoritmo escribio y leyo, asi que cada valor tecleado va detras de la
+    # linea que lo pidio. Antes se adivinaba mirando si la linea acababa en
+    # ":" o "?", y un cartel como «Tiene licencia? (1 = si, 0 = no)» -que
+    # acaba en parentesis- no colaba: el 0 del alumno aparecia al final de
+    # todo, como si el programa lo hubiera pedido despues de terminar.
+    fuera, li, ti = [], 0, 0
+    for paso in (pasos or []):
+        instr = paso.get("instruccion", "")
+        escribe = bool(re.match(r"^\s*(?:Escribir|Imprimir|Mostrar)\b", instr))
+        lee = bool(re.match(r"^\s*(?:Leer|Ingresar)\b", instr)) or "input(" in instr
+        # Un input("Ingrese...") hace las dos cosas: primero enseña el cartel.
+        if lee and re.search(r"input\(\s*[\"'][^\"']", instr):
+            escribe = True
+        if escribe and li < len(lineas):
+            fuera.append({"t": lineas[li], "tipo": "salida"}); li += 1
+        if lee and ti < len(tecleados):
+            fuera.append({"t": tecleados[ti], "tipo": "tecleado"}); ti += 1
+    if ti == len(tecleados):
+        # Lo que quede sin colocar es salida posterior (o traza cortada).
+        fuera += [{"t": l, "tipo": "salida"} for l in lineas[li:]]
+        return fuera, True
+
     if lecturas != len(tecleados) or len(lineas) < len(tecleados):
         # No se puede saber donde va cada uno: mejor decirlo que colocarlo mal.
         return ([{"t": l, "tipo": "salida"} for l in lineas]
