@@ -408,6 +408,12 @@ function mostrarCodigo() {
                 if (data.cached) flashCacheBadge(lang, 'code', 'desde caché');
                 if (activeTab === 'feedback') switchTab(lang);
                 refreshUsage();
+            } else if (data.sintaxis) {
+                /* Fallo de sintaxis: en vez de un error seco se le muestra
+                   cada linea suya tal como deberia quedar. */
+                document.getElementById('code-' + lang).innerHTML =
+                    pintarProblemas(data, 'Revisa tu pseudocódigo antes de convertir:')
+                    + '<p class="nota-sintaxis">' + escapeHtml(data.error) + '</p>';
             } else {
                 document.getElementById('code-' + lang).innerHTML =
                     '<span style="color:#f38ba8;">Error: ' + escapeHtml(data.error) + '</span>';
@@ -504,20 +510,32 @@ function mostrarCodigo() {
             + '. Escríbelo' + (prompts.length > 1 ? 's' : '') + ' y vuelve a darle ▶ Ejecutar:</div>';
         prompts.forEach((p, i) => {
             const label = p && p.trim() ? escapeHtml(p) : 'Valor ' + (i + 1);
+            /* Nada de onkeydown/onclick escritos aqui dentro: la CSP ya no
+               permite 'unsafe-inline' en script-src, asi que un manejador
+               metido en el HTML no llega a ejecutarse nunca. Se declara la
+               accion y la conecta acciones.js, igual que el resto. */
             html += '<label class="stdin-form-row">'
                 + '<span class="stdin-form-label">' + label + '</span>'
                 + '<input class="stdin-form-input" data-idx="' + i + '" type="text" '
-                + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();submitStdinAndRun(\'' + lang + '\');}">'
+                + 'data-tecla="stdinEnter" data-args=\'["' + lang + '"]\'>'
                 + '</label>';
         });
         html += '<button class="btn btn-primary btn-sm stdin-form-go" '
-            + 'onclick="submitStdinAndRun(\'' + lang + '\')">▶ Ejecutar con estos datos</button>';
+            + 'data-accion="submitStdinAndRun" data-args=\'["' + lang + '"]\'>'
+            + '▶ Ejecutar con estos datos</button>';
         html += '<div class="stdin-form-hint">o pulsa <kbd>Enter</kbd> en cualquier campo</div>';
         html += '</div>';
         target.innerHTML = html;
         // Foco al primer input
         const first = target.querySelector('.stdin-form-input');
         if (first) first.focus();
+    }
+
+    /* Enter en cualquier casilla equivale a pulsar el boton. */
+    function stdinEnter(lang, ev) {
+        if (!ev || ev.key !== 'Enter') return;
+        ev.preventDefault();
+        submitStdinAndRun(lang);
     }
 
     function submitStdinAndRun(lang) {
@@ -873,6 +891,10 @@ async function generarTraza() {
                 await dibujarMermaid(data.diagram);
                 if (data.cached) flashCacheBadge('diagrama', 'code', 'desde caché');
                 refreshUsage();
+            } else if (data.sintaxis) {
+                salida.innerHTML =
+                    pintarProblemas(data, 'Revisa tu pseudocódigo antes de dibujarlo:')
+                    + '<p class="nota-sintaxis">' + escapeHtml(data.error) + '</p>';
             } else {
                 salida.innerHTML = '<span style="color:#f38ba8;">Error: ' + escapeHtml(data.error) + '</span>';
             }

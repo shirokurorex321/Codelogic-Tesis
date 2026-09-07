@@ -208,7 +208,12 @@ def revisar(pseudocodigo):
             "sugerencia": "Falta escribir %s al terminar el bloque."
                           % NOMBRE[dict(BLOQUES)[abre]]})
 
-    problemas.extend(_sin_declarar(lineas))
+    # Una linea que ya tiene un fallo no recibe ademas la queja de las
+    # variables. En «Algoritmo1» (pegado) o «frinAlgoritmo» las palabras mal
+    # escritas parecen variables, y al estudiante se le acusaba de no declarar
+    # algo que ni siquiera queria ser una variable. Se le dice una cosa por
+    # linea: cuando la arregle y vuelva, se le dira la siguiente.
+    problemas.extend(_sin_declarar(lineas, {p["linea"] for p in problemas}))
     problemas.sort(key=lambda p: p["linea"])
     return problemas
 
@@ -221,8 +226,11 @@ _NO_SON_VARIABLES = CLAVES | {
 }
 
 
-def _sin_declarar(lineas):
+def _sin_declarar(lineas, saltar=()):
     """Variables que se usan sin haberlas declarado con Definir.
+
+    `saltar` son numeros de linea que ya tienen otro fallo: de ahi no se saca
+    ninguna variable, porque lo que hay escrito no es de fiar.
 
     Es el error que mas se repite al empezar, y el conversor lo tapaba: se
     inventaba un valor inicial para que el programa funcionara, asi que el
@@ -237,13 +245,22 @@ def _sin_declarar(lineas):
         linea = cruda.strip()
         if not linea or linea.startswith("//"):
             continue
+        # Con unas comillas sin cerrar no se puede distinguir el texto del
+        # codigo: en 'Escribir "hola' la palabra hola parece una variable, y
+        # se acusaba al estudiante de no declararla. Ese fallo ya se le avisa
+        # aparte, asi que aqui la linea se salta.
+        if linea.count('"') % 2 or n in saltar:
+            continue
         limpia = _sin_texto(linea)
         bajo = _norm(limpia)
 
         # La cabecera no aporta variables: su identificador es el nombre del
         # algoritmo. Antes se quitaba despues, y eso enmascaraba una variable
         # que se llamara igual que el algoritmo.
-        if re.match(r"^\s*(?:algoritmo|proceso|finalgoritmo|finproceso)\b", bajo):
+        # Sin \b al final a proposito: «Algoritmo1» y «fin algoritmo1» son
+        # cabeceras mal escritas, no variables. El fallo de la cabecera ya se
+        # avisa por su cuenta; de aqui no debe salir «no declaraste algoritmo1».
+        if re.match(r"^\s*(?:fin\s*)?(?:algoritmo|proceso)", bajo):
             continue
 
         m = re.match(r"^\s*definir\s+(.+?)\s+como\s+\w+", bajo)

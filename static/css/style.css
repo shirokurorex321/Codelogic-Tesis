@@ -2518,6 +2518,21 @@ pre code,
 .aviso-sintaxis .arreglo code { font-size: .82rem; }
 .nota-sintaxis { margin: .6rem 0 0; color: var(--text-light); font-size: .85rem; }
 
+/* El aviso de sintaxis se pinta ahora tambien donde iba el codigo convertido
+   y donde iba el diagrama. Esas dos cajas estan pensadas para otra cosa -una
+   es <pre> monoespaciada, la otra centra su contenido- y el aviso salia
+   centrado y con pinta de codigo. Aqui se le devuelve su forma de texto. */
+.code-output .aviso-sintaxis,
+.code-output .nota-sintaxis,
+.diagrama-block .aviso-sintaxis,
+.diagrama-block .nota-sintaxis {
+    font-family: var(--font-sans, system-ui, sans-serif);
+    white-space: normal;
+    text-align: left;
+}
+.code-output .aviso-sintaxis code,
+.diagrama-block .aviso-sintaxis code { font-family: var(--font-mono); }
+
 
 /* Lo que el estudiante teclea, dentro de la consola simulada. Se distingue
    del texto que imprime el programa para que se vea quien dijo que. */

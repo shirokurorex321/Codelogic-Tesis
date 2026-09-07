@@ -1485,6 +1485,23 @@ def api_convert():
         log_activity("convert_rechazado", {"largo": len(pseudocode)})
         return jsonify({"success": False, "error": motivo, "no_es_pseudocodigo": True}), 400
 
+    # El conversor esta hecho para interpretar lo que el estudiante quiso
+    # decir, asi que un Si sin Entonces se traducia sin decir nada y el
+    # estudiante se quedaba creyendo que lo habia escrito bien. Se le avisa
+    # antes, con su linea ya corregida, y de paso no se paga una llamada por
+    # un pseudocodigo que esta roto.
+    problemas = revisar.revisar(pseudocode)
+    if problemas:
+        log_activity("convert_con_fallos", {"total": len(problemas)})
+        return jsonify({
+            "success": False,
+            "sintaxis": True,
+            "problemas": problemas[:3],
+            "total": len(problemas),
+            "error": "Arregla esto antes de convertir. Lo que se te evalúa es "
+                     "que el pseudocódigo esté bien escrito.",
+        }), 400
+
     result = convert_pseudocode(pseudocode, language)
 
     log_activity("convert", {
@@ -1579,6 +1596,20 @@ def api_diagram():
     if not valido:
         log_activity("diagram_rechazado", {"largo": len(pseudocode)})
         return jsonify({"success": False, "error": motivo, "no_es_pseudocodigo": True}), 400
+
+    # Igual que al convertir: dibujar el diagrama de un algoritmo mal escrito
+    # da un dibujo que parece correcto y esconde el fallo.
+    problemas = revisar.revisar(pseudocode)
+    if problemas:
+        log_activity("diagram_con_fallos", {"total": len(problemas)})
+        return jsonify({
+            "success": False,
+            "sintaxis": True,
+            "problemas": problemas[:3],
+            "total": len(problemas),
+            "error": "Arregla esto antes de dibujar el diagrama: si el "
+                     "algoritmo no está bien escrito, el dibujo tampoco lo estará.",
+        }), 400
 
     result = convert_to_diagram(pseudocode)
 
