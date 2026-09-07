@@ -1585,28 +1585,47 @@ tr:hover td { background: #f9fafb; }
 }
 .diagrama-block svg { max-width: 100%; height: auto; }
 
-/* Leyenda de la simbologia estandar que pide el temario */
+/* Leyenda de la simbologia estandar que pide el temario.
+   Las figuras van en SVG (ver _simbologia.html): la tarjeta de entrada y el
+   documento de salida no salen de un rectangulo con el borde torcido, y son
+   justo las dos que hay que poder distinguir de un vistazo. Cada una lleva el
+   color con el que se dibuja en el diagrama, asi que la leyenda vale tambien
+   de clave de colores. */
 .simbologia {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-    gap: 0.5rem 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 0.55rem 1.1rem;
     padding: 0.85rem 1rem;
     font-size: 0.8rem;
     color: var(--text-light);
     background: var(--bg-card);
 }
-.simbologia > div { display: flex; align-items: center; gap: 0.5rem; }
-.simb {
-    width: 26px;
-    height: 16px;
-    flex: 0 0 auto;
-    border: 2px solid var(--accent);
-    background: rgba(34, 211, 238, 0.12);
+/* flex-start y no center: cuando el texto ocupa dos lineas, centrar deja la
+   figura flotando a media altura y la lista pierde el renglon. */
+/* En la pagina del ejercicio la leyenda va plegada dentro de un <details>. */
+.simbologia-plegable { margin-top: 0.9rem; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.simbologia-plegable > summary {
+    cursor: pointer;
+    padding: 0.55rem 0.9rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--primary);
+    background: var(--bg);
+    list-style: none;
 }
-.simb-ovalo    { border-radius: 999px; }
-.simb-paralelo { transform: skewX(-20deg); }
-.simb-rect     { border-radius: 2px; }
-.simb-rombo    { transform: rotate(45deg) scale(0.78); }
+.simbologia-plegable > summary::-webkit-details-marker { display: none; }
+.simbologia-plegable > summary::before { content: "▸ "; }
+.simbologia-plegable[open] > summary::before { content: "▾ "; }
+
+.simb-fila { display: flex; align-items: flex-start; gap: 0.6rem; line-height: 1.45; }
+.simb-fila strong { color: var(--text); font-weight: 600; }
+.simb {
+    width: 34px;
+    height: 22px;
+    margin-top: 1px;
+    flex: 0 0 auto;
+    overflow: visible;
+}
 
 /* ── Unidades del plan de asignatura ─────────────────────────────
    Los temas ya existian; la unidad es una capa por encima para que la

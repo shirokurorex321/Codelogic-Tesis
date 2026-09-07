@@ -485,6 +485,15 @@ def _exponer_nonce():
     return {"csp_nonce": getattr(g, "csp_nonce", "")}
 
 
+@app.context_processor
+def _exponer_simbologia():
+    """La leyenda del diagrama, sacada de la misma paleta con la que se pinta.
+    Escrita a mano en la plantilla se quedo atras: enseñaba cuatro figuras
+    cuando el generador ya dibujaba siete."""
+    from gemini_service import simbologia
+    return {"simbologia": simbologia()}
+
+
 @app.after_request
 def no_guardar_en_cache(resp):
     """Prohibe cachear todo lo que no sea un recurso estatico.

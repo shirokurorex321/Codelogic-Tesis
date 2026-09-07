@@ -1,0 +1,34 @@
+{# Leyenda de la simbologia ISO 5807 que pide el temario.
+   Las figuras y los colores salen de gemini_service.simbologia(), la misma
+   paleta con la que se colorea el diagrama, para que la leyenda no pueda
+   volver a decir una cosa distinta de lo que el estudiante ve dibujado.
+   Se dibuja en SVG y no con bordes CSS porque la tarjeta y el documento -que
+   son justo las dos que el temario obliga a distinguir- no se pueden hacer
+   con un rectangulo torcido. #}
+<div class="simbologia">
+{% for s in simbologia %}
+    <div class="simb-fila">
+        <svg class="simb" viewBox="0 0 28 18" aria-hidden="true">
+        {% if s.clave == 'terminal' %}
+            <rect x="1" y="2" width="26" height="14" rx="7" fill="{{ s.fondo }}" stroke="{{ s.borde }}" stroke-width="2"/>
+        {% elif s.clave == 'entrada' %}
+            <path d="M8 2 H27 V16 H1 V8 Z" fill="{{ s.fondo }}" stroke="{{ s.borde }}" stroke-width="2" stroke-linejoin="round"/>
+        {% elif s.clave == 'salida' %}
+            <path d="M1 2 H27 V12.5 Q21.5 18.5 14 14.5 T1 14.5 Z" fill="{{ s.fondo }}" stroke="{{ s.borde }}" stroke-width="2" stroke-linejoin="round"/>
+        {% elif s.clave == 'proceso' %}
+            <rect x="1" y="2" width="26" height="14" rx="1" fill="{{ s.fondo }}" stroke="{{ s.borde }}" stroke-width="2"/>
+        {% elif s.clave == 'decision' %}
+            <path d="M14 1 L27 9 L14 17 L1 9 Z" fill="{{ s.fondo }}" stroke="{{ s.borde }}" stroke-width="2" stroke-linejoin="round"/>
+        {% elif s.clave == 'ciclo' %}
+            <path d="M7 2 H21 L27 9 L21 16 H7 L1 9 Z" fill="{{ s.fondo }}" stroke="{{ s.borde }}" stroke-width="2" stroke-linejoin="round"/>
+        {% elif s.clave == 'conector' %}
+            <circle cx="14" cy="9" r="7" fill="{{ s.fondo }}" stroke="{{ s.borde }}" stroke-width="2"/>
+        {% elif s.clave == 'flecha' %}
+            <path d="M4 9 H20" stroke="{{ s.borde }}" stroke-width="2" fill="none"/>
+            <path d="M18 4.5 L25 9 L18 13.5 Z" fill="{{ s.borde }}"/>
+        {% endif %}
+        </svg>
+        <span><strong>{{ s.figura }}</strong> — {{ s.significado }}</span>
+    </div>
+{% endfor %}
+</div>

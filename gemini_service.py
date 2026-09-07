@@ -797,6 +797,33 @@ _PALETA = {
     "conector": ("#333a45", "#cbd5e1"),   # conectores        · gris
 }
 
+# La leyenda que ve el estudiante sale de aqui, no de una lista escrita a mano
+# en la plantilla. Antes eran dos sitios distintos y se desincronizaron: el
+# generador ya dibujaba siete figuras y la leyenda seguia enseñando cuatro, con
+# una ademas equivocada ("paralelogramo para entrada Y salida", justo la
+# distincion que el temario pide separar). Anadir una figura al prompt de
+# arriba y a _PALETA es ahora anadirla tambien a la leyenda.
+SIMBOLOGIA = (
+    ("terminal", "Óvalo", "Inicio y Fin"),
+    ("entrada", "Tarjeta", "Entrada de datos (Leer)"),
+    ("salida", "Documento", "Salida de datos (Escribir)"),
+    ("proceso", "Rectángulo", "Proceso o asignación"),
+    ("decision", "Rombo", "Decisión (Si, Mientras)"),
+    ("ciclo", "Hexágono", "Preparación del ciclo Para"),
+    ("conector", "Círculo", "Conector entre partes"),
+    ("flecha", "Flecha", "Línea de flujo (el orden)"),
+)
+
+
+def simbologia():
+    """La leyenda con su color, para pintarla igual que sale el diagrama."""
+    salida = []
+    for clave, figura, significado in SIMBOLOGIA:
+        fondo, borde = _PALETA.get(clave, ("transparent", "#cbd5e1"))
+        salida.append({"clave": clave, "figura": figura,
+                       "significado": significado, "fondo": fondo, "borde": borde})
+    return salida
+
 
 def _colorear_mermaid(t: str) -> str:
     """Asigna a cada nodo una clase segun su forma, y define los colores.

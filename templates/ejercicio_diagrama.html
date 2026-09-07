@@ -24,6 +24,15 @@
     </div>
     <pre id="fuente-diagrama" hidden>{{ exercise.diagrama }}</pre>
 
+    {# La leyenda va aqui y no solo en el editor: esta es la pagina donde el
+       estudiante tiene que LEER un diagrama, asi que es donde mas falta hace
+       saber que significa cada figura. Plegable, para que se la quite de en
+       medio cuando ya se las sepa. #}
+    <details class="simbologia-plegable">
+        <summary>📖 ¿Qué significa cada figura?</summary>
+        {% include "_simbologia.html" %}
+    </details>
+
     {% set entrada = exercise.ejemplo_entrada or '' %}
     {% if entrada and 'no pide datos' not in entrada %}
     <p style="margin-top:1rem; font-size:0.9rem;">

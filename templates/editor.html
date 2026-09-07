@@ -167,12 +167,7 @@ FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %
                 </section>
                 <section class="lang-section">
                     <header class="lang-section-header"><span>📖 Simbologia estandar</span></header>
-                    <div class="simbologia">
-                        <div><span class="simb simb-ovalo"></span> Ovalo — Inicio y Fin</div>
-                        <div><span class="simb simb-paralelo"></span> Paralelogramo — Entrada y salida</div>
-                        <div><span class="simb simb-rect"></span> Rectangulo — Proceso o asignacion</div>
-                        <div><span class="simb simb-rombo"></span> Rombo — Decision</div>
-                    </div>
+                    {% include "_simbologia.html" %}
                 </section>
             </div>
 

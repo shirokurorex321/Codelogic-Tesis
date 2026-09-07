@@ -59,6 +59,10 @@ CLAVES = {
     # sin declarar y salia un aviso falso en un ejercicio correcto.
     "que", "sin", "saltar", "esperar", "tecla", "segundos",
     "limpiar", "pantalla", "borrar", "finrepetir",
+    # Muchos escriben el cierre separado: "fin algoritmo", "fin si". El fallo
+    # de que el bloque no se cierre ya se avisa aparte; sin este "fin" suelto,
+    # la linea parecia una asignacion a la que le faltaba la flecha.
+    "fin",
 }
 
 
@@ -100,6 +104,22 @@ def _corregir_palabra(linea, mala, buena):
 def _anadir_al_final(linea, palabra):
     """Anade la palabra que falta al final, respetando comentarios al vuelo."""
     return "%s %s" % (linea.rstrip(), palabra)
+
+
+def _falta_flecha(linea):
+    """Devuelve la linea con la flecha puesta, o None si no toca avisar.
+
+    Solo cuando queda claro que se quiso asignar: un nombre de variable, algo
+    detras, y ningun motivo para pensar que es otra cosa (una etiqueta de
+    Segun termina en :, y una llamada lleva parentesis pegados al nombre).
+    """
+    m = re.match(r"^(\s*)([A-Za-z_][\w]*(?:\[[^\]]*\])?)(\s+)(\S.*)$", linea)
+    if not m:
+        return None
+    sangria, nombre, _hueco, resto = m.groups()
+    if resto.rstrip().endswith(":") or resto.lstrip().startswith("("):
+        return None
+    return "%s%s <- %s" % (sangria, nombre, resto.strip())
 
 
 def revisar(pseudocodigo):
@@ -188,7 +208,9 @@ def revisar(pseudocodigo):
             # erratas: una primera palabra que se parece mucho a una clave.
             # Solo si NO es una asignacion ni una llamada: ahi la primera
             # palabra es un nombre de variable que el estudiante elige.
-            es_asignacion = "<-" in limpia or re.match(r"^\s*[\w\[\]]+\s*=", limpia)
+            flecha = "<-" in limpia or "\u2190" in limpia
+            con_igual = re.match(r"^\s*[\w\[\]]+\s*=[^=]", limpia)
+            es_asignacion = flecha or con_igual
             if primera and not es_asignacion and primera not in CLAVES:
                 cercanas = [k for k in CLAVES
                             if len(k) > 3 and _distancia(primera, k) == 1]
@@ -199,6 +221,31 @@ def revisar(pseudocodigo):
                         "problema": "«%s» no es una palabra del pseudocodigo." % linea.split()[0],
                         "sugerencia": "La palabra correcta es %s." % buena,
                         "corregida": _corregir_palabra(linea, linea.split()[0], buena)})
+                else:
+                    # Una linea que no empieza por palabra clave solo puede ser
+                    # una asignacion, y sin flecha no asigna nada: «suma a + b»
+                    # calcula y tira el resultado. El conversor lo tapaba de una
+                    # forma distinta en cada lenguaje -en Python le ponia el =
+                    # que faltaba, en C++ dejaba la variable con basura y salia
+                    # "el resultado es:106494"-, asi que el estudiante veia un
+                    # numero y no se enteraba de que le faltaba la flecha.
+                    hueco = _falta_flecha(linea)
+                    if hueco:
+                        problemas.append({
+                            "linea": n, "texto": linea,
+                            "problema": "A esta linea le falta la flecha de asignacion.",
+                            "sugerencia": "Para guardar un valor en una variable se "
+                                          "escribe nombre <- valor.",
+                            "corregida": hueco})
+            elif con_igual and not flecha:
+                # El = en pseudocodigo compara, no asigna. Es la confusion que
+                # la asignatura quiere evitar desde el primer dia.
+                problemas.append({
+                    "linea": n, "texto": linea,
+                    "problema": "En pseudocodigo se asigna con <- , no con =.",
+                    "sugerencia": "El = sirve para comparar (dentro de un Si o "
+                                  "un Mientras). Para guardar un valor va la flecha.",
+                    "corregida": re.sub(r"=", "<-", linea, count=1)})
 
     # bloques que quedaron abiertos
     for abre, ln in reversed(pila):
