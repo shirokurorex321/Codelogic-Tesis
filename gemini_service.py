@@ -925,7 +925,7 @@ Devuelves SOLO un JSON con estas claves, sin texto alrededor y sin ```:
 {
  "concepto": "Qué va a practicar y POR QUÉ importa. Dos o tres frases. Explica la idea, no el enunciado.",
  "pasos": "Los pasos para abordarlo, uno por línea, sin numerar. Guían sin dar la solución.",
- "ejemplo_resuelto": "Un algoritmo COMPLETO de un problema PARECIDO pero DISTINTO, para que vea el patrón sin poder copiarlo. Empieza con un comentario // que diga qué hace.",
+ "ejemplo_resuelto": "Un algoritmo COMPLETO de OTRO problema que se resuelva con LAS MISMAS OPERACIONES y la misma estructura que el del enunciado. Cambia el contexto y la cantidad de datos, nunca el tipo de problema. Empieza con un comentario // que diga qué hace.",
  "ejemplo_entrada": "Los datos de ejemplo, en lenguaje llano. Ej: 'base 5 y altura 3'. Si no pide datos: 'no pide datos'.",
  "ejemplo_salida": "EXACTAMENTE lo que imprime el programa con esa entrada, sin las líneas que piden los datos. Una línea por cada cosa que imprima.",
  "hints": "Una o dos frases de ayuda para quien se atasca. Sin dar el código.",
@@ -935,7 +935,8 @@ Devuelves SOLO un JSON con estas claves, sin texto alrededor y sin ```:
 REGLAS:
 - Pseudocódigo estilo PSeInt: Algoritmo/FinAlgoritmo, Definir ... Como Entero/Real/Cadena/Logico, Leer, Escribir, Si-Entonces-Sino-FinSi, Mientras-FinMientras, Para-FinPara, Segun-FinSegun. Asignación con <-.
 - ejemplo_salida tiene que cuadrar EXACTAMENTE con lo que imprime expected_pseudocode al recibir ejemplo_entrada. Es lo que la plataforma usa para corregir la predicción del estudiante: si no cuadra, se le dice que falló cuando acertó.
-- El ejemplo_resuelto NO puede resolver el mismo problema del enunciado.
+- El ejemplo_resuelto NO puede resolver el mismo problema del enunciado, pero SÍ tiene que usar las mismas operaciones. Si el enunciado suma, el ejemplo suma; si divide, divide. A quien tiene que sumar tres números no le sirve de nada un ejemplo que multiplica base por altura: no ve el patrón que necesita, que es justo para lo que está ahí. Cambia el contexto (compras en vez de números) y la cantidad de datos (dos en vez de tres) para que no pueda copiarlo tal cual.
+- El ejemplo_resuelto se queda en el mismo nivel que el enunciado: si el enunciado no lleva Si ni ciclos, el ejemplo tampoco. Enseñarle un Si a quien está en la unidad de operadores lo manda a una unidad que todavía no ha visto.
 - Español de Colombia, cercano y sin condescendencia.
 - Respeta las constantes que pida el enunciado (si dice 3.1416, no uses PI)."""
 

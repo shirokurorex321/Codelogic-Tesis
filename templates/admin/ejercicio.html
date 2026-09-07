@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}{{ ejercicio.title }} — Editar ejercicio{% endblock %}
+
+{% block content %}
+{# Ficha de un ejercicio ya creado. El listado solo enseñaba el titulo, asi
+   que lo que la IA habia redactado quedaba sin revisar: aqui se lee entero y
+   se corrige. #}
+<a href="{{ url_for('admin_exercises') }}" class="btn btn-outline btn-sm mb-3">← Volver a los ejercicios</a>
+
+<div class="dash-header">
+    <h1>{{ ejercicio.title }}</h1>
+    <p>
+        {{ ejercicio.topic.name if ejercicio.topic else 'sin tema' }} ·
+        {{ {'escribir': '✍️ escribir', 'leer': '👀 leer', 'diagrama': '🔀 diagrama'}.get(ejercicio.tipo, ejercicio.tipo) }} ·
+        {{ ejercicio.difficulty }}
+    </p>
+</div>
+
+{% if faltan %}
+<div class="aviso-ficha aviso-ficha-falta">
+    <strong>Le faltan campos</strong>
+    <p>Sin {{ faltan | join(', ') }}, al estudiante le sale el ejercicio incompleto.</p>
+</div>
+{% endif %}
+{% if avisos %}
+<div class="aviso-ficha aviso-ficha-falta">
+    <strong>Tu solución de referencia tiene fallos</strong>
+    <ul>
+        {% for a in avisos[:3] %}<li>Línea {{ a.linea }}: {{ a.problema }}</li>{% endfor %}
+    </ul>
+    <p>Con la solución mal escrita, la corrección automática compara contra algo que no es.</p>
+</div>
+{% endif %}
+
+<div class="ficha-uso">
+    <div><span class="ficha-cifra">{{ n_envios }}</span> envíos</div>
+    <div><span class="ficha-cifra">{{ n_estudiantes }}</span> estudiantes lo han intentado</div>
+    <div><span class="ficha-cifra">{{ nota_media if nota_media is not none else '—' }}</span> nota media</div>
+    <div>
+        <a href="{{ url_for('ejercicio_teoria', exercise_id=ejercicio.id) }}" class="btn btn-outline btn-sm">
+            👁 Verlo como lo ve el estudiante
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header"><span class="card-title">Corregir el ejercicio</span></div>
+    <form method="POST" action="{{ url_for('admin_exercise_detail', exercise_id=ejercicio.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="form-fila">
+            <div class="form-group">
+                <label class="form-label">Tema</label>
+                <select name="topic_id" class="form-select">
+                    {% for t in topics %}
+                    <option value="{{ t.id }}" {% if t.id == ejercicio.topic_id %}selected{% endif %}>
+                        {{ t.icon }} {{ t.name }}{% if t.semestre %} — {{ t.semestre }}er sem{% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Tipo</label>
+                <select name="tipo" class="form-select">
+                    {% for v, etiqueta in [('escribir', '✍️ Escribir'), ('leer', '👀 Leer'), ('diagrama', '🔀 Diagrama')] %}
+                    <option value="{{ v }}" {% if ejercicio.tipo == v %}selected{% endif %}>{{ etiqueta }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Dificultad</label>
+                <select name="difficulty" class="form-select">
+                    {% for v in ['basico', 'intermedio', 'avanzado'] %}
+                    <option value="{{ v }}" {% if ejercicio.difficulty == v %}selected{% endif %}>{{ v }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Orden</label>
+                <input type="number" name="orden" class="form-input" value="{{ ejercicio.orden or 0 }}" min="0">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Título</label>
+            <input type="text" name="title" class="form-input" required value="{{ ejercicio.title }}">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Enunciado</label>
+            <textarea name="description" class="form-textarea" rows="3" required>{{ ejercicio.description }}</textarea>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Qué va a practicar</label>
+            <textarea name="concepto" class="form-textarea" rows="3">{{ ejercicio.concepto or '' }}</textarea>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Cómo puede abordarlo <span class="form-nota">un paso por línea</span></label>
+            <textarea name="pasos" class="form-textarea" rows="5">{{ ejercicio.pasos or '' }}</textarea>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Ejemplo resuelto
+                <span class="form-nota">otro problema que se resuelva igual, no el mismo</span></label>
+            <textarea name="ejemplo_resuelto" class="form-textarea form-codigo" rows="8">{{ ejercicio.ejemplo_resuelto or '' }}</textarea>
+        </div>
+        <div class="form-fila">
+            <div class="form-group">
+                <label class="form-label">Entrada de ejemplo</label>
+                <input type="text" name="ejemplo_entrada" class="form-input" value="{{ ejercicio.ejemplo_entrada or '' }}">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Salida esperada
+                    <span class="form-nota">con esto se corrige la predicción</span></label>
+                <textarea name="ejemplo_salida" class="form-textarea" rows="3">{{ ejercicio.ejemplo_salida or '' }}</textarea>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Solución de referencia <span class="form-nota">no se le muestra al estudiante</span></label>
+            <textarea name="expected_pseudocode" class="form-textarea form-codigo" rows="10">{{ ejercicio.expected_pseudocode or '' }}</textarea>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Diagrama de flujo (Mermaid) <span class="form-nota">solo para los de tipo diagrama</span></label>
+            <textarea name="diagrama" class="form-textarea form-codigo" rows="8">{{ ejercicio.diagrama or '' }}</textarea>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Pistas</label>
+            <textarea name="hints" class="form-textarea" rows="2">{{ ejercicio.hints or '' }}</textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Guardar cambios</button>
+    </form>
+</div>
+{% endblock %}

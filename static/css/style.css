@@ -2613,3 +2613,63 @@ pre code,
     color: var(--text-light);
     text-transform: lowercase;
 }
+
+/* ── Ficha de un ejercicio (apartado docente) ─────────────────────
+   El listado solo enseñaba el titulo, asi que lo que la IA redactaba se
+   guardaba sin que nadie lo leyera. Aqui se ve entero y se corrige. */
+.aviso-ficha {
+    padding: 0.7rem 1rem;
+    margin-bottom: 0.9rem;
+    border-radius: 8px;
+    border-left: 3px solid var(--warning, #d97706);
+    background: rgba(217, 119, 6, 0.1);
+    font-size: 0.85rem;
+}
+.aviso-ficha strong {
+    display: block;
+    color: var(--warning, #d97706);
+    margin-bottom: 0.2rem;
+}
+.aviso-ficha p { margin: 0; color: var(--text-light); }
+.aviso-ficha ul { margin: 0.3rem 0 0.4rem; padding-left: 1.1rem; color: var(--text-light); }
+
+.ficha-uso {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1.4rem;
+    padding: 0.8rem 1rem;
+    margin-bottom: 1rem;
+    border-radius: 10px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    font-size: 0.82rem;
+    color: var(--text-light);
+}
+.ficha-cifra {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-right: 0.3rem;
+}
+
+/* Varios campos cortos en una fila, para no hacer un formulario kilometrico */
+.form-fila {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 0 1rem;
+}
+.form-nota { font-weight: 400; color: var(--text-muted); font-size: 0.75rem; }
+.form-codigo { font-family: var(--font-mono, 'JetBrains Mono', monospace); font-size: 0.8rem; }
+
+/* En la lista, de un vistazo: cuales estan a medias */
+.etiqueta-falta, .etiqueta-ok {
+    display: inline-block;
+    padding: 0.12rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.etiqueta-falta { color: var(--warning, #d97706); background: rgba(217, 119, 6, 0.13); }
+.etiqueta-ok { color: var(--success, #16a34a); background: rgba(22, 163, 74, 0.12); }

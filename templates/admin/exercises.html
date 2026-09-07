@@ -148,17 +148,29 @@
         <div class="table-container">
             <table>
                 <thead>
-                    <tr><th>Título</th><th>Semestre</th><th>Tema</th><th>Dificultad</th><th>Acción</th></tr>
+                    <tr><th>Título</th><th>Semestre</th><th>Tema</th><th>Dificultad</th><th>Estado</th><th>Acción</th></tr>
                 </thead>
                 <tbody>
                     {% for ex in exercises %}
                     {% if ex.is_active %}
+                    {# Lo que le falta se ve YA en la lista: antes habia que abrir
+                       cada uno para enterarse, asi que un ejercicio a medias se
+                       quedaba a medias. #}
+                    {% set falta = faltan_por_ejercicio.get(ex.id, []) %}
                     <tr>
-                        <td>{{ ex.title }}</td>
+                        <td><a href="{{ url_for('admin_exercise_detail', exercise_id=ex.id) }}">{{ ex.title }}</a></td>
                         <td><span class="sem-tag sem-tag-{{ ex.topic.semestre if ex.topic and ex.topic.semestre else 'x' }}">{{ ex.topic.semestre ~ 'er sem' if ex.topic and ex.topic.semestre else 'sin asignar' }}</span></td>
                         <td style="font-size:0.85rem;">{{ ex.topic.name if ex.topic else '-' }}</td>
                         <td><span class="diff-badge diff-{{ ex.difficulty }}">{{ ex.difficulty }}</span></td>
                         <td>
+                            {% if falta %}
+                            <span class="etiqueta-falta" title="{{ falta | join(', ') }}">falta {{ falta | length }}</span>
+                            {% else %}
+                            <span class="etiqueta-ok">completo</span>
+                            {% endif %}
+                        </td>
+                        <td style="white-space:nowrap;">
+                            <a href="{{ url_for('admin_exercise_detail', exercise_id=ex.id) }}" class="btn btn-outline btn-sm">Ver / editar</a>
                             <form method="POST" action="{{ url_for('delete_exercise', exercise_id=ex.id) }}" style="display:inline;"
                                   data-confirmar="¿Desactivar este ejercicio?">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

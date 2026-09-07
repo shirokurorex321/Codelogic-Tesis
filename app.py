@@ -152,6 +152,22 @@ Talisman(
 )
 
 
+def _gasto_real(_respuesta=None):
+    """¿Esta peticion ha gastado dinero de verdad?
+
+    El limitador de IA existe para proteger el presupuesto y el cupo del
+    proveedor. Una respuesta que sale de la cache no toca ninguno de los dos,
+    y sin embargo descontaba igual: un estudiante que volviera a convertir el
+    mismo pseudocodigo se quedaba sin cupo a cambio de nada. Con esto solo
+    cuentan las llamadas que se pagan.
+
+    Por defecto NO se descuenta: si la peticion se rechazo antes de llegar a
+    la IA -pseudocodigo vacio, fallo de sintaxis, cupo de retroalimentacion
+    agotado- tampoco se ha gastado nada.
+    """
+    return bool(getattr(g, "ia_llamada_real", False))
+
+
 limiter = Limiter(
     key_func=lambda: (
         f"user:{current_user.id}" if current_user.is_authenticated else f"ip:{client_ip()}"
@@ -1522,7 +1538,8 @@ def api_revisar():
 
 
 @app.route("/api/convert", methods=["POST"])
-@limiter.limit(lambda: app.config["RATELIMIT_AI"])
+@limiter.limit(lambda: app.config["RATELIMIT_AI"], deduct_when=_gasto_real)
+@limiter.limit(lambda: app.config["RATELIMIT_IA_TOTAL"])
 @login_required
 def api_convert():
     """Convierte pseudocódigo a un lenguaje de programación."""
@@ -1556,6 +1573,7 @@ def api_convert():
         }), 400
 
     result = convert_pseudocode(pseudocode, language)
+    g.ia_llamada_real = not result.get("cached", False)
 
     log_activity("convert", {
         "language": language,
@@ -1650,7 +1668,8 @@ def api_trace():
 
 
 @app.route("/api/diagram", methods=["POST"])
-@limiter.limit(lambda: app.config["RATELIMIT_AI"])
+@limiter.limit(lambda: app.config["RATELIMIT_AI"], deduct_when=_gasto_real)
+@limiter.limit(lambda: app.config["RATELIMIT_IA_TOTAL"])
 @login_required
 def api_diagram():
     """Convierte pseudocódigo en un diagrama de flujo (Mermaid)."""
@@ -1677,6 +1696,7 @@ def api_diagram():
         }), 400
 
     result = convert_to_diagram(pseudocode)
+    g.ia_llamada_real = not result.get("cached", False)
 
     log_activity("diagram", {
         "pseudocode_length": len(pseudocode),
@@ -1770,7 +1790,8 @@ def api_execute():
 
 
 @app.route("/api/explain", methods=["POST"])
-@limiter.limit(lambda: app.config["RATELIMIT_AI"])
+@limiter.limit(lambda: app.config["RATELIMIT_AI"], deduct_when=_gasto_real)
+@limiter.limit(lambda: app.config["RATELIMIT_IA_TOTAL"])
 @login_required
 def api_explain():
     """Pide a la IA que explique paso a paso un código convertido."""
@@ -1784,6 +1805,7 @@ def api_explain():
         return jsonify({"success": False, "error": "El código está vacío."}), 400
 
     result = explain_code(code, language)
+    g.ia_llamada_real = not result.get("cached", False)
 
     log_activity("explain", {
         "language": language,
@@ -1797,7 +1819,8 @@ def api_explain():
 
 
 @app.route("/api/convert-all", methods=["POST"])
-@limiter.limit(lambda: app.config["RATELIMIT_AI"])
+@limiter.limit(lambda: app.config["RATELIMIT_AI"], deduct_when=_gasto_real)
+@limiter.limit(lambda: app.config["RATELIMIT_IA_TOTAL"])
 @login_required
 def api_convert_all():
     """Convierte pseudocódigo a los tres lenguajes."""
@@ -1826,6 +1849,8 @@ def api_convert_all():
 
 
     results = convert_to_all_languages(pseudocode)
+    # Aqui son tres llamadas: cuenta si alguna se ha pagado.
+    g.ia_llamada_real = any(not r.get("cached", False) for r in results.values())
 
     # Loguear cada lenguaje por separado para el contador /api/usage
     for lang, sub in results.items():
@@ -1842,7 +1867,8 @@ def api_convert_all():
 
 
 @app.route("/api/feedback", methods=["POST"])
-@limiter.limit(lambda: app.config["RATELIMIT_AI"])
+@limiter.limit(lambda: app.config["RATELIMIT_AI"], deduct_when=_gasto_real)
+@limiter.limit(lambda: app.config["RATELIMIT_IA_TOTAL"])
 @login_required
 def api_feedback():
     """Genera retroalimentación con IA sobre el pseudocódigo."""
@@ -1879,6 +1905,7 @@ def api_feedback():
     quedan, tope = feedback_cupo(current_user, exercise_id)
     result = get_ai_feedback(pseudocode, exercise_description,
                              permitir_llamada=(quedan is None or quedan > 0))
+    g.ia_llamada_real = not result.get("cached", False) and not result.get("sin_cupo")
 
     # Usamos "feedback" para que cuente en /api/usage
     log_activity("feedback", {
@@ -1902,7 +1929,8 @@ def api_feedback():
 
 
 @app.route("/api/submit", methods=["POST"])
-@limiter.limit(lambda: app.config["RATELIMIT_AI"])
+@limiter.limit(lambda: app.config["RATELIMIT_AI"], deduct_when=_gasto_real)
+@limiter.limit(lambda: app.config["RATELIMIT_IA_TOTAL"])
 @login_required
 def api_submit():
     """Guarda una submission del estudiante."""
@@ -1932,6 +1960,7 @@ def api_submit():
     grade_reason = None
     if exercise:
         grade = grade_submission(pseudocode, exercise.description)
+        g.ia_llamada_real = not grade.get("cached", False)
         if grade.get("success"):
             score = grade["score"]
             grade_reason = grade.get("reason", "")
@@ -2403,7 +2432,9 @@ def admin_exercises():
 
     topics = Topic.query.order_by(Topic.order).all()
     exercises = Exercise.query.order_by(Exercise.created_at.desc()).all()
-    return render_template("admin/exercises.html", topics=topics, exercises=exercises)
+    return render_template("admin/exercises.html", topics=topics, exercises=exercises,
+                           faltan_por_ejercicio={e.id: campos_que_faltan(e)
+                                                 for e in exercises})
 
 
 @app.route("/api/admin/redactar-ejercicio", methods=["POST"])
@@ -2441,6 +2472,83 @@ def api_redactar_ejercicio():
                         "error": "La IA no pudo redactarlo: %s"
                                  % str(resultado.get("error"))[:150]}), 502
     return jsonify(resultado)
+
+
+CAMPOS_EJERCICIO = ("title", "description", "hints", "concepto", "pasos",
+                    "ejemplo_resuelto", "ejemplo_entrada", "ejemplo_salida",
+                    "expected_pseudocode", "diagrama")
+
+# Que le falta a un ejercicio segun su tipo, para poder decirselo al docente.
+EXIGIDOS_POR_TIPO = {
+    "escribir": ("concepto", "pasos", "ejemplo_resuelto",
+                 "ejemplo_salida", "expected_pseudocode"),
+    "leer":     ("concepto", "expected_pseudocode", "ejemplo_salida"),
+    "diagrama": ("concepto", "diagrama", "expected_pseudocode", "ejemplo_salida"),
+}
+NOMBRE_CAMPO = {
+    "concepto": "qué va a practicar", "pasos": "cómo abordarlo",
+    "ejemplo_resuelto": "ejemplo resuelto", "ejemplo_salida": "salida esperada",
+    "expected_pseudocode": "solución de referencia", "diagrama": "diagrama",
+    "ejemplo_entrada": "entrada de ejemplo", "hints": "pistas",
+}
+
+
+def campos_que_faltan(ejercicio):
+    exigidos = EXIGIDOS_POR_TIPO.get(ejercicio.tipo or "escribir", ())
+    return [NOMBRE_CAMPO.get(c, c) for c in exigidos
+            if not (getattr(ejercicio, c, "") or "").strip()]
+
+
+@app.route("/admin/exercises/<int:exercise_id>", methods=["GET", "POST"])
+@login_required
+@role_required(*ROLES_DOCENCIA)
+def admin_exercise_detail(exercise_id):
+    """Ver y corregir un ejercicio ya creado.
+
+    El listado solo enseñaba el titulo, el tema y un boton de desactivar: una
+    vez creado, el ejercicio era una caja cerrada. Y como la IA redacta un
+    BORRADOR, el docente necesita leer lo que quedo guardado y arreglarlo -que
+    es justo lo que paso con el ejemplo resuelto de «Suma de 3 numeros»-.
+    """
+    ejercicio = Exercise.query.get_or_404(exercise_id)
+
+    if request.method == "POST":
+        datos = {c: request.form.get(c, "").strip() for c in CAMPOS_EJERCICIO}
+        if not datos["title"] or not datos["description"]:
+            flash("El título y el enunciado son obligatorios.", "error")
+            return redirect(url_for("admin_exercise_detail", exercise_id=exercise_id))
+        for c, v in datos.items():
+            setattr(ejercicio, c, v)
+        tipo = request.form.get("tipo", ejercicio.tipo)
+        ejercicio.tipo = tipo if tipo in ("escribir", "leer", "diagrama") else "escribir"
+        ejercicio.topic_id = request.form.get("topic_id") or ejercicio.topic_id
+        ejercicio.difficulty = request.form.get("difficulty", ejercicio.difficulty)
+        try:
+            ejercicio.orden = int(request.form.get("orden") or 0)
+        except ValueError:
+            ejercicio.orden = 0
+        db.session.commit()
+        log_activity("editar_ejercicio", {"exercise_id": exercise_id})
+        faltan = campos_que_faltan(ejercicio)
+        if faltan:
+            flash("Guardado, pero le siguen faltando: %s." % ", ".join(faltan), "error")
+        else:
+            flash("Ejercicio guardado.", "success")
+        return redirect(url_for("admin_exercise_detail", exercise_id=exercise_id))
+
+    envios = (Submission.query.filter_by(exercise_id=exercise_id)
+              .order_by(Submission.created_at.desc()).all())
+    notas = [s.score for s in envios if s.score is not None]
+    return render_template(
+        "admin/ejercicio.html",
+        ejercicio=ejercicio,
+        topics=Topic.query.order_by(Topic.order).all(),
+        faltan=campos_que_faltan(ejercicio),
+        avisos=revisar.revisar(ejercicio.expected_pseudocode or ""),
+        n_envios=len(envios),
+        n_estudiantes=len({s.user_id for s in envios}),
+        nota_media=round(sum(notas) / len(notas), 1) if notas else None,
+    )
 
 
 @app.route("/admin/exercises/<int:exercise_id>/delete", methods=["POST"])

@@ -118,6 +118,11 @@ class Config:
     FEEDBACK_MAX_POR_EJERCICIO = int(os.getenv("FEEDBACK_MAX_POR_EJERCICIO", "3"))
     RATELIMIT_EXEC = os.getenv("RATELIMIT_EXEC", "60 per hour")
     RATELIMIT_AUTH = os.getenv("RATELIMIT_AUTH", "10 per 15 minutes")
+    # RATELIMIT_AI cuenta solo las llamadas que se PAGAN. Lo servido desde
+    # cache no descuenta cupo: no cuesta nada y no toca la API. Pero el
+    # endpoint sigue necesitando un tope propio para que no se pueda machacar,
+    # y ese es este: generoso, para que un estudiante normal no lo vea nunca.
+    RATELIMIT_IA_TOTAL = os.getenv("RATELIMIT_IA_TOTAL", "150 per hour")
 
     # Gemini (fallback)
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
