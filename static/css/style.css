@@ -2482,10 +2482,19 @@ pre code,
     border-radius: 4px;
     font-family: 'JetBrains Mono', monospace;
 }
-.stdin-input.resaltado {
+.stdin-input.resaltado,
+.stdin-form-input.resaltado {
     outline: 2px solid var(--primary);
     outline-offset: 2px;
     transition: outline-color .3s;
+}
+
+/* Cuando falta un dato la nota de abajo deja de ser un consejo y pasa a ser
+   el motivo de que no se haya ejecutado, asi que se ve como aviso. */
+.stdin-form-hint.stdin-form-falta {
+    color: var(--warning, #d97706);
+    font-size: 0.78rem;
+    font-weight: 600;
 }
 
 

@@ -1692,6 +1692,16 @@ def api_execute():
         pista = a_pseudo.error_amable(result["stderr"].strip().splitlines()[-1])
         if pista != result["stderr"].strip().splitlines()[-1]:
             result["pista"] = pista
+        # Se quedo sin datos a mitad. La pagina usa esto para volver a poner
+        # las casillas justo debajo del error, en vez de mandarlo a buscar
+        # una caja plegada que esta arriba del todo y que ya no ve.
+        if "EOFError" in result["stderr"]:
+            result["faltan_datos"] = True
+            # Y entonces el mensaje no puede seguir diciendo "abre la caja de
+            # arriba": las casillas se le ponen justo debajo de este aviso.
+            result["pista"] = ("Tu programa pide datos y no le diste ninguno, "
+                               "así que se paró en el primer Leer. Escríbelos "
+                               "aquí abajo y vuelve a ejecutarlo.")
 
     log_activity("execute", {
         "language": language,
