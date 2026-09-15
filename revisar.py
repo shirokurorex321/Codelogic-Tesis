@@ -172,11 +172,214 @@ def _falta_flecha(linea):
     return "%s%s <- %s" % (sangria, nombre, resto.strip())
 
 
+# Piezas de una linea para decidir si una comilla puesta en un sitio deja algo
+# que se pueda leer como pseudocodigo. Los nombres van sin tildes a proposito:
+# una palabra con tilde FUERA de las comillas es texto que se quedo sin ellas.
+_PIEZA = re.compile(r'''
+    (?P<hueco>\s+)
+  | (?P<comentario>//.*)
+  | (?P<texto>"[^"]*"|'[^']*')
+  | (?P<numero>\d+(?:\.\d+)?)
+  | (?P<nombre>[A-Za-z_][A-Za-z0-9_]*)
+  | (?P<abre>[(\[])
+  | (?P<cierra>[)\]])
+  | (?P<op><-|←|<=|>=|<>|==|!=|[-+*/^%=<>,&|~])
+  | (?P<fin>[:;]\s*$)
+''', re.X)
+
+# Palabras que operan o separan, no valores: y, o, no, mod...
+_OPERADORES_PALABRA = {"y", "o", "no", "mod", "div"}
+
+# Que palabras clave pueden aparecer DESPUES de la que abre la linea.
+_CLAVES_DENTRO = {
+    "escribir": {"sin", "saltar"}, "imprimir": {"sin", "saltar"},
+    "mostrar": {"sin", "saltar"},
+    "si": {"entonces"}, "mientras": {"hacer"},
+    "para": {"hasta", "con", "paso", "hacer"},
+    "hasta": {"que"}, "segun": {"hacer"}, "de": {"otro", "modo"},
+    "definir": {"como", "entero", "real", "cadena", "logico", "caracter"},
+}
+# Instrucciones que no pueden llevar los dos puntos de una etiqueta.
+_INSTRUCCIONES = {"escribir", "imprimir", "mostrar", "leer", "ingresar", "si",
+                  "mientras", "para", "hasta", "definir", "dimension", "nombre"}
+# La palabra con la que tiene que terminar la linea que abre cada bloque.
+_CIERRA_CON = {"si": "entonces", "mientras": "hacer", "para": "hacer"}
+
+
+def _piezas_validas(linea, declaradas):
+    """Nombres de variable usados fuera de las comillas, o None si no se lee.
+
+    No es un analizador de PSeInt: solo descarta lo que seguro no es codigo
+    (dos valores seguidos sin nada entre medias, una tilde fuera de un texto,
+    un signo suelto al final) para elegir entre los sitios posibles de la
+    comilla que falta.
+    """
+    pos, previo, nombres = 0, "inicio", []
+    primera, ultima_clave, fin = None, None, None
+    while pos < len(linea):
+        m = _PIEZA.match(linea, pos)
+        if not m:
+            return None
+        pos = m.end()
+        tipo = m.lastgroup
+        if tipo == "hueco":
+            continue
+        if tipo == "fin":
+            fin = m.group().strip()
+            continue
+        if tipo == "comentario":
+            # «"Visita http:"//iup.edu.co» no es un texto y un comentario: nadie
+            # pega el // a lo anterior. Es la URL que se quedo sin su comilla.
+            if m.start() and not linea[m.start() - 1].isspace():
+                return None
+            break
+        palabra = _norm(m.group()) if tipo == "nombre" else None
+        if tipo == "nombre":
+            if palabra in _OPERADORES_PALABRA:
+                tipo = "op"
+            elif palabra in CLAVES:
+                tipo = "clave"
+            elif palabra not in _NO_SON_VARIABLES:
+                nombres.append(palabra)
+        if primera is None:
+            primera = palabra if tipo == "clave" else tipo
+        elif tipo == "clave":
+            # Tras la instruccion solo caben SUS palabras: el «de» de
+            # «"Ingrese el valor "de A» es texto que se quedo fuera.
+            if palabra not in _CLAVES_DENTRO.get(primera, ()):
+                return None
+            ultima_clave = palabra
+        if tipo in ("texto", "numero", "nombre"):
+            # dos valores seguidos sin nada entre medias: «"Hola" mundo»
+            if previo in ("valor", "nombre", "cierra"):
+                return None
+            actual = "nombre" if tipo == "nombre" else "valor"
+        elif tipo == "abre":
+            # tras un nombre es una llamada o una posicion: raiz(x), v[i]
+            if previo in ("valor", "cierra"):
+                return None
+            actual = "abre"
+        elif tipo == "cierra":
+            if previo in ("inicio", "clave", "op", "abre") and m.group() == "]":
+                return None
+            actual = "cierra"
+        elif tipo == "op":
+            actual = "op"
+        else:  # clave
+            actual = "clave"
+        previo = actual
+    if previo in ("op", "abre", "inicio"):
+        # una coma o un + al final: ahi faltaba algo
+        return None
+    if primera == "texto" and fin != ":":
+        # Una linea no empieza por un texto; solo una etiqueta de Segun
+        return None
+    if fin == ":" and primera in _INSTRUCCIONES:
+        # los dos puntos son de las etiquetas de Segun, no de un Escribir
+        return None
+    if primera in _CIERRA_CON and ultima_clave != _CIERRA_CON[primera]:
+        return None
+    return nombres
+
+
+def _cerrar_comillas(linea, declaradas):
+    """La linea con la comilla que falta en su sitio, o None si no esta claro.
+
+    Antes se ponia siempre al final, y acertaba solo cuando faltaba la de
+    cierre del ultimo texto: con «Escribir Hola"» proponia «Escribir Hola""»,
+    y con «Escribir "La suma es: , suma» metia la variable dentro del texto.
+    Ahora se prueba cada hueco y se queda el que deja una linea legible. Si
+    quedan dos lecturas distintas, se prefiere la que usa variables que el
+    estudiante declaro; y si aun asi hay empate, no se propone nada: una
+    correccion inventada es peor que ninguna.
+    """
+    todas = []
+    for i in range(len(linea) + 1):
+        candidata = linea[:i] + '"' + linea[i:]
+        nombres = _piezas_validas(candidata, declaradas)
+        if nombres is None:
+            continue
+        # Una comilla pegada por fuera a una palabra (Escribir"Hola", "si"Entonces)
+        # no la escribe nadie: esa posicion no se ofrece.
+        abre = candidata[:i].count('"') % 2 == 0
+        vecino = linea[i - 1:i] if abre else linea[i:i + 1]
+        if vecino.isalnum() or vecino == "_":
+            continue
+        # Ni partiendo una flecha o una comparacion: «linea <"- "»
+        if linea[i - 1:i + 1] in ("<-", "<=", ">=", "<>", "==", "!="):
+            continue
+        # Misma lectura con la comilla un espacio antes o despues: cuenta como
+        # una sola, y se elige abajo donde queda el espacio.
+        firma = re.sub(r'\s*"\s*', '"', candidata)
+        todas.append((nombres, firma, i, candidata))
+    # Si el estudiante declaro variables, una lectura que saca de las comillas
+    # una palabra que no declaro («"Hola", mundo») es casi seguro falsa. Pero
+    # si ninguna lectura las cumple (se le olvido un Definir), no se descarta
+    # nada: ese fallo ya se le avisa aparte.
+    declaradas_ok = [t for t in todas if all(x in declaradas for x in t[0])]
+    elegibles = declaradas_ok if (declaradas and declaradas_ok) else todas
+    # Puntuacion: cuantas variables DISTINTAS quedan fuera de las comillas. Se
+    # cuentan una vez: en «Escribir a = "", a» la a repetida no hace mejor esa
+    # lectura que «Escribir "a = ", a».
+    buenas = [(len(set(n)), f, i, c) for n, f, i, c in elegibles]
+    if not buenas:
+        return None
+    mejor = max(b[0] for b in buenas)
+    lecturas = {}
+    for usadas, firma, i, candidata in buenas:
+        if usadas == mejor:
+            lecturas.setdefault(firma, []).append((i, candidata))
+    if len(lecturas) != 1:
+        return None
+    opciones = next(iter(lecturas.values()))
+    # El espacio va DENTRO del texto, que es como se escribe: al abrir, la
+    # comilla lo mas a la izquierda que deje un espacio fuera -«, " x "»-; al
+    # cerrar, lo mas a la derecha -«"La suma es: ", suma»-.
+    i0, c0 = opciones[0]
+    if c0[:i0].count('"') % 2 == 0:
+        con_espacio = [o for o in opciones if linea[o[0] - 1:o[0]].isspace()]
+        elegida = min(con_espacio or opciones)
+    else:
+        elegida = max(opciones)
+    return elegida[1].rstrip()
+
+
+def _comillas_impares(linea):
+    """¿Queda un texto abierto? Sin contar las comillas de un comentario.
+
+    Con «Escribir "a" // dice "hola» la linea tiene tres comillas y se avisaba
+    de unas sin cerrar que no existen. El // solo corta si esta FUERA de un
+    texto: en «Escribir "http://..."» es parte de lo que se escribe.
+    """
+    dentro = False
+    for i, ch in enumerate(linea):
+        if ch == '"':
+            dentro = not dentro
+        elif not dentro and linea.startswith("//", i):
+            break
+    return dentro
+
+
+def _declaradas(lineas):
+    """Nombres declarados con Definir o Dimension, sin tildes y en minusculas."""
+    nombres = set()
+    for cruda in lineas:
+        bajo = _norm(re.split(r"//", cruda, 1)[0]).strip()
+        m = re.match(r"^definir\s+(.*?)\s+como\b", bajo)
+        if m:
+            nombres.update(x.strip() for x in m.group(1).split(",") if x.strip())
+        m = re.match(r"^dimension\s+(.*)$", bajo)
+        if m:
+            nombres.update(re.findall(r"([a-z_]\w*)\s*\[", m.group(1)))
+    return nombres
+
+
 def revisar(pseudocodigo):
     """Devuelve una lista de problemas: {linea, texto, problema, sugerencia}."""
     problemas = []
     lineas = (pseudocodigo or "").split("\n")
     pila = []          # bloques abiertos: (palabra, numero de linea)
+    declaradas = _declaradas(lineas)
 
     for n, cruda in enumerate(lineas, 1):
         linea = cruda.strip()
@@ -188,12 +391,12 @@ def revisar(pseudocodigo):
         primera = palabras[0] if palabras else ""
 
         # comillas sin cerrar
-        if linea.count('"') % 2:
+        if _comillas_impares(linea):
             problemas.append({
                 "linea": n, "texto": linea,
                 "problema": "Hay unas comillas sin cerrar.",
                 "sugerencia": "Todo texto entre comillas tiene que abrirlas y cerrarlas.",
-                "corregida": linea.rstrip() + '"'})
+                "corregida": _cerrar_comillas(linea, declaradas)})
 
         # dos instrucciones pegadas por un salto de linea perdido
         if primera in CLAVES:
@@ -360,7 +563,7 @@ def _sin_declarar(lineas, saltar=()):
         # codigo: en 'Escribir "hola' la palabra hola parece una variable, y
         # se acusaba al estudiante de no declararla. Ese fallo ya se le avisa
         # aparte, asi que aqui la linea se salta.
-        if linea.count('"') % 2 or n in saltar:
+        if _comillas_impares(linea) or n in saltar:
             continue
         limpia = _sin_texto(linea)
         bajo = _norm(limpia)
