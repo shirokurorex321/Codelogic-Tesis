@@ -2244,12 +2244,76 @@ def submit_cognitive_load():
     return jsonify({"success": True, "mean_score": mean_score})
 
 
+# ─── CLAVE PROVISIONAL ─────────────────────────────────────────────
+
+# Lo unico que puede visitar quien aun tiene la clave provisional: la pantalla
+# para cambiarla, y los de salir.
+CON_CLAVE_PROVISIONAL = {
+    "cambiar_clave", "logout", "static", "login", "index", "privacidad",
+}
+
+
+@app.before_request
+def exigir_clave_nueva():
+    """Quien entra con la clave que le puso el docente la cambia antes de nada.
+
+    Las cuentas de la clase se crean desde el servidor con una contrasena
+    igual para todos. Esa clave no identifica a nadie: la sabe el aula entera,
+    asi que hasta que cada uno ponga la suya, cualquiera podria entrar como
+    cualquiera y el registro de actividad no valdria para el estudio.
+
+    Y no se arregla por correo: estas cuentas nacen ya confirmadas para que no
+    tengan que ir al buzon institucional, asi que "recuperar clave" tampoco es
+    una salida. Por eso el cambio se exige aqui dentro, en el primer acceso.
+    """
+    if not current_user.is_authenticated or not current_user.must_change_password:
+        return
+    if request.endpoint in CON_CLAVE_PROVISIONAL:
+        return
+    # Igual que con el consentimiento: a una llamada de la API hay que
+    # contestarle JSON, porque una redireccion le llega al fetch como HTML y
+    # el estudiante ve un error que no dice nada.
+    if request.path.startswith("/api/"):
+        return jsonify({"success": False,
+                        "error": "Antes de continuar tienes que cambiar tu "
+                                 "contraseña provisional."}), 403
+    return redirect(url_for("cambiar_clave"))
+
+
+@app.route("/cambiar-clave", methods=["GET", "POST"])
+@login_required
+def cambiar_clave():
+    """Cambio de la clave provisional, en el primer acceso."""
+    if not current_user.must_change_password:
+        return redirect(url_for("dashboard"))
+
+    if request.method == "POST":
+        nueva = request.form.get("new_password", "")
+        confirma = request.form.get("confirm_password", "")
+
+        if len(nueva) < 8:
+            flash("La contraseña nueva debe tener al menos 8 caracteres.", "error")
+        elif nueva != confirma:
+            flash("Las dos contraseñas no coinciden.", "error")
+        elif current_user.check_password(nueva):
+            flash("Esa es la contraseña que te dieron. Elige una distinta.", "error")
+        else:
+            current_user.set_password(nueva)
+            current_user.must_change_password = False
+            db.session.commit()
+            log_activity("password_change_inicial")
+            flash("Listo. Tu contraseña quedó cambiada.", "success")
+            return redirect(url_for("dashboard"))
+
+    return render_template("cambiar_clave.html")
+
+
 # ─── PRIVACIDAD / CONSENTIMIENTO ───────────────────────────────────
 
 # Endpoints que un estudiante sin consentimiento SI puede visitar: los que
 # necesita justamente para leerlo y aceptarlo, y los de salir.
 SIN_CONSENTIMIENTO = {
-    "consentimiento", "privacidad", "logout", "static",
+    "consentimiento", "privacidad", "logout", "static", "cambiar_clave",
     "login", "register", "verificar_correo", "verificacion_pendiente",
     "reenviar_verificacion", "recuperar_clave", "restablecer_clave", "index",
 }
@@ -3022,6 +3086,9 @@ def admin_reset_password(user_id):
         flash("La contraseña debe tener al menos 6 caracteres.", "error")
         return redirect(request.referrer or url_for("admin_students"))
     user.set_password(new_pwd)
+    # La clave que acaba de teclear el docente la saben dos personas, asi que
+    # sirve para entrar una vez y nada mas: al hacerlo se le pide la suya.
+    user.must_change_password = True
     db.session.commit()
     log_activity("admin_password_reset", {"target_user_id": user.id})
     flash(f"Contraseña de {user.name} actualizada.", "success")

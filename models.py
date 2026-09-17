@@ -47,6 +47,13 @@ class User(UserMixin, db.Model):
     consent_at = db.Column(db.DateTime, nullable=True)
     consent_version = db.Column(db.String(20), nullable=True)
 
+    # ── Clave provisional ──
+    # Las cuentas que crea el docente desde el servidor nacen con una
+    # contrasena igual para toda la clase, y como su correo no se verifica,
+    # "recuperar clave" no les sirve. Mientras esto sea cierto la cuenta no
+    # hace nada mas que cambiarla: la clave de partida la sabe todo el mundo.
+    must_change_password = db.Column(db.Boolean, default=False, nullable=False)
+
     submissions = db.relationship("Submission", backref="student", lazy="dynamic")
     logs = db.relationship("ActivityLog", backref="user", lazy="dynamic")
     test_results = db.relationship("TestResult", backref="student", lazy="dynamic")

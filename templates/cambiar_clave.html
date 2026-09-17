@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Cambia tu contraseña — CodeLogic IUP{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <h1>🔑 Cambia tu contraseña</h1>
+    <p>Tu cuenta ya está lista. Solo falta que pongas una contraseña que sepas tú.</p>
+</div>
+
+<div class="card" style="max-width:560px; margin:0 auto;">
+    <div class="card-header"><span class="card-title">Contraseña nueva</span></div>
+    <p style="font-size:.92rem; line-height:1.55;">
+        La contraseña con la que acabas de entrar es la misma para todo el curso, así que
+        cualquiera podría entrar con tu nombre. Elige una tuya y no se la digas a nadie:
+        con ella se guarda tu trabajo en la plataforma.
+    </p>
+    <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-group">
+            <label>Contraseña nueva (mínimo 8 caracteres)</label>
+            <input type="password" name="new_password" required minlength="8"
+                   autocomplete="new-password" autofocus>
+        </div>
+        <div class="form-group">
+            <label>Escríbela otra vez</label>
+            <input type="password" name="confirm_password" required minlength="8"
+                   autocomplete="new-password">
+        </div>
+        <button type="submit" class="btn btn-primary">Guardar y entrar</button>
+    </form>
+    <p style="font-size:.85rem; opacity:.75; margin-top:1rem;">
+        Si se te olvida, tu docente puede devolverte una contraseña provisional.
+    </p>
+</div>
+{% endblock %}
