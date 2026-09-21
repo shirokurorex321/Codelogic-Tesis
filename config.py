@@ -81,6 +81,11 @@ class Config:
     # servidor, asi que a nadie se le cierra la sesion mientras trabaja.
     SESION_INACTIVIDAD_MIN = int(os.getenv("SESION_INACTIVIDAD_MIN", "30"))
 
+    # ── Clave provisional ──
+    # La que pone el docente al devolverle la cuenta a un estudiante que
+    # olvido la suya. Sirve para entrar una vez: al hacerlo se le pide otra.
+    CLAVE_PROVISIONAL = os.getenv("CLAVE_PROVISIONAL", "")
+
     # ── CSRF ──
     # Sin caducidad propia: un estudiante puede tener el editor abierto una hora
     # antes de enviar. El token vive lo que viva la sesión.

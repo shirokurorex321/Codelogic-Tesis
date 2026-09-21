@@ -43,6 +43,7 @@ from questions import (
 import executor
 import a_pseudo
 import revisar
+import seguimiento
 import alcance
 import traza
 
@@ -212,7 +213,18 @@ def load_user(user_id):
 
 
 def _marcar_actividad():
-    session["ultima_actividad"] = datetime.now(timezone.utc).timestamp()
+    ahora = datetime.now(timezone.utc)
+    session["ultima_actividad"] = ahora.timestamp()
+    # Para que el docente sepa quien esta en linea. En la base, como mucho una
+    # vez por minuto: con 48 estudiantes a la vez, escribir en cada peticion
+    # seria trabajo de sobra para nada.
+    if ahora.timestamp() - session.get("ultima_vez_db", 0) >= 60:
+        session["ultima_vez_db"] = ahora.timestamp()
+        try:
+            current_user.ultima_vez = ahora
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
 
 
 @app.before_request
@@ -227,8 +239,22 @@ def cerrar_por_inactividad():
     ha restaurado la vieja cookie de "recordarme" de un ano. Se cierra igual:
     es justo el caso que habia que cortar.
     """
-    if request.endpoint == "static" or not current_user.is_authenticated:
+    # is_anonymous y no is_authenticated: para Flask-Login una cuenta
+    # desactivada ya "no esta autenticada", y con la otra pregunta se la
+    # dejaba pasar en silencio hasta el login_required, que al editor le
+    # contesta con una redireccion en vez de con el motivo.
+    if request.endpoint == "static" or current_user.is_anonymous:
         return
+    # Una cuenta que el docente desactiva sale en ese momento, no cuando
+    # caduque su sesion: si se desactiva, es porque no debe estar dentro.
+    if not current_user.is_active:
+        logout_user()
+        session.pop("ultima_actividad", None)
+        mensaje = "Tu cuenta está desactivada. Si crees que es un error, habla con tu docente."
+        if request.path.startswith("/api/"):
+            return jsonify({"success": False, "sesion_cerrada": True, "error": mensaje}), 401
+        flash(mensaje, "error")
+        return redirect(url_for("login"))
     ultima = session.get("ultima_actividad")
     limite = app.config["SESION_INACTIVIDAD_MIN"] * 60
     ahora = datetime.now(timezone.utc).timestamp()
@@ -855,6 +881,12 @@ def login():
                 flash("Tu cuenta aún no está confirmada. Revisa tu correo "
                       "institucional y abre el enlace que te enviamos.", "error")
                 return redirect(url_for("verificacion_pendiente"))
+
+            # login_user no deja entrar a una cuenta desactivada, pero lo hacia
+            # en silencio: el estudiante volvia al formulario sin saber por que.
+            if not user.is_active:
+                flash("Tu cuenta está desactivada. Habla con tu docente.", "error")
+                return render_template("login.html")
 
             # Sin "recordarme": esa cookie duraba un ano y mantenia la sesion
             # abierta aunque se cerrara la app. Ver cerrar_por_inactividad.
@@ -2491,8 +2523,20 @@ def admin_dashboard():
         .all()
     )
 
+    # Lo que el docente mira al abrir el panel en clase: quien esta dentro,
+    # que esta haciendo y quien necesita que se le acerque.
+    clase = seguimiento.resumen_clase()
+    en_linea = sorted((a for a in clase if a["en_linea"]),
+                      key=lambda a: a["ultima"], reverse=True)
+    necesitan = [a for a in clase if a["atascos"] or
+                 (a["avisos"] and a["estado"][0] != "sin_estrenar")][:12]
+
     return render_template(
         "admin/dashboard.html",
+        clase=clase, en_linea=en_linea, necesitan=necesitan,
+        hoy=sum(1 for a in clase if a["hoy"]),
+        sin_estrenar=sum(1 for a in clase if a["estado"][0] == "sin_estrenar"),
+        en_linea_min=seguimiento.EN_LINEA_MIN,
         total_students=total_students,
         total_submissions=total_submissions,
         total_exercises=total_exercises,
@@ -2684,8 +2728,51 @@ def delete_exercise(exercise_id):
 @login_required
 @role_required(*ROLES_DOCENCIA)
 def admin_students():
-    students = User.query.filter_by(role="estudiante").order_by(User.name).all()
-    return render_template("admin/students.html", students=students)
+    """La clase entera de un vistazo: quien entro, por donde va, quien se atasca.
+
+    Antes era una lista de nombres con el numero de entregas. Se filtra y se
+    ordena en el servidor, con enlaces normales: sin JavaScript que la CSP
+    tenga que dejar pasar.
+    """
+    filas = seguimiento.resumen_clase()
+    q = request.args.get("q", "").strip().lower()
+    filtro = request.args.get("filtro", "todos")
+    orden = request.args.get("orden", "nombre")
+
+    cuenta = {
+        "todos": len(filas),
+        "en_linea": sum(1 for f in filas if f["en_linea"]),
+        "hoy": sum(1 for f in filas if f["hoy"]),
+        "sin_estrenar": sum(1 for f in filas if f["estado"][0] == "sin_estrenar"),
+        "atascados": sum(1 for f in filas if f["atascos"]),
+        "desactivados": sum(1 for f in filas if not f["activo"]),
+    }
+    filtros = {
+        "en_linea": lambda f: f["en_linea"],
+        "hoy": lambda f: f["hoy"],
+        "sin_estrenar": lambda f: f["estado"][0] == "sin_estrenar",
+        "atascados": lambda f: bool(f["atascos"]),
+        "desactivados": lambda f: not f["activo"],
+    }
+    if filtro in filtros:
+        filas = [f for f in filas if filtros[filtro](f)]
+    if q:
+        filas = [f for f in filas if q in f["nombre"].lower() or q in f["correo"].lower()]
+
+    nunca = datetime(1970, 1, 1, tzinfo=timezone.utc)
+    ordenes = {
+        "nombre": (lambda f: f["nombre"].lower(), False),
+        "ultima": (lambda f: f["ultima"] or nunca, True),
+        "resueltos": (lambda f: (f["resueltos"], f["intentados"]), True),
+        "nota": (lambda f: -1 if f["nota"] is None else f["nota"], True),
+    }
+    clave, inverso = ordenes.get(orden, ordenes["nombre"])
+    filas.sort(key=clave, reverse=inverso)
+
+    return render_template("admin/students.html", filas=filas, q=q,
+                           filtro=filtro, orden=orden, cuenta=cuenta,
+                           total_ejercicios=Exercise.query.filter_by(is_active=True).count(),
+                           en_linea_min=seguimiento.EN_LINEA_MIN)
 
 
 @app.route("/admin/estudiante/<int:user_id>")
@@ -2726,9 +2813,62 @@ def admin_estudiante(user_id):
         "ejercicios": len({s.exercise_id for s in entregas if s.exercise_id}),
         "promedio": round(sum(calificadas) / len(calificadas), 1) if calificadas else None,
     }
+    info = seguimiento.ficha(alumno)
+    # "Por donde va" contaba como hecho cualquier entrega, aunque sacara un 0.
+    # Ahora distingue lo resuelto (60 o mas) de lo solo intentado.
+    for t in por_tema:
+        ids = {e.id for e in Exercise.query.filter_by(is_active=True).all()
+               if e.topic and e.topic.name == t["nombre"] and e.topic.semestre == t["semestre"]}
+        t["resueltos"] = sum(1 for i in ids
+                             if (info["por_ej"].get(i) or {}).get("mejor") is not None
+                             and info["por_ej"][i]["mejor"] >= seguimiento.APROBADO)
     return render_template("admin/estudiante.html", alumno=alumno,
                            entregas=entregas, titulos=titulos,
-                           por_tema=por_tema, resumen=resumen)
+                           por_tema=por_tema, resumen=resumen, info=info,
+                           hay_clave_provisional=bool(app.config.get("CLAVE_PROVISIONAL")))
+
+
+@app.route("/admin/estudiante/<int:user_id>/clave-provisional", methods=["POST"])
+@login_required
+@role_required(*ROLES_DOCENCIA)
+def docente_clave_provisional(user_id):
+    """El docente le devuelve la cuenta a quien olvido su clave.
+
+    Estas cuentas no pasan por el correo, asi que "recuperar clave" no les
+    sirve: sin esto, un estudiante que olvidara la suya dependia del
+    administrador. Solo sobre estudiantes, y la clave vale para una entrada.
+    """
+    alumno = User.query.get_or_404(user_id)
+    if alumno.role != "estudiante":
+        flash("Solo se puede hacer con cuentas de estudiante.", "error")
+        return redirect(url_for("admin_students"))
+    clave = request.form.get("clave", "").strip() or app.config.get("CLAVE_PROVISIONAL", "")
+    if len(clave) < 6:
+        flash("Escribe una clave provisional de al menos 6 caracteres.", "error")
+        return redirect(url_for("admin_estudiante", user_id=user_id))
+    alumno.set_password(clave)
+    alumno.must_change_password = True
+    db.session.commit()
+    log_activity("docente_restablecio_clave", {"alumno_id": alumno.id})
+    flash(f"{alumno.name} ya puede entrar con la clave provisional «{clave}». "
+          "Al hacerlo tendrá que poner una suya.", "success")
+    return redirect(request.referrer or url_for("admin_estudiante", user_id=user_id))
+
+
+@app.route("/admin/estudiante/<int:user_id>/activo", methods=["POST"])
+@login_required
+@role_required(*ROLES_DOCENCIA)
+def docente_activar(user_id):
+    """Activar o desactivar a un estudiante. Si esta dentro, sale al momento."""
+    alumno = User.query.get_or_404(user_id)
+    if alumno.role != "estudiante":
+        flash("Solo se puede hacer con cuentas de estudiante.", "error")
+        return redirect(url_for("admin_students"))
+    alumno.is_active = not alumno.is_active
+    db.session.commit()
+    log_activity("docente_cambio_activo", {"alumno_id": alumno.id, "activo": alumno.is_active})
+    flash(f"{alumno.name}: cuenta {'activada' if alumno.is_active else 'desactivada'}.", "success")
+    return redirect(request.referrer or url_for("admin_estudiante", user_id=user_id))
 
 
 @app.route("/admin/students/<int:user_id>/group", methods=["POST"])

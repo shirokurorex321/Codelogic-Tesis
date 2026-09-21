@@ -54,6 +54,13 @@ class User(UserMixin, db.Model):
     # hace nada mas que cambiarla: la clave de partida la sabe todo el mundo.
     must_change_password = db.Column(db.Boolean, default=False, nullable=False)
 
+    # ── Ultima vez que se le vio ──
+    # El registro de actividad solo apunta acciones (convertir, entregar...):
+    # quien pasa veinte minutos escribiendo en el editor no deja rastro y el
+    # docente lo veia "desconectado". Esto se renueva con cualquier peticion,
+    # como mucho una vez por minuto.
+    ultima_vez = db.Column(db.DateTime, nullable=True)
+
     submissions = db.relationship("Submission", backref="student", lazy="dynamic")
     logs = db.relationship("ActivityLog", backref="user", lazy="dynamic")
     test_results = db.relationship("TestResult", backref="student", lazy="dynamic")

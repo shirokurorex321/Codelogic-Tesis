@@ -4,7 +4,35 @@
 {% block content %}
 <div class="dash-header">
     <h1>Estudiantes</h1>
-    <p>Gestiona los grupos experimentales y revisa la información de los estudiantes.</p>
+    <p>Quién ha entrado, por dónde va cada uno y quién necesita una mano.</p>
+</div>
+
+{% set chips = [
+    ('todos', 'Todos'), ('en_linea', '🟢 En línea ahora'), ('hoy', 'Entraron hoy'),
+    ('sin_estrenar', 'Sin estrenar'), ('atascados', 'Atascados'), ('desactivados', 'Desactivados')] %}
+
+<div class="card mb-3">
+    <form method="GET" action="{{ url_for('admin_students') }}"
+          style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+        <input type="search" name="q" value="{{ q }}" placeholder="Buscar por nombre o correo"
+               class="form-input" style="flex:1 1 220px; min-width:0;">
+        <select name="orden" class="form-select" style="width:auto;">
+            <option value="nombre" {% if orden == 'nombre' %}selected{% endif %}>Ordenar por nombre</option>
+            <option value="ultima" {% if orden == 'ultima' %}selected{% endif %}>Última vez que entró</option>
+            <option value="resueltos" {% if orden == 'resueltos' %}selected{% endif %}>Ejercicios resueltos</option>
+            <option value="nota" {% if orden == 'nota' %}selected{% endif %}>Nota media</option>
+        </select>
+        <input type="hidden" name="filtro" value="{{ filtro }}">
+        <button type="submit" class="btn btn-primary btn-sm">Aplicar</button>
+    </form>
+    <div style="display:flex; gap:0.4rem; flex-wrap:wrap; margin-top:0.8rem;">
+        {% for clave, texto in chips %}
+        <a href="{{ url_for('admin_students', filtro=clave, q=q or None, orden=orden) }}"
+           class="btn btn-sm {% if filtro == clave %}btn-primary{% else %}btn-outline{% endif %}">
+            {{ texto }} · {{ cuenta[clave] }}
+        </a>
+        {% endfor %}
+    </div>
 </div>
 
 <div class="card">
@@ -12,89 +40,88 @@
         <table>
             <thead>
                 <tr>
-                    <th>Nombre</th>
-                    <th>Correo</th>
-                    <th>Grupo</th>
-                    <th>Envíos</th>
-                    <th>Estado</th>
-                    <th>Registro</th>
+                    <th>Estudiante</th>
+                    <th>Cuenta</th>
+                    <th>Última vez</th>
+                    <th title="Lecciones de Aprender que ha abierto">Lecciones</th>
+                    <th title="Resueltos con 60 o más / intentados">Ejercicios</th>
+                    <th title="Media de su mejor nota en cada ejercicio intentado">Nota</th>
+                    <th>Avisos</th>
+                    <th>Control</th>
                     {# Asignar grupo es del estudio, no de la clase: solo admin #}
-                    {% if current_user.role == 'admin' %}<th>Asignar Grupo</th>{% endif %}
-                    {% if current_user.role == 'admin' %}<th>Acciones</th>{% endif %}
+                    {% if current_user.role == 'admin' %}<th>Grupo</th>{% endif %}
                 </tr>
             </thead>
             <tbody>
-                {% for student in students %}
-                <tr>
+                {% for f in filas %}
+                <tr {% if not f.activo %}style="opacity:0.6;"{% endif %}>
                     <td>
-                        <a href="{{ url_for('admin_estudiante', user_id=student.id) }}"
+                        <a href="{{ url_for('admin_estudiante', user_id=f.id) }}"
                            style="color:var(--primary); text-decoration:none;"
-                           title="Ver lo que ha escrito"><strong>{{ student.name }}</strong></a>
+                           title="Ver su ficha"><strong>{{ f.nombre }}</strong></a>
+                        <div style="font-size:0.78rem; color:var(--text-light);">{{ f.correo }}</div>
                     </td>
-                    <td style="font-size:0.85rem; color:var(--text-light);">{{ student.email }}</td>
-                    <td>
-                        {% if student.group %}
-                        <span class="diff-badge {% if student.group == 'A' %}diff-basico{% else %}diff-intermedio{% endif %}">
-                            Grupo {{ student.group }}
-                        </span>
-                        {% else %}
-                        <span style="color:var(--text-muted); font-size:0.85rem;">Sin asignar</span>
+                    <td><span class="diff-badge {{ f.estado[2] }}" style="white-space:nowrap;">{{ f.estado[1] }}</span></td>
+                    <td style="font-size:0.85rem;">
+                        {% if f.en_linea %}<strong style="color:#22a06b;">● en línea</strong>
+                        {% else %}{{ f.hace }}{% endif %}
+                        {% if f.ultima_accion %}
+                        <div style="font-size:0.75rem; color:var(--text-light); max-width:16rem;">{{ f.ultima_accion }}</div>
                         {% endif %}
                     </td>
-                    <td>{{ student.submissions.count() }}</td>
+                    <td>{{ f.lecciones }}</td>
+                    <td><strong>{{ f.resueltos }}</strong><span style="color:var(--text-light);"> / {{ f.intentados }}</span></td>
                     <td>
-                        {% if student.is_active %}
-                        <span class="diff-badge diff-basico">activo</span>
-                        {% else %}
-                        <span class="diff-badge diff-avanzado">inactivo</span>
-                        {% endif %}
+                        {% if f.nota is not none %}
+                        <span class="diff-badge {% if f.nota >= 60 %}diff-basico{% else %}diff-avanzado{% endif %}">{{ f.nota }}</span>
+                        {% else %}<span style="color:var(--text-muted);">—</span>{% endif %}
                     </td>
-                    <td style="font-size:0.8rem; color:var(--text-light);">
-                        {{ student.created_at | hora_local('%d/%m/%Y') }}
+                    <td style="font-size:0.78rem; max-width:15rem;">
+                        {% for a in f.avisos %}<div>⚠️ {{ a }}</div>{% endfor %}
+                    </td>
+                    <td>
+                        <div style="display:flex; gap:0.3rem;">
+                            <form method="POST" action="{{ url_for('docente_clave_provisional', user_id=f.id) }}"
+                                  data-confirmar="¿Devolverle a {{ f.nombre }} la clave provisional del curso? Al entrar tendrá que poner una suya.">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button class="btn btn-outline btn-sm" title="Devolverle la clave provisional">🔑</button>
+                            </form>
+                            <form method="POST" action="{{ url_for('docente_activar', user_id=f.id) }}"
+                                  data-confirmar="¿{{ 'Desactivar' if f.activo else 'Activar' }} la cuenta de {{ f.nombre }}?">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button class="btn btn-outline btn-sm" title="{{ 'Desactivar' if f.activo else 'Activar' }} la cuenta">
+                                    {% if f.activo %}🔒{% else %}🔓{% endif %}
+                                </button>
+                            </form>
+                        </div>
                     </td>
                     {% if current_user.role == 'admin' %}
                     <td>
-                        <form method="POST" action="{{ url_for('assign_group', user_id=student.id) }}" style="display:flex; gap:0.25rem;">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <form method="POST" action="{{ url_for('assign_group', user_id=f.id) }}" style="display:flex; gap:0.25rem;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <select name="group" class="form-select" style="width:auto; padding:0.3rem 0.5rem; font-size:0.8rem;">
-                                <option value="A" {% if student.group == 'A' %}selected{% endif %}>Grupo A</option>
-                                <option value="B" {% if student.group == 'B' %}selected{% endif %}>Grupo B</option>
+                                <option value="A" {% if f.grupo == 'A' %}selected{% endif %}>A</option>
+                                <option value="B" {% if f.grupo == 'B' %}selected{% endif %}>B</option>
                             </select>
                             <button type="submit" class="btn btn-primary btn-sm">Asignar</button>
                         </form>
                     </td>
                     {% endif %}
-                    {% if current_user.role == 'admin' %}
-                    <td style="display:flex; gap:0.3rem; flex-wrap:wrap;">
-                        <form method="POST" action="{{ url_for('admin_toggle_active', user_id=student.id) }}"
-                              data-confirmar="¿{{ 'Desactivar' if student.is_active else 'Activar' }} a {{ student.name }}?">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button class="btn btn-outline btn-sm" title="{{ 'Desactivar' if student.is_active else 'Activar' }} usuario">
-                                {% if student.is_active %}🔒{% else %}🔓{% endif %}
-                            </button>
-                        </form>
-                        <details style="display:inline-block;">
-                            <summary class="btn btn-outline btn-sm" style="cursor:pointer;" title="Reset password">🔑</summary>
-                            <form method="POST" action="{{ url_for('admin_reset_password', user_id=student.id) }}"
-                                  style="position:absolute; background:var(--bg-card); padding:0.5rem; border:1px solid var(--border); border-radius:6px; box-shadow:var(--shadow-md); margin-top:0.3rem; z-index:10;">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <input type="text" name="new_password" placeholder="Nueva contraseña" required minlength="6"
-                                       class="form-input" style="width:160px; padding:0.3rem 0.5rem; font-size:0.8rem; margin-bottom:0.3rem;">
-                                <button class="btn btn-primary btn-sm" style="display:block; width:100%;">Cambiar</button>
-                            </form>
-                        </details>
-                    </td>
-                    {% endif %}
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="8" style="text-align:center; color:var(--text-muted); padding:2rem;">
-                        No hay estudiantes registrados aún.
+                    <td colspan="9" style="text-align:center; color:var(--text-muted); padding:2rem;">
+                        {% if q or filtro != 'todos' %}Nadie cumple ese filtro.{% else %}No hay estudiantes registrados aún.{% endif %}
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
+    <p style="font-size:0.78rem; color:var(--text-light); margin-top:0.8rem;">
+        «En línea» es haber usado la plataforma en los últimos {{ en_linea_min }} minutos.
+        «Atascado»: tres entregas o más a un mismo ejercicio sin llegar a 60.
+        Hay {{ total_ejercicios }} ejercicios activos entre los dos semestres.
+    </p>
 </div>
 {% endblock %}

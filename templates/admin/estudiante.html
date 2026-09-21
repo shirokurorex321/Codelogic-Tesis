@@ -9,6 +9,36 @@
     <p>{{ alumno.email }}{% if alumno.group %} · Grupo {{ alumno.group }}{% endif %}</p>
 </div>
 
+<div class="card mb-3" style="display:flex; gap:1rem; flex-wrap:wrap; align-items:center; justify-content:space-between;">
+    <div style="display:flex; gap:1rem; flex-wrap:wrap; align-items:center;">
+        <span class="diff-badge {{ info.estado[2] }}">{{ info.estado[1] }}</span>
+        <span style="font-size:0.9rem;">
+            {% if info.en_linea %}<strong style="color:#22a06b;">● En línea ahora</strong>
+            {% else %}Última vez: <strong>{{ info.hace }}</strong>{% endif %}
+            {% if info.ultima %}<span style="color:var(--text-light);"> · {{ info.ultima | hora_local('%d/%m/%Y %H:%M') }}</span>{% endif %}
+        </span>
+    </div>
+    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:flex-start;">
+        <details>
+            <summary class="btn btn-outline btn-sm" style="cursor:pointer;">🔑 Devolver clave provisional</summary>
+            <form method="POST" action="{{ url_for('docente_clave_provisional', user_id=alumno.id) }}"
+                  style="margin-top:0.5rem; display:flex; gap:0.4rem; flex-wrap:wrap;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="text" name="clave" class="form-input" style="width:14rem; font-size:0.85rem;"
+                       placeholder="{% if hay_clave_provisional %}Vacío = la del curso{% else %}Clave provisional{% endif %}"
+                       {% if not hay_clave_provisional %}required minlength="6"{% endif %}>
+                <button class="btn btn-primary btn-sm">Devolver</button>
+            </form>
+            <p style="font-size:0.75rem; color:var(--text-light); margin-top:0.3rem;">Le servirá para entrar una vez: al hacerlo tendrá que poner una suya.</p>
+        </details>
+        <form method="POST" action="{{ url_for('docente_activar', user_id=alumno.id) }}"
+              data-confirmar="¿{{ 'Desactivar' if alumno.is_active else 'Activar' }} la cuenta de {{ alumno.name }}?{% if alumno.is_active %} Si está dentro, saldrá en ese momento.{% endif %}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-outline btn-sm">{% if alumno.is_active %}🔒 Desactivar cuenta{% else %}🔓 Activar cuenta{% endif %}</button>
+        </form>
+    </div>
+</div>
+
 <div class="stats-grid">
     <div class="stat-card">
         <div class="stat-value">{{ resumen.entregas }}</div>
@@ -22,6 +52,44 @@
         <div class="stat-value">{{ resumen.promedio if resumen.promedio is not none else '—' }}</div>
         <div class="stat-label">Calificación media</div>
     </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ info.resueltos }}</div>
+        <div class="stat-label">Ejercicios resueltos (60+)</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ info.leidas }}/{{ info.lecciones | length }}</div>
+        <div class="stat-label">Lecciones leídas</div>
+    </div>
+</div>
+
+{% if info.atascos %}
+<div class="card mb-3" style="border-left:4px solid #e5a50a;">
+    <div class="card-header"><span class="card-title">⚠️ Puede necesitar una mano</span></div>
+    {% for t in info.atascos %}
+    <p style="margin:0.3rem 0;">«{{ t.titulo }}»: {{ t.intentos }} entregas y su mejor nota es
+        <strong>{{ t.mejor | round | int if t.mejor is not none else 'ninguna' }}</strong>.</p>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="grid-2 mb-3">
+    <div class="card">
+        <div class="card-header"><span class="card-title">Qué ha usado</span></div>
+        {% for icono, texto, n in info.uso %}
+        <div style="display:flex; justify-content:space-between; padding:0.3rem 0; border-bottom:1px solid var(--border); font-size:0.88rem;">
+            <span>{{ icono }} {{ texto }}</span><strong>{{ n }}</strong>
+        </div>
+        {% endfor %}
+    </div>
+    <div class="card">
+        <div class="card-header"><span class="card-title">Lecciones</span></div>
+        {% for l in info.lecciones %}
+        <div style="display:flex; justify-content:space-between; padding:0.3rem 0; border-bottom:1px solid var(--border); font-size:0.88rem;">
+            <span>{{ l.nombre }} <span style="color:var(--text-light);">· {{ l.semestre }}er sem</span></span>
+            {% if l.leida %}<span style="color:#22a06b;">✓ leída</span>{% else %}<span style="color:var(--text-muted);">sin abrir</span>{% endif %}
+        </div>
+        {% endfor %}
+    </div>
 </div>
 
 {% if por_tema %}
@@ -31,15 +99,30 @@
     <div style="margin-bottom:0.7rem;">
         <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:0.25rem;">
             <span>{{ t.nombre }} <span style="color:var(--text-light);">· {{ t.semestre }}er sem</span></span>
-            <span style="color:var(--text-light);">{{ t.hechos }}/{{ t.total }}</span>
+            <span style="color:var(--text-light);">{{ t.resueltos }} resueltos · {{ t.hechos }} intentados · de {{ t.total }}</span>
         </div>
         <div style="height:6px; background:var(--border); border-radius:3px; overflow:hidden;">
-            <div style="height:100%; width:{{ (t.hechos / t.total * 100) | round }}%; background:var(--primary);"></div>
+            <div style="height:100%; width:{{ (t.resueltos / t.total * 100) | round }}%; background:var(--primary);"></div>
         </div>
     </div>
     {% endfor %}
 </div>
 {% endif %}
+
+<div class="card mb-3">
+    <div class="card-header"><span class="card-title">Qué ha hecho</span></div>
+    {% for d in info.dias %}
+    <p style="font-size:0.78rem; font-weight:600; color:var(--text-light); margin:0.9rem 0 0.3rem; text-transform:uppercase; letter-spacing:0.04em;">{{ d.dia }}</p>
+    {% for e in d.eventos %}
+    <div style="display:flex; gap:0.7rem; padding:0.28rem 0; font-size:0.88rem; border-bottom:1px solid var(--border);">
+        <span style="color:var(--text-light); font-variant-numeric:tabular-nums; min-width:3rem;">{{ e.hora }}</span>
+        <span>{{ e.icono }} {{ e.texto }}{% if e.veces > 1 %} <span style="color:var(--text-light);">×{{ e.veces }}</span>{% endif %}</span>
+    </div>
+    {% endfor %}
+    {% else %}
+    <p style="color:var(--text-light); padding:1rem 0;">Todavía no ha hecho nada en la plataforma.</p>
+    {% endfor %}
+</div>
 
 <div class="card">
     <div class="card-header">

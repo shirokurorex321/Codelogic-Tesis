@@ -20,6 +20,56 @@
         <div class="stat-value">{{ total_exercises }}</div>
         <div class="stat-label">Ejercicios activos</div>
     </div>
+    <div class="stat-card">
+        <div class="stat-value" style="color:#22a06b;">{{ en_linea | length }}</div>
+        <div class="stat-label">En línea ahora</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ hoy }}</div>
+        <div class="stat-label">Entraron hoy</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ sin_estrenar }}</div>
+        <div class="stat-label">Cuentas sin estrenar</div>
+    </div>
+</div>
+
+<div class="admin-grid">
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">🟢 En línea ahora</span>
+            <a href="{{ url_for('admin_students', filtro='en_linea') }}" style="font-size:0.8rem;">ver en la lista</a>
+        </div>
+        {% for a in en_linea %}
+        <div style="padding:0.4rem 0; border-bottom:1px solid var(--border);">
+            <a href="{{ url_for('admin_estudiante', user_id=a.id) }}" style="color:var(--primary); text-decoration:none;"><strong>{{ a.nombre }}</strong></a>
+            <span style="font-size:0.78rem; color:var(--text-light);"> · {{ a.hace }}</span>
+            {% if a.ultima_accion %}<div style="font-size:0.8rem; color:var(--text-light);">{{ a.ultima_accion }}</div>{% endif %}
+        </div>
+        {% else %}
+        <p style="color:var(--text-muted); font-size:0.9rem;">Nadie ha usado la plataforma en los últimos {{ en_linea_min }} minutos.</p>
+        {% endfor %}
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">⚠️ Necesitan una mano</span>
+            <a href="{{ url_for('admin_students', filtro='atascados') }}" style="font-size:0.8rem;">ver atascados</a>
+        </div>
+        {% for a in necesitan %}
+        <div style="padding:0.4rem 0; border-bottom:1px solid var(--border);">
+            <a href="{{ url_for('admin_estudiante', user_id=a.id) }}" style="color:var(--primary); text-decoration:none;"><strong>{{ a.nombre }}</strong></a>
+            {% for av in a.avisos %}<div style="font-size:0.8rem; color:var(--text-light);">{{ av }}</div>{% endfor %}
+        </div>
+        {% else %}
+        <p style="color:var(--text-muted); font-size:0.9rem;">Nadie atascado ni desaparecido. 👍</p>
+        {% endfor %}
+        {% if sin_estrenar %}
+        <p style="font-size:0.8rem; color:var(--text-light); margin-top:0.6rem;">
+            Además, <a href="{{ url_for('admin_students', filtro='sin_estrenar') }}">{{ sin_estrenar }} cuenta{{ 's' if sin_estrenar != 1 }} sin estrenar</a>.
+        </p>
+        {% endif %}
+    </div>
 </div>
 
 <div class="admin-grid">
@@ -57,7 +107,7 @@
                 <tbody>
                     {% for sub in recent_submissions %}
                     <tr>
-                        <td>{{ sub.student.name.split()[0] }}</td>
+                        <td>{{ sub.student.name }}</td>
                         <td>{{ sub.exercise.title if sub.exercise else 'Práctica libre' }}</td>
                         <td style="font-size:0.8rem; color:var(--text-light);">{{ sub.created_at | hora_local('%d/%m %H:%M') }}</td>
                     </tr>
@@ -70,7 +120,11 @@
 
 <!-- Acciones rápidas -->
 <div class="grid-2 mt-2">
-    <a href="{{ url_for('admin_exercises') }}" class="btn btn-primary btn-block">Gestionar Ejercicios</a>
+    <a href="{{ url_for('admin_students') }}" class="btn btn-primary btn-block">Ver a toda la clase</a>
+    <a href="{{ url_for('admin_exercises') }}" class="btn btn-outline btn-block">Gestionar Ejercicios</a>
+    {# Exportar es de administracion: al docente le daba "no tienes permiso" #}
+    {% if current_user.role == 'admin' %}
     <a href="/api/admin/export-logs" class="btn btn-outline btn-block" target="_blank">Exportar Logs (JSON)</a>
+    {% endif %}
 </div>
 {% endblock %}
