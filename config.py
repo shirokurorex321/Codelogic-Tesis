@@ -72,6 +72,15 @@ class Config:
     SESSION_COOKIE_SECURE = _bool("SESSION_COOKIE_SECURE", "false" if FLASK_DEBUG else "true")
     PERMANENT_SESSION_LIFETIME = timedelta(hours=12)
 
+    # ── Cierre por inactividad ──
+    # El acceso ponia una cookie de "recordarme" que duraba un ano: cerrar la
+    # app no cerraba nada, y en una sala de equipos compartidos el siguiente
+    # estudiante entraba con la cuenta del anterior. Ahora la sesion muere al
+    # cerrar el navegador y, si el navegador la restaura, a los N minutos sin
+    # tocar nada. Mientras se escribe o se hace clic la pagina avisa al
+    # servidor, asi que a nadie se le cierra la sesion mientras trabaja.
+    SESION_INACTIVIDAD_MIN = int(os.getenv("SESION_INACTIVIDAD_MIN", "30"))
+
     # ── CSRF ──
     # Sin caducidad propia: un estudiante puede tener el editor abierto una hora
     # antes de enviar. El token vive lo que viva la sesión.

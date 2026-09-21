@@ -129,6 +129,27 @@
     {# Conecta los data-accion del HTML con las funciones. Va ANTES del bloque
        de scripts de cada pagina para que ya este escuchando cuando se pinten. #}
     <script src="{{ url_for('static', filename='js/acciones.js') }}?v={{ css_version }}"></script>
+    {% if current_user.is_authenticated %}
+    <script nonce="{{ csp_nonce }}">
+    /* Mientras el estudiante escribe, hace clic o se desplaza, avisa al
+       servidor de que sigue ahi -como mucho una vez cada 5 minutos-, para
+       que la sesion no se le cierre por inactividad en mitad de un ejercicio.
+       Si ya se cerro no se le saca de la pagina: perderia lo que tiene
+       escrito. Se entera al pulsar un boton, con el motivo. */
+    (function () {
+        var ultimo = Date.now(), CADA = 5 * 60 * 1000;
+        function sigoAqui() {
+            if (Date.now() - ultimo < CADA) return;
+            ultimo = Date.now();
+            fetch("{{ url_for('sigo_aqui') }}", {credentials: "same-origin", cache: "no-store"})
+                .catch(function () {});
+        }
+        ["keydown", "pointerdown", "scroll", "input"].forEach(function (ev) {
+            document.addEventListener(ev, sigoAqui, {passive: true, capture: true});
+        });
+    })();
+    </script>
+    {% endif %}
     {% block scripts %}{% endblock %}
 </body>
 </html>

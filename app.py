@@ -211,6 +211,56 @@ def load_user(user_id):
     return db.session.get(User, int(user_id))
 
 
+def _marcar_actividad():
+    session["ultima_actividad"] = datetime.now(timezone.utc).timestamp()
+
+
+@app.before_request
+def cerrar_por_inactividad():
+    """Cierra la sesion de quien lleva un rato sin usar la plataforma.
+
+    Va antes que las demas comprobaciones de la cuenta: no tiene sentido
+    pedirle a alguien que cambie la clave o acepte el consentimiento con una
+    sesion que ya deberia estar cerrada.
+
+    Una sesion sin hora de ultima actividad es de antes de este cambio, o la
+    ha restaurado la vieja cookie de "recordarme" de un ano. Se cierra igual:
+    es justo el caso que habia que cortar.
+    """
+    if request.endpoint == "static" or not current_user.is_authenticated:
+        return
+    ultima = session.get("ultima_actividad")
+    limite = app.config["SESION_INACTIVIDAD_MIN"] * 60
+    ahora = datetime.now(timezone.utc).timestamp()
+    if ultima is not None and ahora - ultima <= limite:
+        _marcar_actividad()
+        return
+    logout_user()
+    session.pop("ultima_actividad", None)
+    mensaje = ("Tu sesión se cerró porque llevabas un rato sin usar la "
+               "plataforma. Vuelve a entrar para continuar.")
+    # A una llamada de la API hay que contestarle JSON: el editor muestra el
+    # motivo en vez de un error sin explicacion. Lo que el estudiante tenia
+    # escrito sigue en la pagina; no se pierde.
+    if request.path.startswith("/api/"):
+        return jsonify({"success": False, "sesion_cerrada": True,
+                        "error": mensaje + " Copia antes lo que tenías escrito."}), 401
+    flash(mensaje, "info")
+    return redirect(url_for("login"))
+
+
+@app.route("/api/sigo-aqui")
+@login_required
+def sigo_aqui():
+    """La pagina avisa de que el estudiante sigue ahi (escribe, hace clic).
+
+    No hace nada mas: la hora ya la ha renovado cerrar_por_inactividad. Sin
+    esto, quien pasa media hora escribiendo pseudocodigo sin pulsar ningun
+    boton perderia la sesion en mitad del ejercicio.
+    """
+    return jsonify({"success": True})
+
+
 # ─── HELPERS ────────────────────────────────────────────────────────
 
 def client_ip():
@@ -806,7 +856,10 @@ def login():
                       "institucional y abre el enlace que te enviamos.", "error")
                 return redirect(url_for("verificacion_pendiente"))
 
-            login_user(user, remember=True)
+            # Sin "recordarme": esa cookie duraba un ano y mantenia la sesion
+            # abierta aunque se cerrara la app. Ver cerrar_por_inactividad.
+            login_user(user)
+            _marcar_actividad()
             log_activity("login")
             next_page = request.args.get("next")
             return redirect(next_page or url_for("dashboard"))
@@ -904,6 +957,7 @@ def register():
             return redirect(url_for("verificacion_pendiente"))
 
         login_user(user)
+        _marcar_actividad()
         log_activity("register")
         flash("¡Bienvenido/a a la plataforma!", "success")
         return redirect(url_for("dashboard"))
