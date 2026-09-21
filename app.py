@@ -449,7 +449,7 @@ def _enviar_restablecimiento(user) -> bool:
 
     base = app.config.get("PUBLIC_BASE_URL") or request.url_root.rstrip("/")
     enlace = f"{base}/restablecer-clave/{user.reset_token}"
-    return correo_restablecer(user.name, user.email, enlace, RESET_TTL_MINUTOS)
+    return correo_restablecer(user.nombre_corto, user.email, enlace, RESET_TTL_MINUTOS)
 
 
 # El envio de correo registra los fallos como ERROR (se ven) pero los exitos
@@ -488,7 +488,7 @@ def _enviar_verificacion(user) -> bool:
     # estudiante se quedaba mirando "revisa tu bandeja" para siempre y el
     # fallo solo aparecia en un registro que nadie mira. Registrarse es una
     # accion unica; esperar dos segundos no molesta a nadie.
-    return correo_verificacion(user.name, user.email, enlace, horas,
+    return correo_verificacion(user.nombre_corto, user.email, enlace, horas,
                                en_segundo_plano=False)
 
 

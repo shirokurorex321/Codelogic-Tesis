@@ -56,7 +56,7 @@
                 {% endif %}
             </div>
             <div class="nav-user">
-                <a href="{{ url_for('perfil') }}" class="user-name" style="text-decoration:none; color:inherit;" title="Mi perfil">{{ current_user.name.split()[0] }}</a>
+                <a href="{{ url_for('perfil') }}" class="user-name" style="text-decoration:none; color:inherit;" title="Mi perfil">{{ current_user.nombre_corto }}</a>
                 <span class="user-role badge-{{ current_user.role }}">{{ current_user.role }}</span>
                 <a href="{{ url_for('logout') }}" class="nav-link logout-link">Salir</a>
             </div>

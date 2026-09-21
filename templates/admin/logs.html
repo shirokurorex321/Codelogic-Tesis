@@ -38,7 +38,7 @@
                     <td style="font-size:0.8rem; white-space:nowrap; color:var(--text-light);">
                         {{ log.created_at | hora_local('%d/%m %H:%M:%S') }}
                     </td>
-                    <td>{{ log.user.name.split()[0] if log.user else '-' }}</td>
+                    <td>{{ log.user.name if log.user else '-' }}</td>
                     <td><span class="diff-badge diff-basico">{{ log.action }}</span></td>
                     <td style="font-size:0.8rem; color:var(--text-light); max-width:300px; overflow:hidden; text-overflow:ellipsis;">
                         {{ log.details | tojson if log.details else '-' }}

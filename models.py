@@ -65,6 +65,26 @@ class User(UserMixin, db.Model):
     logs = db.relationship("ActivityLog", backref="user", lazy="dynamic")
     test_results = db.relationship("TestResult", backref="student", lazy="dynamic")
 
+    # ── Nombre de pila ──
+    # Las cuentas de la clase guardan el nombre como en la lista oficial,
+    # apellidos primero ("Ramirez Vargas Ana Lucia"), que es como el
+    # docente busca a sus estudiantes. Pero saludar con la primera palabra
+    # decia "Hola, Ramirez". Esto guarda el nombre para tratar al estudiante.
+    nombre_pila = db.Column(db.String(60), nullable=True)
+
+    @property
+    def nombre_corto(self):
+        """Como se le saluda: su nombre de pila, o la primera palabra del
+        nombre en las cuentas que se registraron solas ("Brayan Torres")."""
+        if self.nombre_pila:
+            return self.nombre_pila.title()
+        partes = (self.name or "").split()
+        if not partes:
+            return ""
+        # Con la inicial en mayuscula: quien se registro como "daniel rosero"
+        # veia "Hola, daniel".
+        return partes[0][:1].upper() + partes[0][1:]
+
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
