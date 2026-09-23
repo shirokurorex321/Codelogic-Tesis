@@ -1,3 +1,10 @@
+/* El atributo hidden tiene que ganar siempre. Sin esto, cualquier clase con
+   display -.btn es inline-flex- lo anulaba: el boton «Convertir» de los
+   ejercicios de primer semestre, que va oculto para que alli se escriba
+   pseudocodigo y no se traduzca, se veia igual. Para mostrar algo oculto el
+   JavaScript ya hace el.hidden = false. */
+[hidden] { display: none !important; }
+
 /* ═══════════════════════════════════════════════
    CodeLogic IUP — Design System
    ═══════════════════════════════════════════════ */

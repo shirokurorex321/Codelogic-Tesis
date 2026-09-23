@@ -16,7 +16,7 @@ import unicodedata
 from sqlalchemy import func
 from flask import (
     Flask, render_template, request, redirect, url_for,
-    flash, jsonify, session, current_app, g
+    flash, jsonify, session, current_app, g, abort
 )
 from flask_login import (
     LoginManager, login_user, logout_user,
@@ -490,6 +490,51 @@ def _enviar_verificacion(user) -> bool:
     # accion unica; esperar dos segundos no molesta a nadie.
     return correo_verificacion(user.nombre_corto, user.email, enlace, horas,
                                en_segundo_plano=False)
+
+
+def _ejercicio_visible(exercise_id):
+    """El ejercicio, o 404 si no existe o si esta retirado y quien lo pide es
+    un estudiante. Desactivar un ejercicio lo quitaba de las listas, pero
+    seguia abriendose y entregandose escribiendo su numero en la direccion.
+    El docente si puede verlo, para revisarlo antes de reactivarlo."""
+    ejercicio = db.session.get(Exercise, exercise_id)
+    if not ejercicio or (not ejercicio.is_active and
+                         current_user.role not in ROLES_DOCENCIA):
+        abort(404)
+    return ejercicio
+
+
+def _problemas_en_texto(problemas):
+    """Los fallos del revisor en una frase, para pantallas que solo pintan
+    el mensaje de error y no la lista con la linea corregida."""
+    p = problemas[0]
+    texto = "Línea %s: %s %s" % (p.get("linea"), p.get("problema", ""), p.get("sugerencia", ""))
+    if len(problemas) > 1:
+        texto += " (y %d cosa%s más)" % (len(problemas) - 1, "" if len(problemas) == 2 else "s")
+    return "Arregla esto antes de comprobar. " + texto.strip()
+
+
+# Sin estas, un enlace roto o un fallo del servidor enseñaban la pagina en
+# ingles de Werkzeug, sin menu ni forma de volver.
+@app.errorhandler(404)
+def no_encontrado(e):
+    if request.path.startswith("/api/"):
+        return jsonify({"success": False, "error": "No existe o ya no está disponible."}), 404
+    return render_template("error.html", codigo=404,
+                           titulo="Esto no está aquí",
+                           mensaje="La página que buscas no existe o ya no está disponible."), 404
+
+
+@app.errorhandler(500)
+def error_interno(e):
+    db.session.rollback()
+    if request.path.startswith("/api/"):
+        return jsonify({"success": False,
+                        "error": "Algo falló de nuestro lado. Inténtalo de nuevo en un momento."}), 500
+    return render_template("error.html", codigo=500,
+                           titulo="Algo falló de nuestro lado",
+                           mensaje="No es culpa tuya. Vuelve a intentarlo en un momento; "
+                                   "si sigue pasando, avisa a tu docente."), 500
 
 
 @app.errorhandler(429)
@@ -1157,7 +1202,9 @@ def dashboard():
     # Progreso por tema
     topic_progress = []
     for topic in topics:
-        exercise_ids = [e.id for e in topic.exercises.all()]
+        # Solo los activos, como en Aprender: con los retirados en el total,
+        # un tema terminado se quedaba para siempre sin llegar al 100 %.
+        exercise_ids = [e.id for e in topic.exercises.filter_by(is_active=True).all()]
         if exercise_ids:
             # count(distinct exercise_id): .distinct(col) no funciona igual
             # en MySQL/SQLite y contaba submissions repetidas del mismo ejercicio
@@ -1239,7 +1286,7 @@ def ejercicio_leer(exercise_id):
     No gasta IA: se corrige comparando la salida con la misma normalizacion
     que ya usa la caja de prediccion.
     """
-    exercise = Exercise.query.get_or_404(exercise_id)
+    exercise = _ejercicio_visible(exercise_id)
     if exercise.tipo != "leer":
         return redirect(url_for("ejercicio_teoria", exercise_id=exercise_id))
     log_activity("abrir_lectura", {"exercise_id": exercise_id})
@@ -1253,7 +1300,7 @@ def ejercicio_leer(exercise_id):
 @login_required
 def api_leer(exercise_id):
     """Corrige lo que el estudiante cree que imprime el algoritmo."""
-    exercise = Exercise.query.get_or_404(exercise_id)
+    exercise = _ejercicio_visible(exercise_id)
     if exercise.tipo != "leer":
         return jsonify({"success": False, "error": "Ese ejercicio no es de lectura."}), 400
 
@@ -1309,7 +1356,7 @@ def ejercicio_diagrama(exercise_id):
     Traducir en la direccion contraria obliga a leer el diagrama de verdad,
     no solo a mirarlo.
     """
-    exercise = Exercise.query.get_or_404(exercise_id)
+    exercise = _ejercicio_visible(exercise_id)
     if exercise.tipo != "diagrama":
         return redirect(url_for("ejercicio_teoria", exercise_id=exercise_id))
     log_activity("abrir_diagrama", {"exercise_id": exercise_id})
@@ -1321,6 +1368,7 @@ def ejercicio_diagrama(exercise_id):
 
 @app.route("/api/diagrama/<int:exercise_id>", methods=["POST"])
 @limiter.limit(lambda: app.config["RATELIMIT_EXEC"])
+@limiter.limit(lambda: app.config["RATELIMIT_AI"], deduct_when=_gasto_real)
 @login_required
 def api_diagrama(exercise_id):
     """Comprueba que el pseudocodigo del estudiante SE COMPORTE como el diagrama.
@@ -1330,7 +1378,7 @@ def api_diagrama(exercise_id):
     injusto. Se ejecuta lo que escribio y se compara su salida con la que
     produce el algoritmo del diagrama.
     """
-    exercise = Exercise.query.get_or_404(exercise_id)
+    exercise = _ejercicio_visible(exercise_id)
     if exercise.tipo != "diagrama":
         return jsonify({"success": False, "error": "Ese ejercicio no es de diagrama."}), 400
 
@@ -1339,8 +1387,16 @@ def api_diagrama(exercise_id):
     ok, motivo = validar_pseudocodigo(pseudocode)
     if not ok:
         return jsonify({"success": False, "error": motivo, "no_es_pseudocodigo": True}), 400
+    # En primero se aprende a ESCRIBIR pseudocodigo: el conversor es tolerante
+    # y daba por buena una traduccion de algo mal escrito.
+    problemas = revisar.revisar(pseudocode)
+    if problemas:
+        return jsonify({"success": False, "sintaxis": True,
+                        "problemas": problemas[:3], "total": len(problemas),
+                        "error": _problemas_en_texto(problemas)}), 400
 
     conv = convert_pseudocode(pseudocode, "python")
+    g.ia_llamada_real = not conv.get("cached", False)
     log_activity("convert", {"language": "python", "pseudocode_length": len(pseudocode),
                              "success": conv.get("success"), "via": "diagrama",
                              "cached": conv.get("cached", False), "usage": conv.get("usage", {})})
@@ -1396,7 +1452,7 @@ def ejercicio_teoria(exercise_id):
     programar. Es el andamiaje que la tesis defiende: no lanzar al estudiante
     a la práctica sin preparación.
     """
-    exercise = Exercise.query.get_or_404(exercise_id)
+    exercise = _ejercicio_visible(exercise_id)
     if exercise.tipo == "leer":
         return redirect(url_for("ejercicio_leer", exercise_id=exercise_id))
     if exercise.tipo == "diagrama":
@@ -1410,7 +1466,7 @@ def ejercicio_teoria(exercise_id):
 @login_required
 def editor_exercise(exercise_id):
     """Editor con ejercicio específico."""
-    exercise = Exercise.query.get_or_404(exercise_id)
+    exercise = _ejercicio_visible(exercise_id)
     log_activity("open_editor", {"mode": "exercise", "exercise_id": exercise_id})
 
     # Cargar última submission si existe
@@ -1674,6 +1730,9 @@ def api_convert():
 
 @app.route("/api/trace", methods=["POST"])
 @limiter.limit(lambda: app.config["RATELIMIT_EXEC"])
+# Si hay que convertir y no esta en cache, es una llamada de pago como
+# cualquier otra: cuenta en el limite de IA (y solo entonces).
+@limiter.limit(lambda: app.config["RATELIMIT_AI"], deduct_when=_gasto_real)
 @login_required
 def api_trace():
     """Prueba de escritorio: traza real de la ejecución, paso a paso.
@@ -1693,7 +1752,23 @@ def api_trace():
     if not code:
         if not pseudocode:
             return jsonify({"success": False, "error": "No hay código que trazar."}), 400
+        # Antes se convertia sin mas: un pseudocodigo roto se pagaba y se
+        # trazaba como si estuviera bien, y la conversion no quedaba en el
+        # libro de gasto porque solo se anotaba "trace", sin tokens.
+        valido, motivo = validar_pseudocodigo(pseudocode)
+        if not valido:
+            return jsonify({"success": False, "error": motivo, "no_es_pseudocodigo": True}), 400
+        problemas = revisar.revisar(pseudocode)
+        if problemas:
+            return jsonify({"success": False, "sintaxis": True,
+                            "problemas": problemas[:3], "total": len(problemas),
+                            "error": _problemas_en_texto(problemas)}), 400
         conv = convert_pseudocode(pseudocode, "python")
+        g.ia_llamada_real = not conv.get("cached", False)
+        log_activity("convert", {"language": "python", "pseudocode_length": len(pseudocode),
+                                 "success": conv.get("success"), "via": "traza",
+                                 "cached": conv.get("cached", False),
+                                 "usage": conv.get("usage", {})})
         if not conv.get("success"):
             return jsonify({"success": False, "error": conv.get("error", "No se pudo convertir.")}), 400
         code = conv["code"]
@@ -1916,18 +1991,10 @@ def api_convert_all():
     if not pseudocode:
         return jsonify({"success": False, "error": "El pseudocódigo está vacío."}), 400
 
-    valido, motivo = validar_pseudocodigo(pseudocode)
-    if not valido:
-        log_activity("submit_rechazado", {"largo": len(pseudocode)})
-        return jsonify({"success": False, "error": motivo, "no_es_pseudocodigo": True}), 400
-
-
-    valido, motivo = validar_pseudocodigo(pseudocode)
-    if not valido:
-        log_activity("feedback_rechazado", {"largo": len(pseudocode)})
-        return jsonify({"success": False, "error": motivo, "no_es_pseudocodigo": True}), 400
-
-
+    # Aqui habia tres copias de este filtro: las de entregar y pedir
+    # retroalimentacion aterrizaron en esta funcion por un parche mal
+    # anclado, asi que esas dos rutas se quedaron sin el y el registro anotaba
+    # "submit_rechazado" cuando en realidad se rechazaba una conversion.
     valido, motivo = validar_pseudocodigo(pseudocode)
     if not valido:
         log_activity("convert_all_rechazado", {"largo": len(pseudocode)})
@@ -1965,6 +2032,13 @@ def api_feedback():
 
     if not pseudocode:
         return jsonify({"success": False, "error": "El pseudocódigo está vacío."}), 400
+
+    # Una frase en español no es un algoritmo que revisar: sin esto la IA de
+    # pago comentaba "suma dos numeros" como si fuera pseudocodigo.
+    valido, motivo = validar_pseudocodigo(pseudocode)
+    if not valido:
+        log_activity("feedback_rechazado", {"largo": len(pseudocode)})
+        return jsonify({"success": False, "error": motivo, "no_es_pseudocodigo": True}), 400
 
     if exercise_id:
         exercise = Exercise.query.get(exercise_id)
@@ -2030,11 +2104,23 @@ def api_submit():
     if not pseudocode:
         return jsonify({"success": False, "error": "El pseudocódigo está vacío."}), 400
 
+    # Entregar "suma dos numeros" en prosa se guardaba como entrega y la IA de
+    # pago la calificaba: es el mismo filtro que ya tenian convertir y dibujar.
+    valido, motivo = validar_pseudocodigo(pseudocode)
+    if not valido:
+        log_activity("submit_rechazado", {"largo": len(pseudocode)})
+        return jsonify({"success": False, "error": motivo, "no_es_pseudocodigo": True}), 400
+
     # Contar intento
     attempt = 1
     exercise = None
     if exercise_id:
         exercise = Exercise.query.get(exercise_id)
+        # Un numero que no existe reventaba al guardar (clave foranea) con un
+        # 500; y a un ejercicio retirado no se le entrega.
+        if not exercise or (not exercise.is_active and current_user.role not in ROLES_DOCENCIA):
+            return jsonify({"success": False,
+                            "error": "Ese ejercicio ya no está disponible."}), 400
         attempt = (
             Submission.query
             .filter_by(user_id=current_user.id, exercise_id=exercise_id)
@@ -3455,7 +3541,12 @@ def _numeros(texto):
 @app.route("/prediccion/<int:exercise_id>", methods=["POST"])
 @login_required
 def prediccion(exercise_id):
-    ejercicio = Exercise.query.get_or_404(exercise_id)
+    ejercicio = _ejercicio_visible(exercise_id)
+    # En los de lectura y diagrama la salida es justo lo que se califica, y
+    # esta ruta la devolvia siempre: bastaba con llamarla para saber la
+    # respuesta. La prediccion solo existe en los de escribir.
+    if ejercicio.tipo in ("leer", "diagrama"):
+        return jsonify({"error": "Este ejercicio no tiene predicción."}), 400
     esperada = ejercicio.ejemplo_salida or ""
     if not esperada:
         return jsonify({"error": "Este ejercicio todavía no tiene predicción."}), 400

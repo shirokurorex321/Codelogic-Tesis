@@ -155,7 +155,7 @@ FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %
                             <button class="btn-mini btn-mini-primary" data-accion="generarTraza" id="btn-escritorio">▶ Ejecutar paso a paso</button>
                         </div>
                     </header>
-                    <div class="traza-block" id="traza-salida"><span style="color:var(--text-muted);">(Pulsa ▶ Ejecutar paso a paso para seguir tu algoritmo instruccion por instruccion, viendo como cambia cada variable)</span></div>
+                    <div class="traza-block" id="traza-salida"><span style="color:var(--text-muted);">(Pulsa ▶ Ejecutar paso a paso para seguir tu algoritmo instrucción por instrucción, viendo cómo cambia cada variable)</span></div>
                 </section>
             </div>
 
@@ -285,6 +285,27 @@ FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %
 {% block scripts %}
 </div>
 
+<script nonce="{{ csp_nonce }}">
+/* Con enunciado arriba, el alto fijo del area de trabajo (100vh - 180px, que
+   es el del editor libre) dejaba "Retroalimentacion IA" y "Enviar solucion"
+   por debajo del borde de la pantalla de un portatil: habia que adivinar que
+   se podia bajar. Aqui se ajusta a lo que queda de pantalla, y se recalcula
+   al abrir las ayudas o cambiar el tamano de la ventana. */
+(function () {
+    function ajustar() {
+        var zona = document.querySelector(".editor-layout");
+        if (!zona || !document.querySelector(".exercise-header")) return;
+        if (window.innerWidth <= 768) { zona.style.height = ""; return; }
+        var arriba = zona.getBoundingClientRect().top + window.scrollY;
+        zona.style.height = Math.max(window.innerHeight - arriba - 16, 420) + "px";
+    }
+    document.addEventListener("DOMContentLoaded", ajustar);
+    window.addEventListener("resize", ajustar);
+    document.addEventListener("click", function (ev) {
+        if (ev.target.closest && ev.target.closest("#btn-ayudas")) setTimeout(ajustar, 60);
+    });
+})();
+</script>
 <script nonce="{{ csp_nonce }}">
 {% if primer_semestre %}
 /* La pestaña activa era "Prueba de escritorio" pero el panel seguia
