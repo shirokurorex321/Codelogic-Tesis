@@ -61,7 +61,7 @@
         <div class="exercise-meta">
             <span class="diff-badge diff-{{ ex.difficulty }}">{{ ex.difficulty }}</span>
             {% if ex.attempts > 0 %}
-            <span style="font-size:0.8rem; color:var(--text-muted);">{{ ex.attempts }} intentos</span>
+            <span style="font-size:0.8rem; color:var(--text-muted);">{{ ex.attempts }} intento{{ '' if ex.attempts == 1 else 's' }}</span>
             {% endif %}
             {% set destino = {'leer': 'ejercicio_leer', 'diagrama': 'ejercicio_diagrama'}.get(ex.tipo, 'ejercicio_teoria') %}
             <a href="{{ url_for(destino, exercise_id=ex.id) }}" class="btn btn-primary btn-sm">

@@ -27,6 +27,16 @@ _OPS = [
     (r"\bFalse\b", "Falso"),
     (r"!=", "<>"),
     (r"\s%\s", " MOD "),
+    # Funciones: el conversor escribe las de Python, y sin esto la linea no
+    # casaba con la del alumno y la tabla le enseñaba «entera <- int(a / b)»
+    # donde el habia escrito trunc(a / b).
+    (r"\bmath\.trunc\(", "trunc("),
+    (r"\bint\(", "trunc("),
+    (r"(\w+(?:\[[^\]]+\])?)\s*//\s*(\w+(?:\[[^\]]+\])?)", r"trunc(\1 / \2)"),
+    (r"\bmath\.sqrt\(|\bsqrt\(", "raiz("),
+    (r"\bround\(", "redon("),
+    (r"\*\*", "^"),
+    (r"\blen\(", "Longitud("),
 ]
 
 

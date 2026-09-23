@@ -11,7 +11,15 @@ from config import Config
 from models import db, AICache
 
 # ── Gemini (fallback) ───────────────────────────────────────────
-_gemini_client = genai.Client(api_key=Config.GEMINI_API_KEY) if Config.GEMINI_API_KEY else None
+# Tiempo maximo por llamada. El cliente se creaba SIN el, y el 23/09/2026 una
+# conversion tardo 2 min 15 s en volver: la prueba de escritorio se quedo
+# girando todo ese rato. Con 48 estudiantes, cada llamada colgada ocupa uno de
+# los hilos del servidor, y si se acumulan se para la plataforma para todos.
+# Lo normal son 1-3 s; la retroalimentacion mas larga medida, 7 s.
+GEMINI_TIMEOUT_MS = 30_000
+_gemini_client = (genai.Client(api_key=Config.GEMINI_API_KEY,
+                               http_options=types.HttpOptions(timeout=GEMINI_TIMEOUT_MS))
+                  if Config.GEMINI_API_KEY else None)
 # Lista de modelos, en orden de preferencia. GEMINI_MODEL es el primero y se
 # mantiene como variable suelta porque el resto del modulo la usa.
 #
@@ -605,7 +613,11 @@ def _generate(system_instruction: str, user_prompt: str, model: str = None,
                 return _generate_gemini(system_instruction, user_prompt, operacion)
             except Exception as e:
                 err_gemini = e
-                if not _es_transitorio(e) or intento == 2:
+                # Si lo que paso es que se agoto el tiempo, un solo reintento:
+                # tres esperas de 30 s serian minuto y medio con el estudiante
+                # mirando un circulo girar. Para un 503 si vale la pena insistir.
+                agotado = any(t in str(e).lower() for t in ("timed out", "timeout"))
+                if not _es_transitorio(e) or intento == 2 or (agotado and intento >= 1):
                     break
                 espera = 2 * (intento + 1)          # 2 s y luego 4 s
                 logger.warning("Gemini saturado (%s); reintento en %ss",

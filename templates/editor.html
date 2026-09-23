@@ -150,7 +150,7 @@ FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %
                         <div class="lang-actions">
                             <details class="stdin-details">
                                 <summary>📥 datos de entrada</summary>
-                                <textarea class="stdin-input" id="stdin-escritorio" rows="3" placeholder="Un dato por linea, igual que si los tecleara el usuario."></textarea>
+                                <textarea class="stdin-input" id="stdin-escritorio" rows="3" placeholder="Un dato por línea, igual que si los tecleara el usuario."></textarea>
                             </details>
                             <button class="btn-mini btn-mini-primary" data-accion="generarTraza" id="btn-escritorio">▶ Ejecutar paso a paso</button>
                         </div>
@@ -238,6 +238,9 @@ FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %
 </div>
 
 <!-- Banner de uso del plan FREE (200 / 5h) -->
+{# El contador de uso de la IA es de la plataforma entera y de un plan que
+   ya no se usa: al estudiante no le dice nada. Solo para docencia. #}
+{% if current_user.role in ('docente', 'admin') %}
 <div class="usage-banner" id="usageBanner" style="display:none;">
     <span class="usage-icon">⚡</span>
     <span class="usage-text">
@@ -246,6 +249,7 @@ FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %
     </span>
     <div class="usage-bar"><div class="usage-bar-fill" id="usageBarFill"></div></div>
 </div>
+{% endif %}
 <!-- ── Escala de carga cognitiva (Paas, 1-9) ─────────────────────
      Cuarta variable dependiente del estudio. Se aplica después de cada
      actividad práctica, según la metodología de la tesis. -->
@@ -285,27 +289,6 @@ FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %
 {% block scripts %}
 </div>
 
-<script nonce="{{ csp_nonce }}">
-/* Con enunciado arriba, el alto fijo del area de trabajo (100vh - 180px, que
-   es el del editor libre) dejaba "Retroalimentacion IA" y "Enviar solucion"
-   por debajo del borde de la pantalla de un portatil: habia que adivinar que
-   se podia bajar. Aqui se ajusta a lo que queda de pantalla, y se recalcula
-   al abrir las ayudas o cambiar el tamano de la ventana. */
-(function () {
-    function ajustar() {
-        var zona = document.querySelector(".editor-layout");
-        if (!zona || !document.querySelector(".exercise-header")) return;
-        if (window.innerWidth <= 768) { zona.style.height = ""; return; }
-        var arriba = zona.getBoundingClientRect().top + window.scrollY;
-        zona.style.height = Math.max(window.innerHeight - arriba - 16, 420) + "px";
-    }
-    document.addEventListener("DOMContentLoaded", ajustar);
-    window.addEventListener("resize", ajustar);
-    document.addEventListener("click", function (ev) {
-        if (ev.target.closest && ev.target.closest("#btn-ayudas")) setTimeout(ajustar, 60);
-    });
-})();
-</script>
 <script nonce="{{ csp_nonce }}">
 {% if primer_semestre %}
 /* La pestaña activa era "Prueba de escritorio" pero el panel seguia
@@ -1398,11 +1381,11 @@ async function generarTraza() {
     // ─── Banner de uso (refrescable) ────────────────────
     async function refreshUsage() {
         try {
+            const banner = document.getElementById('usageBanner');
+            if (!banner) return;          // estudiantes: ni se pregunta
             const r = await fetch('/api/usage');
             if (!r.ok) return;
             const u = await r.json();
-            const banner = document.getElementById('usageBanner');
-            if (!banner) return;
             document.getElementById('usageReal').textContent = u.real_calls;
             document.getElementById('usageLimit').textContent = u.limit;
             document.getElementById('usageCached').textContent = u.cached_calls;
