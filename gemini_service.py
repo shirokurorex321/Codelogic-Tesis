@@ -682,6 +682,32 @@ def _respetar_constantes(codigo: str, pseudocodigo: str, idioma: str) -> str:
     return codigo
 
 
+def _respetar_nombres(code: str, pseudocode: str) -> str:
+    """Devuelve a cada variable el nombre que le puso el estudiante.
+
+    El modelo a veces "mejora" los nombres al estilo del lenguaje: el
+    pseudocodigo dice tieneLicencia y el Python sale con tiene_licencia. La
+    prueba de escritorio de primer semestre le enseñaba entonces variables que
+    el no escribio, en la tabla y en las columnas. Como con las constantes,
+    pedirlo en el prompt no lo garantiza: se corrige aqui, y solo si el nombre
+    original no aparece y su version con guiones bajos si.
+    """
+    declaradas = set()
+    for linea in (pseudocode or "").splitlines():
+        m = re.match(r"(?i)^\s*definir\s+(.+?)\s+como\b", linea)
+        if m:
+            declaradas.update(x.strip() for x in m.group(1).split(",") if x.strip())
+        m = re.match(r"(?i)^\s*dimension\s+(.+)$", linea)
+        if m:
+            declaradas.update(re.findall(r"(\w+)\s*\[", m.group(1)))
+    for nombre in declaradas:
+        serpiente = re.sub(r"(?<=[a-z0-9])([A-Z])", r"_\1", nombre).lower()
+        if serpiente == nombre or re.search(r"\b%s\b" % re.escape(nombre), code):
+            continue
+        code = re.sub(r"\b%s\b" % re.escape(serpiente), nombre, code)
+    return code
+
+
 def convert_pseudocode(pseudocode: str, target_language: str) -> dict:
     """Convierte pseudocódigo a un lenguaje de programación."""
     language_names = {
@@ -707,7 +733,9 @@ Genera ÚNICAMENTE el código en {lang_name}, sin markdown, sin explicaciones, s
                      normalizar_pseudocodigo(pseudocode))
     cached = cache_get("convert", key)
     if cached:
-        return {**cached, "cached": True}
+        # Tambien a lo que ya estaba en cache, que se guardo antes de esto.
+        return {**cached, "code": _respetar_nombres(cached.get("code", ""), pseudocode),
+                "cached": True}
 
     try:
         code, usage = _generate(CONVERSION_SYSTEM_PROMPT, prompt, model=OPENCODE_MODEL_CONVERT, operacion="convert")
@@ -720,6 +748,7 @@ Genera ÚNICAMENTE el código en {lang_name}, sin markdown, sin explicaciones, s
             code = "\n".join(lines)
 
         code = _respetar_constantes(code, pseudocode, target_language)
+        code = _respetar_nombres(code, pseudocode)
 
         # "language" hace falta para poder comprobar, antes de cachear, que el
         # codigo generado esta completo (ver _respuesta_util).

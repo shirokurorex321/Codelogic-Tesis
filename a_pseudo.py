@@ -37,6 +37,7 @@ _OPS = [
     (r"\bround\(", "redon("),
     (r"\*\*", "^"),
     (r"\blen\(", "Longitud("),
+    (r"\bstr\(", "ConvertirATexto("),
 ]
 
 
@@ -53,6 +54,9 @@ def a_pseudo(linea: str) -> str:
     s = (linea or "").strip()
     if not s:
         return s
+    # El comentario que el conversor deja al final («# Usamos tamaño 6 para...»)
+    # es Python y no le toca verlo.
+    s = re.sub(r"\s+#(?=(?:[^\"']|\"[^\"]*\"|'[^']*')*$).*$", "", s).strip()
 
     # El nombre puede llevar indice: en los ejercicios de vectores la lectura
     # es v[i], y sin esto la tabla de primer semestre enseñaba
@@ -68,6 +72,9 @@ def a_pseudo(linea: str) -> str:
     m = re.fullmatch(r"print\((.*)\)", s)
     if m:
         cuerpo = m.group(1)
+        # sep="" y end="" son del print de Python: en la tabla salia
+        # «Escribir "Ingrese el número ", i, ":", sep=""».
+        cuerpo = re.sub(r"""\s*,\s*(?:sep|end)\s*=\s*(?:"[^"]*"|'[^']*')""", "", cuerpo)
         # El conversor a veces usa el ternario de Python, que en pseudocodigo
         # no existe: se deja legible en lugar de dejar "if ... else" en ingles.
         t = re.fullmatch(r"(.+?)\s+if\s+(.+?)\s+else\s+(.+)", cuerpo)
@@ -117,6 +124,7 @@ def _clave(txt: str) -> str:
     """Forma comparable: sin espacios de sobra, sin mayusculas, sin comillas."""
     t = re.sub(r"\s+", " ", (txt or "").strip().lower())
     t = t.replace('"', "").replace("'", "")
+    t = re.sub(r"\b(\d+)\.0\b", r"\1", t)          # 0.0 y 0 son el mismo numero
     return re.sub(r"\s*([<>=+\-*/,()])\s*", r"\1", t)
 
 
@@ -128,9 +136,35 @@ _ANDAMIAJE = re.compile(
     r"^\s*(?:def\s+\w+\s*\(.*\)\s*:"          # def main():
     r"|if\s+__name__\s*==.*:"                     # if __name__ == "__main__":
     r"|return\b.*"                                 # return
+    r"|break|continue"                            # salida del Repetir traducido
     r"|\w+\s*\(\s*\)\s*$"                        # main()
     r"|import\b.*|from\s+\w+\s+import\b.*)\s*$"
 )
+
+
+def _casos_segun(lineas):
+    """{(variable, valor): linea de la etiqueta} de los Segun del alumno.
+
+    El conversor escribe un Segun como una cadena de if/elif, asi que la
+    traza enseñaba «Sino Si dia = 2 Entonces», una linea que el alumno no
+    escribio. Con esto se le enseña la suya: la etiqueta «2:» de su Segun.
+    """
+    casos, var = {}, None
+    for l in lineas:
+        t = l.strip()
+        m = re.match(r"(?i)^segun\s+(\w+)\s+hacer\b", t)
+        if m:
+            var = m.group(1).lower()
+            continue
+        if re.match(r"(?i)^finsegun\b", t):
+            var = None
+            continue
+        if var and not re.match(r"(?i)^de\s+otro\s+modo", t):
+            m = re.match(r"^(.+?):\s*$", t)
+            if m:
+                for valor in m.group(1).split(","):
+                    casos[(var, _clave(valor))] = t
+    return casos
 
 
 def traducir_pasos(pasos, pseudocodigo: str):
@@ -142,6 +176,34 @@ def traducir_pasos(pasos, pseudocodigo: str):
     indice = {}
     for l in lineas:
         indice.setdefault(_clave(l), l.strip())
+    casos = _casos_segun(lineas)
+    # Para del alumno por (variable, inicio): el suyo lleva «Con Paso 1» y
+    # un tope que puede estar escrito de otra forma («5 - i» frente a
+    # «6 - i - 1»), asi que la linea entera no casaba en ~150 pasos.
+    paras, repetir, hasta_que, dimension = {}, None, {}, {}
+    declaradas = set()
+    for l in lineas:
+        m = re.match(r"(?i)^\s*definir\s+(.+?)\s+como\b", l)
+        if m:
+            declaradas.update(x.strip().lower() for x in m.group(1).split(",") if x.strip())
+    for l in lineas:
+        t = l.strip()
+        m = re.match(r"(?i)^para\s+(\w+)\s*(?:<-|\u2190)\s*(.+?)\s+hasta\s+(.+?)(?:\s+con\s+paso\s+.+?)?\s+hacer\s*$", t)
+        if m:
+            # Por (variable, inicio, tope) y, si no, por (variable, inicio)
+            # cuando no hay dos Para distintos con ese mismo arranque.
+            paras[(m.group(1).lower(), _clave(m.group(2)), _clave(m.group(3)))] = t
+            corta = (m.group(1).lower(), _clave(m.group(2)))
+            paras[corta] = t if paras.get(corta, t) == t else None
+        if re.match(r"(?i)^repetir\s*$", t) and repetir is None:
+            repetir = t
+        m = re.match(r"(?i)^hasta\s+que\s+(.+)$", t)
+        if m:
+            hasta_que[_clave(m.group(1))] = t
+        m = re.match(r"(?i)^dimension\s+(.+)$", t)
+        if m:
+            for v in re.findall(r"(\w+)\s*\[", m.group(1)):
+                dimension[v.lower()] = t
 
     # El conversor a veces funde un Escribir con el Leer siguiente en una sola
     # linea: input("Ingrese un numero:"). Entonces la tabla mostraba 3 pasos
@@ -174,6 +236,47 @@ def traducir_pasos(pasos, pseudocodigo: str):
             casados += 1
         traducida = a_pseudo(bruta)
         suya = indice.get(_clave(traducida))
+        if not suya:
+            m = re.match(r"(?i)^para\s+(\w+)\s*<-\s*(.+?)\s+hasta\s+(.+?)\s+hacer$", traducida)
+            if m:
+                suya = (paras.get((m.group(1).lower(), _clave(m.group(2)), _clave(m.group(3))))
+                        or paras.get((m.group(1).lower(), _clave(m.group(2)))))
+        if not suya and repetir and re.match(r"(?i)^mientras\s+verdadero\s+hacer$", traducida):
+            suya = repetir
+        if not suya and hasta_que:
+            m = re.match(r"(?i)^si\s+(.+?)\s+entonces$", traducida)
+            if m:
+                suya = hasta_que.get(_clave(m.group(1)))
+        if not suya and dimension:
+            m = re.match(r"^(\w+)\s*<-\s*\[.*\]\s*\*\s*\w+\s*$", traducida)
+            if m:
+                suya = dimension.get(m.group(1).lower())
+        # Python necesita arrancar las variables con un valor, y el conversor
+        # añade «edad <- 0» o «puedeConducir <- Falso» que el alumno no
+        # escribio: en su prueba de escritorio aparecia un paso de la nada.
+        # Si la variable esta declarada y la linea no es suya, no se enseña.
+        if not suya:
+            m = re.fullmatch(r"(\w+)\s*<-\s*(?:0|0\.0|\"\"|''|Falso|Verdadero|\[\])", traducida)
+            if m and m.group(1).lower() in declaradas:
+                continue
+        # «Leer matriculado_input»: el conversor lee en una auxiliar para
+        # convertir el texto en logico. La linea del alumno es «Leer matriculado».
+        if not suya:
+            m = re.fullmatch(r"Leer\s+(\w+?)_(?:input|str|texto|txt|entrada)", traducida)
+            if m:
+                suya = indice.get(_clave("Leer " + m.group(1)))
+        if not suya and casos:
+            # «Si dia = 2 Entonces», y tambien «dia = 2 O dia = 3» cuando la
+            # etiqueta del alumno es una lista («2, 3:»): todas las
+            # comparaciones tienen que llevar a la MISMA etiqueta.
+            m = re.match(r"(?i)^(?:sino\s+)?si\s+(.+?)\s+entonces$", traducida)
+            if m:
+                pares = [re.match(r"^(\w+)\s*=\s*(.+)$", x.strip())
+                         for x in re.split(r"(?i)\s+o\s+", m.group(1))]
+                if all(pares):
+                    etiquetas = {casos.get((q.group(1).lower(), _clave(q.group(2)))) for q in pares}
+                    if len(etiquetas) == 1 and None not in etiquetas:
+                        suya = etiquetas.pop()
         if suya:
             casados += 1
         nuevo = dict(p)

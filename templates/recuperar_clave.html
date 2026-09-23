@@ -13,6 +13,13 @@
             elegir una contraseña nueva.
         </p>
 
+        <div style="border-left:3px solid var(--primary); background:rgba(167,139,250,.08); padding:.7rem .9rem; border-radius:8px; font-size:.88rem; line-height:1.6; margin-bottom:1rem;">
+            <strong>¿Tu cuenta te la creó tu docente?</strong> (por ejemplo,
+            <em>nombreapellido2026@itp.edu.co</em>). Entonces el enlace no te va a servir:
+            pídele a tu docente que te devuelva una <strong>contraseña provisional</strong>
+            desde la plataforma. Al entrar con ella elegirás una nueva.
+        </div>
+
         <form method="POST" action="{{ url_for('recuperar_clave') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
