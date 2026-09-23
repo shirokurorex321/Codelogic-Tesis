@@ -15,7 +15,11 @@
 {% block content %}
 <div class="dash-header">
     <h1>Ejercicios</h1>
+    {% if (topics | map(attribute='semestre') | unique | list | length) > 1 %}
     <p>Cada semestre tiene sus propios temas. Entra en el que estés cursando.</p>
+    {% else %}
+    <p>Los temas de tu asignatura, en el orden en que se ven. Empieza por el primero.</p>
+    {% endif %}
 </div>
 
 {# ── PRIMER SEMESTRE: agrupado por las unidades del estatuto ── #}

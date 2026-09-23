@@ -9,6 +9,18 @@
        Responde con calma: solo puedes presentarlo <strong>una vez</strong>.</p>
 </div>
 
+{% if paso_inicial %}
+<div class="card mb-3" style="border-left:4px solid var(--primary);">
+    <span class="hero-badge" style="margin-bottom:0.6rem;"><span class="pulse-dot"></span>
+        Antes de empezar · Paso {{ paso_inicial }} de 2</span>
+    <p style="margin:0; line-height:1.6;">
+        Estas dos evaluaciones miden <strong>cómo llegas</strong> al curso, para poder ver al final
+        cuánto aprendiste. <strong>No cuentan para tu nota</strong>: responde con sinceridad y sin
+        buscar las respuestas. Cuando termines las dos, se abre toda la plataforma.
+    </p>
+</div>
+{% endif %}
+
 {% if existing %}
 <div class="card" style="text-align:center;">
     <span style="font-size:3rem; display:block; margin-bottom:0.5rem;">✅</span>
@@ -103,7 +115,7 @@
                     + '<p style="color:var(--text-light); margin:0.75rem 0;">Obtuviste <strong>'
                     + data.correct + '/' + data.total + '</strong> correctas &middot; puntaje <strong>'
                     + data.score + '</strong>/100</p>'
-                    + '<a href="/dashboard" class="btn btn-primary">Volver al panel</a>';
+                    + '<a href="/dashboard" class="btn btn-primary">{{ 'Continuar →' if paso_inicial else 'Volver al panel' }}</a>';
                 box.style.display = 'block';
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             } else {

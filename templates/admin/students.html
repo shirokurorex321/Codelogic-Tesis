@@ -59,6 +59,7 @@
                         <a href="{{ url_for('admin_estudiante', user_id=f.id) }}"
                            style="color:var(--primary); text-decoration:none;"
                            title="Ver su ficha"><strong>{{ f.nombre }}</strong></a>
+                        {% if f.excluido %}<span class="diff-badge diff-intermedio" style="font-size:0.65rem;" title="Cuenta de prueba: no cuenta para el estudio">prueba</span>{% endif %}
                         <div style="font-size:0.78rem; color:var(--text-light);">{{ f.correo }}</div>
                     </td>
                     <td><span class="diff-badge {{ f.estado[2] }}" style="white-space:nowrap;">{{ f.estado[1] }}</span></td>

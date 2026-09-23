@@ -492,6 +492,22 @@ def _enviar_verificacion(user) -> bool:
                                en_segundo_plano=False)
 
 
+def tema_permitido(tema, user=None):
+    """Un estudiante con asignatura asignada solo ve los temas de la suya."""
+    user = user or current_user
+    if not tema or user.role in ROLES_DOCENCIA or not user.semestre_curso:
+        return True
+    return tema.semestre == user.semestre_curso
+
+
+def temas_visibles():
+    """Los temas que le tocan a quien pregunta, en orden."""
+    q = Topic.query.order_by(Topic.order)
+    if current_user.role not in ROLES_DOCENCIA and current_user.semestre_curso:
+        q = q.filter(Topic.semestre == current_user.semestre_curso)
+    return q.all()
+
+
 def _ejercicio_visible(exercise_id):
     """El ejercicio, o 404 si no existe o si esta retirado y quien lo pide es
     un estudiante. Desactivar un ejercicio lo quitaba de las listas, pero
@@ -500,6 +516,9 @@ def _ejercicio_visible(exercise_id):
     ejercicio = db.session.get(Exercise, exercise_id)
     if not ejercicio or (not ejercicio.is_active and
                          current_user.role not in ROLES_DOCENCIA):
+        abort(404)
+    # Tampoco los de la otra asignatura
+    if not tema_permitido(ejercicio.topic):
         abort(404)
     return ejercicio
 
@@ -1197,7 +1216,7 @@ def dashboard():
         .limit(5)
         .all()
     )
-    topics = Topic.query.order_by(Topic.order).all()
+    topics = temas_visibles()
 
     # Progreso por tema
     topic_progress = []
@@ -1532,7 +1551,7 @@ def aprender():
             pass
 
     temas = []
-    for t in Topic.query.order_by(Topic.order).all():
+    for t in temas_visibles():
         ids = [e.id for e in Exercise.query.filter_by(topic_id=t.id, is_active=True).all()]
         # Mismo criterio que el panel de inicio (nota >= 60) para que las dos
         # pantallas no se contradigan.
@@ -1577,6 +1596,8 @@ def aprender_tema(topic_id):
     """La leccion de un tema, y al final el paso a sus ejercicios."""
     from lecciones import LECCIONES
     tema = db.session.get(Topic, topic_id)
+    if not tema_permitido(tema):
+        abort(404)
     if not tema or topic_id not in LECCIONES:
         flash("Ese tema todavía no tiene lección.", "info")
         return redirect(url_for("aprender"))
@@ -1604,7 +1625,7 @@ def aprender_tema(topic_id):
 @app.route("/exercises")
 @login_required
 def exercises():
-    topics = Topic.query.order_by(Topic.order).all()
+    topics = temas_visibles()
     return render_template("exercises.html", topics=topics)
 
 
@@ -1617,6 +1638,8 @@ def topic_exercises(topic_id):
     # un texto distinto del mismo tema.
     from lecciones import LECCIONES
     topic = Topic.query.get_or_404(topic_id)
+    if not tema_permitido(topic):
+        abort(404)
     # Sin ordenar, salian en el orden en que se insertaron y la dificultad
     # quedaba en zigzag: el estudiante se topaba con el avanzado antes de
     # terminar los intermedios. El ENUM esta declarado en el orden bueno
@@ -2231,8 +2254,10 @@ def take_test(test_type):
     ).first()
     log_activity("open_test", {"test_type": test_type, "already_done": existing is not None})
     preguntas, _ = _preguntas_barajadas(current_user.id, test_type)
+    pendiente = instrumento_inicial_pendiente(current_user)
     return render_template(
         "test.html",
+        paso_inicial=pendiente[1] if pendiente and test_type == "pretest" else None,
         test_type=test_type,
         questions=preguntas,
         existing=existing,
@@ -2304,8 +2329,10 @@ def take_scale(scale_type):
         user_id=current_user.id, test_type=scale_type
     ).first()
     log_activity("open_scale", {"scale_type": scale_type, "already_done": existing is not None})
+    pendiente = instrumento_inicial_pendiente(current_user)
     return render_template(
         "scale.html",
+        paso_inicial=pendiente[1] if pendiente and scale_type == "pre" else None,
         scale_type=scale_type,
         items=SELF_EFFICACY_ITEMS,
         likert_labels=LIKERT_LABELS,
@@ -2520,6 +2547,61 @@ def exigir_consentimiento():
     return redirect(url_for("consentimiento"))
 
 
+# ─── INSTRUMENTOS INICIALES ────────────────────────────────────────
+
+def instrumento_inicial_pendiente(user):
+    """El primer instrumento inicial que le falta: ("pretest", 1) o ("pre", 2).
+
+    El pretest aparecia como una tarjeta mas "cuando tu docente lo indique".
+    Quien practicaba antes de presentarlo llegaba al pretest sabiendo ya lo
+    que la plataforma le habia enseñado, y la ganancia pretest-postest -la
+    variable central del estudio- salia recortada sin que nadie lo notara.
+    """
+    if user.role != "estudiante" or user.excluido_estudio:
+        return None
+    if session.get("instrumentos_ok") == user.id:
+        return None
+    if not TestResult.query.filter_by(user_id=user.id, test_type="pretest").first():
+        return ("pretest", 1)
+    if not SelfEfficacyResult.query.filter_by(user_id=user.id, test_type="pre").first():
+        return ("pre", 2)
+    session["instrumentos_ok"] = user.id      # ya no se vuelve a preguntar
+    return None
+
+
+@app.before_request
+def exigir_instrumentos_iniciales():
+    """Antes de usar la plataforma: pretest y escala de autoeficacia inicial.
+
+    Va despues de la clave y del consentimiento (sin consentimiento no se
+    recoge ningun dato). Mientras falten, solo se puede estar en esas dos
+    pantallas: el postest queda cerrado, para que nadie lo presente el
+    primer dia por equivocacion.
+    """
+    if not current_user.is_authenticated or current_user.role != "estudiante":
+        return
+    if current_user.must_change_password or not current_user.consent_accepted:
+        return          # de eso se encargan las comprobaciones anteriores
+    pendiente = instrumento_inicial_pendiente(current_user)
+    if not pendiente:
+        return
+    args = request.view_args or {}
+    if request.endpoint in ("take_test", "submit_test") and args.get("test_type") == "pretest":
+        return
+    if request.endpoint in ("take_scale", "submit_scale") and args.get("scale_type") == "pre":
+        return
+    if request.endpoint in ("logout", "static", "privacidad", "consentimiento",
+                            "cambiar_clave", "login", "index", "sigo_aqui", "perfil"):
+        return
+    if request.path.startswith("/api/"):
+        return jsonify({"success": False,
+                        "error": "Antes de empezar tienes que responder el pretest "
+                                 "y la escala inicial."}), 403
+    if pendiente[0] == "pretest":
+        return redirect(url_for("take_test", test_type="pretest"))
+    return redirect(url_for("take_scale", scale_type="pre"))
+
+
 @app.route("/consentimiento", methods=["GET", "POST"])
 @login_required
 def consentimiento():
@@ -2594,7 +2676,7 @@ def admin_dashboard():
             func.count(Submission.id).label("submissions")
         )
         .join(Submission, User.id == Submission.user_id)
-        .filter(User.role == "estudiante")
+        .filter(User.role == "estudiante", User.excluido_estudio.is_(False))
         .group_by(User.id)
         .order_by(func.count(Submission.id).desc())
         .limit(10)
@@ -2604,6 +2686,8 @@ def admin_dashboard():
     # Submissions recientes
     recent = (
         Submission.query
+        .join(User, User.id == Submission.user_id)
+        .filter(User.excluido_estudio.is_(False))
         .order_by(Submission.created_at.desc())
         .limit(10)
         .all()
@@ -2614,8 +2698,8 @@ def admin_dashboard():
     clase = seguimiento.resumen_clase()
     en_linea = sorted((a for a in clase if a["en_linea"]),
                       key=lambda a: a["ultima"], reverse=True)
-    necesitan = [a for a in clase if a["atascos"] or
-                 (a["avisos"] and a["estado"][0] != "sin_estrenar")][:12]
+    necesitan = [a for a in clase if not a["excluido"] and (a["atascos"] or
+                 (a["avisos"] and a["estado"][0] != "sin_estrenar"))][:12]
 
     return render_template(
         "admin/dashboard.html",
@@ -3002,7 +3086,9 @@ def admin_logs():
 @role_required(*ROLES_ADMIN)
 def export_logs():
     """Exportar logs en formato JSON para análisis en R/SPSS."""
-    logs = ActivityLog.query.order_by(ActivityLog.created_at).all()
+    # Solo participantes: ni cuentas de prueba ni docente ni administrador
+    logs = (ActivityLog.query.filter(ActivityLog.user_id.in_(_participantes()))
+            .order_by(ActivityLog.created_at).all())
     data = [{
         "id": l.id,
         "user_id": l.user_id,
@@ -3014,6 +3100,12 @@ def export_logs():
 
 
 # ─── ADMIN: PANEL DE INVESTIGACIÓN + EXPORTACIÓN CSV ───────────────
+
+def _participantes():
+    """Ids de los estudiantes que cuentan para el estudio."""
+    return [u.id for u in User.query.filter_by(role="estudiante", excluido_estudio=False)
+            .with_entities(User.id).all()]
+
 
 def _csv_response(filename, header, rows):
     """Arma una respuesta CSV (UTF-8 con BOM para que Excel lo abra bien)."""
@@ -3033,7 +3125,10 @@ def _csv_response(filename, header, rows):
 
 def _research_rows():
     """Consolida por estudiante: grupo, pretest, postest, ganancia, escalas."""
-    students = User.query.filter_by(role="estudiante").order_by(User.name).all()
+    # Solo participantes: las cuentas de prueba contaban como estudiantes del
+    # estudio y entraban en las medias y en el CSV.
+    students = (User.query.filter_by(role="estudiante", excluido_estudio=False)
+                .order_by(User.name).all())
     tests = {(t.user_id, t.test_type): t for t in TestResult.query.all()}
     scales = {(s.user_id, s.test_type): s for s in SelfEfficacyResult.query.all()}
 
@@ -3142,7 +3237,8 @@ def export_logs_csv():
         [l.id, l.user_id, l.action,
          _json.dumps(l.details, ensure_ascii=False) if l.details else "",
          l.created_at.isoformat() if l.created_at else ""]
-        for l in ActivityLog.query.order_by(ActivityLog.created_at).all()
+        for l in (ActivityLog.query.filter(ActivityLog.user_id.in_(_participantes()))
+                  .order_by(ActivityLog.created_at).all())
     ]
     return _csv_response("logs_actividad.csv", header, rows)
 
@@ -3155,7 +3251,8 @@ def export_submissions_csv():
     header = ["id", "id_estudiante", "id_ejercicio", "ejercicio", "intento",
               "calificacion", "segundos_dedicados", "fecha_utc"]
     rows = []
-    for s in Submission.query.order_by(Submission.created_at).all():
+    for s in (Submission.query.filter(Submission.user_id.in_(_participantes()))
+              .order_by(Submission.created_at).all()):
         rows.append([
             s.id, s.user_id, s.exercise_id or "",
             s.exercise.title if s.exercise else "practica_libre",

@@ -72,6 +72,20 @@ class User(UserMixin, db.Model):
     # decia "Hola, Ramirez". Esto guarda el nombre para tratar al estudiante.
     nombre_pila = db.Column(db.String(60), nullable=True)
 
+    # ── Asignatura que cursa ──
+    # La plataforma sirve a dos asignaturas (1er y 3er semestre) y a cada
+    # estudiante se le ensenaban las dos: diez temas, la mitad de otra
+    # materia. Con esto ve solo la suya. None = ve las dos (quien se registra
+    # por su cuenta, hasta que el docente lo asigne).
+    semestre_curso = db.Column(db.Integer, nullable=True)
+
+    # ── Fuera del estudio ──
+    # Cuentas de prueba (las del propio autor, la de pruebas automaticas).
+    # Siguen funcionando, pero no cuentan como participantes: no entran en el
+    # panel de investigacion ni en las exportaciones, y no se les exige el
+    # pretest.
+    excluido_estudio = db.Column(db.Boolean, default=False, nullable=False)
+
     @property
     def nombre_corto(self):
         """Como se le saluda: su nombre de pila, o la primera palabra del

@@ -255,6 +255,7 @@ def resumen_clase():
         filas.append({
             "id": a.id, "nombre": a.name, "correo": a.email, "grupo": a.group,
             "activo": a.is_active, "estado": estado,
+            "excluido": bool(a.excluido_estudio), "semestre": a.semestre_curso,
             "ultima": ultima, "hace": hace(ultima),
             "en_linea": bool(ultima and ultima >= corte_linea and a.is_active),
             "hoy": bool(ultima and ultima >= corte_hoy),
