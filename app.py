@@ -29,7 +29,8 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from config import Config
 from models import (
     db, User, Topic, Exercise, Submission,
-    ActivityLog, TestResult, SelfEfficacyResult, CognitiveLoadResult, GastoIA
+    ActivityLog, TestResult, SelfEfficacyResult, CognitiveLoadResult, GastoIA,
+    Borrador
 )
 from gemini_service import (
     convert_pseudocode, get_ai_feedback, convert_to_all_languages,
@@ -287,6 +288,50 @@ def sigo_aqui():
     return jsonify({"success": True})
 
 
+def _clave_borrador(exercise_id):
+    return "ej-%d" % int(exercise_id) if exercise_id else "libre"
+
+
+def _borrador(exercise_id):
+    return Borrador.query.filter_by(user_id=current_user.id,
+                                    clave=_clave_borrador(exercise_id)).first()
+
+
+@app.route("/api/borrador", methods=["POST"])
+@limiter.limit("900 per hour")
+@login_required
+def guardar_borrador():
+    """Guarda lo que el estudiante lleva escrito, lo entregue o no.
+
+    El editor lo manda solo, un momento despues de que deje de teclear y al
+    salir de la pagina. No se apunta en el registro de actividad: seria una
+    fila cada pocos segundos que no dice nada que no digan ya las entregas.
+    """
+    datos = request.get_json(silent=True) or {}
+    texto = datos.get("pseudocode")
+    if not isinstance(texto, str):
+        return jsonify({"success": False, "error": "Falta el texto."}), 400
+    if len(texto) > 50_000:
+        return jsonify({"success": False, "error": "El pseudocódigo es demasiado largo."}), 400
+    exercise_id = datos.get("exercise_id")
+    if exercise_id:
+        try:
+            _ejercicio_visible(int(exercise_id))
+        except (TypeError, ValueError):
+            return jsonify({"success": False, "error": "Ejercicio no válido."}), 400
+    ahora = datetime.now(timezone.utc)
+    b = _borrador(exercise_id)
+    if b is None:
+        b = Borrador(user_id=current_user.id, clave=_clave_borrador(exercise_id),
+                     pseudocodigo=texto, actualizado=ahora)
+        db.session.add(b)
+    else:
+        b.pseudocodigo = texto
+        b.actualizado = ahora
+    db.session.commit()
+    return jsonify({"success": True, "guardado": ahora.timestamp()})
+
+
 # ─── HELPERS ────────────────────────────────────────────────────────
 
 def client_ip():
@@ -523,6 +568,119 @@ def _ejercicio_visible(exercise_id):
     return ejercicio
 
 
+# ─── LA RUTA DEL ESTUDIANTE ─────────────────────────────────────────
+#
+# Hacerse con un simulacro de alumno nuevo dejo claro que el orden de las
+# lecciones estaba bien pero que, al terminar algo, la plataforma no decia que
+# venia despues: "Siguiente ejercicio" llevaba a la lista de TODOS los temas,
+# acabar un tema no tenia consecuencia y el inicio no sugeria nada. Todo eso
+# sale de aqui, para que las pantallas no se contradigan.
+
+_RANGO_TIPO = {"leer": 0, "escribir": 1, "diagrama": 2}
+_RANGO_DIFICULTAD = {"basico": 0, "intermedio": 1, "avanzado": 2}
+
+
+def ordenar_ejercicios(ejercicios):
+    """El orden en que se practican los ejercicios de un tema.
+
+    Primero el de LEER, despues los de ESCRIBIR de menos a mas dificiles y el
+    de DIAGRAMA al final. La propia plataforma ensena que leer un algoritmo va
+    antes que escribirlo, y la lectura salia en el puesto 7. Dentro de cada
+    grupo manda el `orden` que ponga el docente. Es una regla y no numeros
+    puestos a mano para que un ejercicio nuevo caiga solo en su sitio.
+    """
+    return sorted(ejercicios, key=lambda e: (_RANGO_TIPO.get(e.tipo, 1),
+                                             _RANGO_DIFICULTAD.get(e.difficulty, 1),
+                                             e.orden or 0, e.id))
+
+
+def ejercicios_del_tema(topic_id):
+    return ordenar_ejercicios(
+        Exercise.query.filter_by(topic_id=topic_id, is_active=True).all())
+
+
+def _resueltos(user_id, ids):
+    """Ejercicios superados (nota >= 60), el mismo criterio de todo el sitio."""
+    if not ids:
+        return set()
+    filas = (db.session.query(Submission.exercise_id)
+             .filter(Submission.user_id == user_id,
+                     Submission.exercise_id.in_(ids),
+                     Submission.score >= 60)
+             .distinct().all())
+    return {f[0] for f in filas}
+
+
+def _lecciones_leidas(user_id):
+    leidas = set()
+    for reg in ActivityLog.query.filter_by(user_id=user_id, action="leer_leccion").all():
+        try:
+            leidas.add(int((reg.details or {}).get("topic_id")))
+        except (TypeError, ValueError):
+            pass
+    return leidas
+
+
+def _temas_en_ruta():
+    """Los temas visibles, primer semestre delante: quien no tiene asignatura
+    asignada ve las dos, y la vigente es la de primero."""
+    return sorted(temas_visibles(),
+                  key=lambda t: (0 if t.semestre == 1 else 1, t.order or 0, t.id))
+
+
+def paso_tras_tema(tema):
+    """Que toca al terminar un tema: la leccion del siguiente de su semestre."""
+    mismos = [t for t in _temas_en_ruta() if t.semestre == tema.semestre]
+    ids = [t.id for t in mismos]
+    if tema.id in ids and ids.index(tema.id) + 1 < len(mismos):
+        sig = mismos[ids.index(tema.id) + 1]
+        return {"tipo": "tema_terminado", "tema": tema.name, "titulo": sig.name,
+                "url": url_for("aprender_tema", topic_id=sig.id),
+                "texto": "Siguiente lección: %s" % sig.name}
+    return {"tipo": "curso_terminado", "tema": tema.name, "titulo": None,
+            "url": url_for("dashboard"), "texto": "Volver al inicio"}
+
+
+def siguiente_paso(exercise, user=None):
+    """Despues de superar este ejercicio: el siguiente pendiente de su tema
+    (primero los de detras, luego los que se salto) o, si no queda ninguno,
+    la leccion del tema siguiente. None si el unico pendiente es este."""
+    user = user or current_user
+    lista = ejercicios_del_tema(exercise.topic_id)
+    hechos = _resueltos(user.id, [e.id for e in lista])
+    ids = [e.id for e in lista]
+    pos = ids.index(exercise.id) if exercise.id in ids else -1
+    for e in lista[pos + 1:] + lista[:max(pos, 0)]:
+        if e.id not in hechos:
+            return {"tipo": "ejercicio", "titulo": e.title,
+                    "url": url_for("ejercicio_teoria", exercise_id=e.id),
+                    "texto": "Siguiente ejercicio: %s" % e.title}
+    if exercise.id not in hechos:
+        return None
+    return paso_tras_tema(exercise.topic)
+
+
+def proximo_paso(user=None):
+    """Por donde seguir, visto desde el inicio: la primera leccion sin leer o
+    el primer ejercicio sin superar, recorriendo el temario en orden."""
+    from lecciones import LECCIONES
+    user = user or current_user
+    leidas = _lecciones_leidas(user.id)
+    for tema in _temas_en_ruta():
+        if tema.id in LECCIONES and tema.id not in leidas:
+            return {"tipo": "leccion", "tema": tema, "titulo": tema.name,
+                    "url": url_for("aprender_tema", topic_id=tema.id)}
+        lista = ejercicios_del_tema(tema.id)
+        hechos = _resueltos(user.id, [e.id for e in lista])
+        pendientes = [e for e in lista if e.id not in hechos]
+        if pendientes:
+            e = pendientes[0]
+            return {"tipo": "ejercicio", "tema": tema, "titulo": e.title,
+                    "url": url_for("ejercicio_teoria", exercise_id=e.id),
+                    "hechos": len(hechos), "total": len(lista)}
+    return None
+
+
 def _problemas_en_texto(problemas):
     """Los fallos del revisor en una frase, para pantallas que solo pintan
     el mensaje de error y no la lista con la linea corregida."""
@@ -716,11 +874,15 @@ def inyectar_version_css():
     diseño no se ven hasta forzar una recarga completa.
     """
     import os
-    try:
-        ruta = os.path.join(app.static_folder, "css", "style.css")
-        return {"css_version": int(os.path.getmtime(ruta))}
-    except Exception:
-        return {"css_version": 0}
+    # Cubre tambien los JS propios: app.js iba sin version, y un cambio en el
+    # se quedaba sin llegar a quien lo tuviera en cache.
+    fechas = []
+    for partes in (("css", "style.css"), ("js", "app.js"), ("js", "acciones.js")):
+        try:
+            fechas.append(int(os.path.getmtime(os.path.join(app.static_folder, *partes))))
+        except Exception:
+            pass
+    return {"css_version": max(fechas) if fechas else 0}
 
 
 # Las fechas se guardan en UTC (el servidor corre en UTC) pero quien las lee
@@ -1261,7 +1423,8 @@ def dashboard():
         recent_submissions=recent_submissions,
         topic_progress=topic_progress,
         topics=topics,
-        research_status=research_status
+        research_status=research_status,
+        proximo=proximo_paso()
     )
 
 
@@ -1272,7 +1435,8 @@ def dashboard():
 def editor():
     """Editor libre de pseudocódigo."""
     log_activity("open_editor", {"mode": "free"})
-    return render_template("editor.html", exercise=None, cc_items=COGNITIVE_LOAD_ITEMS)
+    return render_template("editor.html", exercise=None, cc_items=COGNITIVE_LOAD_ITEMS,
+                           borrador=_borrador(None))
 
 
 @app.route("/api/registrar-ayuda", methods=["POST"])
@@ -1362,7 +1526,8 @@ def api_leer(exercise_id):
     return jsonify({"success": True, "resultado": resultado,
                     "mensaje": mensajes[resultado],
                     "salida_real": esperada if resultado != "incorrecto" else None,
-                    "intento": intentos + 1})
+                    "intento": intentos + 1,
+                    "siguiente": siguiente_paso(exercise) if nota >= 60 else None})
 
 
 @app.route("/diagrama/<int:exercise_id>")
@@ -1458,7 +1623,8 @@ def api_diagrama(exercise_id):
     }
     return jsonify({"success": True, "resultado": resultado, "mensaje": mensajes[resultado],
                     "tu_salida": obtenida or None,
-                    "salida_esperada": esperada if resultado != "incorrecto" else None})
+                    "salida_esperada": esperada if resultado != "incorrecto" else None,
+                    "siguiente": siguiente_paso(exercise) if nota >= 60 else None})
 
 
 @app.route("/ejercicio/<int:exercise_id>")
@@ -1506,7 +1672,8 @@ def editor_exercise(exercise_id):
 
     return render_template("editor.html", exercise=exercise, last_submission=last_submission,
                            primer_semestre=primer_semestre,
-                           cc_items=COGNITIVE_LOAD_ITEMS)
+                           cc_items=COGNITIVE_LOAD_ITEMS,
+                           borrador=_borrador(exercise_id))
 
 
 # ─── EJERCICIOS ─────────────────────────────────────────────────────
@@ -1607,9 +1774,7 @@ def aprender_tema(topic_id):
         return redirect(url_for("aprender"))
 
     leccion = LECCIONES[topic_id]
-    ejercicios = (Exercise.query
-                  .filter_by(topic_id=topic_id, is_active=True)
-                  .order_by(Exercise.difficulty, Exercise.orden, Exercise.id).all())
+    ejercicios = ejercicios_del_tema(topic_id)
     # Temas anterior y siguiente, para poder recorrerlos en orden.
     # Solo dentro del MISMO semestre: encadenarlos todos hacia que la
     # ultima leccion de una asignatura llevara a la primera de la otra.
@@ -1654,10 +1819,7 @@ def topic_exercises(topic_id):
     # quedaba en zigzag: el estudiante se topaba con el avanzado antes de
     # terminar los intermedios. El ENUM esta declarado en el orden bueno
     # (basico, intermedio, avanzado), asi que MySQL ordena por su indice.
-    exercises = (Exercise.query
-                 .filter_by(topic_id=topic_id, is_active=True)
-                 .order_by(Exercise.difficulty, Exercise.orden, Exercise.id)
-                 .all())
+    exercises = ejercicios_del_tema(topic_id)
 
     # Marcar cuáles ya completó el estudiante
     for ex in exercises:
@@ -1673,9 +1835,13 @@ def topic_exercises(topic_id):
             .count()
         )
 
+    # Terminado el tema, se le dice que sigue: antes todo salia en verde y
+    # nadie le mandaba a la leccion siguiente.
+    terminado = bool(exercises) and all(ex.completed for ex in exercises)
     return render_template("topic_exercises.html", topic=topic,
                            exercises=exercises,
-                           tiene_leccion=topic_id in LECCIONES)
+                           tiene_leccion=topic_id in LECCIONES,
+                           paso_siguiente=paso_tras_tema(topic) if terminado else None)
 
 
 # ─── API ENDPOINTS ──────────────────────────────────────────────────
@@ -2212,6 +2378,8 @@ def api_submit():
         "passed": (score is not None and score >= 60),
         "alcance": avisos,
         "completo": not any(a["tipo"] == "falta" for a in avisos),
+        "siguiente": siguiente_paso(exercise) if (exercise and score is not None
+                                                  and score >= 60) else None,
     })
 
 

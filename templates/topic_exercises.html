@@ -20,6 +20,14 @@
     </div>
 </div>
 
+{# Tema terminado: todo en verde y nadie le decia por donde seguir. #}
+{% if paso_siguiente %}
+<div class="tema-terminado tema-terminado-grande">
+    <strong>{% if paso_siguiente.tipo == 'curso_terminado' %}🎓 ¡Terminaste todos los temas!{% else %}🏁 ¡Terminaste «{{ topic.name }}»!{% endif %}</strong>
+    <a href="{{ paso_siguiente.url }}" class="btn btn-primary">{{ paso_siguiente.texto }} →</a>
+</div>
+{% endif %}
+
 {# La leccion completa vive en /aprender/<tema>, su unico sitio. Antes se
    repetia entera aqui: entre el 76% y el 84% del texto estaba duplicado, y el
    alumno que venia de leerla se la encontraba otra vez. Ahora solo el enlace. #}

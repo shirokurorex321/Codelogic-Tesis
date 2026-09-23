@@ -314,3 +314,34 @@ class CognitiveLoadResult(db.Model):
     responses_json = db.Column(db.JSON)   # {item_id: 1..9}
     mean_score = db.Column(db.Float)      # media de los 3 ítems
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class Borrador(db.Model):
+    """Lo que el estudiante lleva escrito en el editor, aunque no lo entregue.
+
+    Antes el borrador vivia en el localStorage del navegador: se perdia al
+    cambiar de equipo, y en una sala de computadores compartidos el siguiente
+    alumno que abria el mismo ejercicio se encontraba el trabajo del anterior.
+    Ahora es del estudiante, no del navegador: vuelve al recargar, al cerrar
+    sesion o al apagar el equipo, y solo lo ve el.
+
+    `clave` es "ej-<id>" para un ejercicio y "libre" para el editor libre.
+    """
+    __tablename__ = "borradores"
+    __table_args__ = (db.UniqueConstraint("user_id", "clave", name="uq_borrador_usuario_clave"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    clave = db.Column(db.String(20), nullable=False)
+    pseudocodigo = db.Column(db.Text, nullable=False)
+    actualizado = db.Column(db.DateTime, nullable=False,
+                            default=lambda: datetime.now(timezone.utc))
+
+    @property
+    def ms(self):
+        """Hora de guardado en milisegundos. La base la devuelve sin zona y
+        se guarda en UTC: sin decirlo, .timestamp() usaria la zona del proceso."""
+        f = self.actualizado
+        if f.tzinfo is None:
+            f = f.replace(tzinfo=timezone.utc)
+        return int(f.timestamp() * 1000)

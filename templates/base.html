@@ -94,7 +94,7 @@
         <p class="footer-sub">Institución Universitaria del Putumayo &bull; 2026</p>
     </footer>
 
-    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}?v={{ css_version }}"></script>
     <script nonce="{{ csp_nonce }}">
     /* Menu desplegable del movil. Se cierra al pulsar fuera, con Escape y al
        volver a pantalla ancha, para que no quede colgado. */

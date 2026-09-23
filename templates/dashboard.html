@@ -29,19 +29,35 @@
      ("practica sin restricciones"), que a quien no sabe que es un pseudocodigo
      no le dice nada y reproduce justo el problema que la seccion Aprender
      vino a resolver. -->
-{% if total_submissions == 0 %}
-<div class="card mb-3" style="border-left:4px solid var(--primary);">
-    <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
-        <span style="font-size:2.5rem;">👋</span>
-        <div style="flex:1; min-width:15rem;">
-            <strong style="font-size:1.05rem;">¿Primera vez aquí? Empieza por Aprender.</strong>
-            <p style="font-size:0.88rem; color:var(--text-light); margin-top:0.35rem;">
-                No hace falta que sepas nada todavía. Cada tema te explica qué es,
-                cómo se escribe y un ejemplo resuelto línea por línea. Los ejercicios
-                vienen después, cuando ya lo hayas visto.
-            </p>
-        </div>
-        <a href="{{ url_for('aprender') }}" class="btn btn-primary">Empezar a aprender →</a>
+{# Por donde seguir. Pasado el primer dia el inicio no sugeria nada: el
+   estudiante tenia que acordarse de en que tema iba y buscar el ejercicio. #}
+{% if proximo %}
+<div class="card mb-3 continua-card">
+    <span class="continua-icono">{% if total_submissions == 0 %}👋{% elif proximo.tipo == 'leccion' %}📚{% else %}✏️{% endif %}</span>
+    <div class="continua-texto">
+        {% if total_submissions == 0 %}
+        <strong>¿Primera vez aquí? Empieza por la lección «{{ proximo.titulo }}».</strong>
+        <p>No hace falta que sepas nada todavía. Cada tema te explica qué es,
+           cómo se escribe y un ejemplo resuelto línea por línea. Los ejercicios
+           vienen después, cuando ya lo hayas visto.</p>
+        {% elif proximo.tipo == 'leccion' %}
+        <span class="continua-etiqueta">Continúa por aquí</span>
+        <strong>Lee la lección «{{ proximo.titulo }}»</strong>
+        <p>Es la siguiente del temario. Al final de la lección están sus ejercicios.</p>
+        {% else %}
+        <span class="continua-etiqueta">Continúa por aquí</span>
+        <strong>{{ proximo.titulo }}</strong>
+        <p>{{ proximo.tema.name }} · llevas {{ proximo.hechos }} de {{ proximo.total }} ejercicios</p>
+        {% endif %}
+    </div>
+    <a href="{{ proximo.url }}" class="btn btn-primary">{% if total_submissions == 0 or proximo.tipo == 'leccion' %}Ir a la lección →{% else %}Seguir →{% endif %}</a>
+</div>
+{% elif topic_progress %}
+<div class="card mb-3 continua-card">
+    <span class="continua-icono">🎓</span>
+    <div class="continua-texto">
+        <strong>¡Terminaste todos los temas!</strong>
+        <p>Puedes repasar cualquier lección o seguir practicando en el Editor Libre.</p>
     </div>
 </div>
 {% endif %}

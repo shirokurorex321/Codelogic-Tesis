@@ -2715,3 +2715,49 @@ pre code,
         white-space: normal; min-width: 8rem; max-width: 10.5rem;
     }
 }
+
+/* ── La ruta del estudiante (23/09/2026) ───────────────────────── */
+/* Aviso de guardado del borrador, junto al contador de caracteres. */
+.editor-cabecera-der { display: flex; align-items: center; gap: .8rem; }
+.estado-borrador { font-size: .72rem; color: var(--text-muted); white-space: nowrap; }
+.estado-borrador.guardado { color: var(--success); }
+.estado-borrador.sin-subir { color: var(--warning); white-space: normal; }
+
+/* Tema terminado: en el editor, en leer/diagrama y en la lista del tema. */
+.tema-terminado {
+    display: flex; flex-direction: column; align-items: center; gap: .6rem;
+    margin-top: .9rem; padding: .9rem 1rem;
+    background: rgba(34,197,94,.08);
+    border: 1px solid rgba(34,197,94,.35);
+    border-radius: 12px; text-align: center;
+}
+.tema-terminado strong { color: var(--success); }
+.tema-terminado-grande {
+    flex-direction: row; justify-content: space-between; flex-wrap: wrap;
+    margin: 0 0 1.4rem; text-align: left;
+}
+.siguiente-paso { margin-top: .75rem; }
+
+/* "Continúa por aquí" del inicio. */
+.continua-card {
+    display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+    border-left: 4px solid var(--primary);
+}
+.continua-icono { font-size: 2.3rem; line-height: 1; }
+.continua-texto { flex: 1; min-width: 15rem; }
+.continua-texto strong { display: block; font-size: 1.05rem; }
+.continua-texto p { font-size: .88rem; color: var(--text-light); margin-top: .3rem; }
+.continua-etiqueta {
+    display: inline-block; font-size: .7rem; font-weight: 700; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--primary-light); margin-bottom: .15rem;
+}
+@media (max-width: 640px) {
+    .continua-card .btn, .tema-terminado-grande .btn { width: 100%; text-align: center; }
+    .editor-cabecera-der { gap: .5rem; }
+}
+/* "← Volver al tema" se partia en dos lineas junto al enunciado. */
+.exercise-header .flex-between > .btn { white-space: nowrap; flex-shrink: 0; }
+@media (max-width: 640px) {
+    /* En el celular el boton no cabe al lado: va debajo del enunciado. */
+    .exercise-header .flex-between { flex-direction: column; align-items: flex-start; gap: .7rem; }
+}

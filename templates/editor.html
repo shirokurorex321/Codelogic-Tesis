@@ -11,7 +11,7 @@
             <h2 style="margin-top:0.3rem;">{{ exercise.title }}</h2>
             <p>{{ exercise.description }}</p>
         </div>
-        <a href="{{ url_for('exercises') }}" class="btn btn-outline btn-sm">Volver</a>
+        <a href="{{ url_for('topic_exercises', topic_id=exercise.topic_id) }}" class="btn btn-outline btn-sm">← Volver al tema</a>
     </div>
     {% if exercise.concepto or exercise.pasos or exercise.ejemplo_resuelto or exercise.hints %}
     <div class="ayudas">
@@ -66,10 +66,13 @@
     <div class="editor-panel">
         <div class="panel-header">
             <span>📝 Pseudocódigo</span>
-            <span id="char-count" style="font-size:0.75rem; opacity:0.6;">0 caracteres</span>
+            <span class="editor-cabecera-der">
+                <span id="estado-borrador" class="estado-borrador" aria-live="polite"></span>
+                <span id="char-count" style="font-size:0.75rem; opacity:0.6;">0 caracteres</span>
+            </span>
         </div>
         <div class="panel-body">
-            <textarea id="pseudocode-editor" spellcheck="false"
+            <textarea id="pseudocode-editor" spellcheck="false" autocomplete="off"
                 placeholder="Algoritmo MiAlgoritmo
     Definir num1, num2, suma Como Entero
     Escribir &quot;Ingrese el primer número:&quot;
@@ -78,7 +81,7 @@
     Leer num2
     suma <- num1 + num2
     Escribir &quot;La suma es: &quot;, suma
-FinAlgoritmo">{% if last_submission %}{{ last_submission.pseudocode }}{% endif %}</textarea>
+FinAlgoritmo">{% if borrador %}{{ borrador.pseudocodigo }}{% elif last_submission %}{{ last_submission.pseudocode }}{% endif %}</textarea>
         </div>
         <div class="editor-toolbar">
             <button class="btn btn-primary" data-accion="convertCode" id="btn-convert"{% if primer_semestre %} hidden{% endif %}>🔄 Convertir</button>
@@ -338,6 +341,7 @@ function mostrarCodigo() {
             const end = editor.selectionEnd;
             editor.value = editor.value.substring(0, start) + '    ' + editor.value.substring(end);
             editor.selectionStart = editor.selectionEnd = start + 4;
+            programarGuardado();
         }
         // Ctrl+Enter (o Cmd+Enter) = Convertir
         if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
@@ -346,14 +350,84 @@ function mostrarCodigo() {
         }
     });
 
-    // ─── Borrador automático (localStorage, por ejercicio) ───
-    const draftKey = 'codelogic-draft-' + (exerciseId || 'libre');
-    if (!editor.value.trim()) {
-        const saved = localStorage.getItem(draftKey);
-        if (saved) editor.value = saved;
+    // ─── Borrador: se guarda en el servidor, a nombre del estudiante ───
+    /* Antes vivia en el localStorage del navegador, con una clave por
+       ejercicio y no por persona: se perdia al cambiar de equipo y, en una
+       sala compartida, el siguiente alumno abria el ejercicio y se encontraba
+       lo del anterior. Ahora lo guarda el servidor y vuelve al recargar, al
+       cerrar sesion o al apagar el equipo.
+
+       El localStorage queda solo de red de seguridad, con el id del alumno en
+       la clave: si la sesion se cerro por inactividad mientras escribia, lo
+       que tecleo despues no se pierde y se sube al volver a entrar. En cuanto
+       el servidor lo confirma, se borra de este equipo. */
+    const borradorServidor = {{ borrador.ms if borrador else 0 }};
+    const claveLocal = 'codelogic-borrador-u{{ current_user.id }}-' + (exerciseId || 'libre');
+    const estadoBorrador = document.getElementById('estado-borrador');
+    let ultimoGuardado = editor.value;
+    let temporizadorBorrador = null;
+
+    // Los borradores del sistema anterior no tenian dueño: fuera de este equipo.
+    try {
+        Object.keys(localStorage)
+            .filter(k => k.startsWith('codelogic-draft-'))
+            .forEach(k => localStorage.removeItem(k));
+    } catch (e) { /* navegador sin almacenamiento */ }
+
+    function avisarBorrador(texto, clase) {
+        if (!estadoBorrador) return;
+        estadoBorrador.textContent = texto;
+        estadoBorrador.className = 'estado-borrador' + (clase ? ' ' + clase : '');
     }
-    editor.addEventListener('input', () => {
-        localStorage.setItem(draftKey, editor.value);
+
+    async function guardarBorrador(alSalir) {
+        const texto = editor.value;
+        if (texto === ultimoGuardado) return;
+        try { localStorage.setItem(claveLocal, JSON.stringify({ t: Date.now(), texto })); } catch (e) {}
+        try {
+            const res = await fetch('/api/borrador', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                keepalive: !!alSalir,
+                body: JSON.stringify({ exercise_id: exerciseId, pseudocode: texto })
+            });
+            if (res.ok) {
+                ultimoGuardado = texto;
+                try { localStorage.removeItem(claveLocal); } catch (e) {}
+                if (editor.value === texto) avisarBorrador('✓ Guardado', 'guardado');
+            } else {
+                avisarBorrador('Guardado solo en este equipo: vuelve a entrar para subirlo', 'sin-subir');
+            }
+        } catch (e) {
+            avisarBorrador('Sin conexión: guardado en este equipo', 'sin-subir');
+        }
+    }
+
+    function programarGuardado() {
+        clearTimeout(temporizadorBorrador);
+        avisarBorrador('Guardando…', '');
+        temporizadorBorrador = setTimeout(() => guardarBorrador(false), 1200);
+    }
+
+    // Lo que se escribio con la sesion cerrada, si es mas nuevo que lo del servidor.
+    try {
+        const local = JSON.parse(localStorage.getItem(claveLocal) || 'null');
+        if (local && local.t > borradorServidor && typeof local.texto === 'string'
+                && local.texto !== editor.value) {
+            editor.value = local.texto;
+            avisarBorrador('Recuperado lo que escribiste sin conexión', 'sin-subir');
+            guardarBorrador(false);
+        } else if (local) {
+            localStorage.removeItem(claveLocal);
+        }
+    } catch (e) {}
+
+    charCount.textContent = editor.value.length + ' caracteres';
+    editor.addEventListener('input', programarGuardado);
+    setInterval(() => guardarBorrador(false), 10000);
+    window.addEventListener('pagehide', () => guardarBorrador(true));
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') guardarBorrador(true);
     });
 
     function switchTab(tab) {
@@ -511,12 +585,27 @@ function mostrarCodigo() {
         return prompts;
     }
 
+    /* ¿Alcanzan los datos que hay para lo que pide el programa? En C++ un
+       mismo renglon puede traer varios valores ("7 2"), asi que alli se
+       cuentan valores y no renglones. Un Leer dentro de un ciclo se cuenta
+       una vez: si hacen falta mas, el aviso de "se quedo sin datos" que
+       sale tras ejecutar sigue cubriendo ese caso. */
+    function datosInsuficientes(stdin, pedidos, lang) {
+        if (!stdin.trim()) return true;
+        const dados = lang === 'cpp'
+            ? stdin.trim().split(/\s+/).length
+            : stdin.split('\n').filter(l => l.trim() !== '').length;
+        return dados < pedidos;
+    }
+
     // Muestra un mini-formulario con un input por cada dato que pide el programa
-    function showStdinForm(lang, prompts) {
+    function showStdinForm(lang, prompts, previos) {
         const cuantos = prompts.length + ' dato' + (prompts.length > 1 ? 's' : '');
+        const valores = (previos || '').split('\n').filter(l => l.trim() !== '');
         pintarStdinForm(document.getElementById('output-' + lang), lang, prompts,
                         '📥 Tu programa pide ' + cuantos + '. Escríbelo'
-                        + (prompts.length > 1 ? 's' : '') + ' aquí:');
+                        + (prompts.length > 1 ? 's' : '') + ' aquí y dale a ejecutar:',
+                        valores);
     }
 
     /* El mismo formulario, pero pintado donde se le diga: al pulsar Ejecutar
@@ -526,7 +615,7 @@ function mostrarCodigo() {
        El sandbox ejecuta el programa de una vez y aislado: no hay terminal
        viva que pueda pararse a esperar lo que teclees, asi que los datos se
        piden ANTES. Esto es lo mas parecido a que te los pida. */
-    function pintarStdinForm(target, lang, prompts, titulo) {
+    function pintarStdinForm(target, lang, prompts, titulo, valores) {
         let html = '<div class="stdin-form">'
             + '<div class="stdin-form-title">' + escapeHtml(titulo) + '</div>';
         prompts.forEach((p, i) => {
@@ -542,6 +631,7 @@ function mostrarCodigo() {
             html += '<label class="stdin-form-row">'
                 + '<span class="stdin-form-label">' + label + '</span>'
                 + '<input class="stdin-form-input" data-idx="' + i + '" type="text" '
+                + 'value="' + escapeHtml((valores && valores[i]) || '') + '" '
                 + 'data-tecla="stdinEnter" data-args=\'["' + lang + '"]\'>'
                 + '</label>';
         });
@@ -591,17 +681,25 @@ function mostrarCodigo() {
 
     // ─── EJECUTAR ──────────────────────────────
     async function runCode(lang, skipPromptCheck) {
+        /* === true y no a secas: acciones.js pasa el evento del clic como
+           ultimo argumento, asi que al pulsar ▶ Ejecutar llegaba aqui un
+           objeto, contaba como "verdadero" y se saltaba la pregunta de los
+           datos. El programa arrancaba sin entrada, moria en el primer Leer
+           y solo entonces pedia los datos, debajo del error. */
+        const saltarPregunta = skipPromptCheck === true;
         const code = getCode(lang);
         if (!code || !code.trim() || code.trim().startsWith('//')) {
             return alert('Primero convierte el pseudocódigo a ' + lang + '.');
         }
         const stdin = document.getElementById('stdin-' + lang).value || '';
 
-        // Si el código pide datos y aún no hay stdin → mostrar formulario inline
-        if (!skipPromptCheck && !stdin.trim()) {
+        /* Si el programa pide datos, se piden ANTES de ejecutar. Tambien si
+           ya habia datos pero menos de los que pide: pasa cuando se anade un
+           Leer y se vuelve a ejecutar con los datos de la vez anterior. */
+        if (!saltarPregunta) {
             const prompts = detectStdinPrompts(code, lang);
-            if (prompts.length > 0) {
-                showStdinForm(lang, prompts);
+            if (prompts.length > 0 && datosInsuficientes(stdin, prompts.length, lang)) {
+                showStdinForm(lang, prompts, stdin);
                 return;
             }
         }
@@ -1276,9 +1374,16 @@ async function generarTraza() {
                   + 'mira arriba lo que le falta para cubrir el ejercicio.</p>'
                 : '')
             + (passed
-                ? '<a href="/exercises" class="btn btn-primary btn-sm" style="margin-top:0.75rem;">Siguiente ejercicio →</a>'
+                ? pintarSiguiente(data.siguiente)
                 : '<p style="color:var(--text-muted); font-size:0.8rem; margin-top:0.75rem;">Pide 🤖 Retroalimentación IA, corrige y vuelve a enviar (necesitas 60 o más).</p>')
             + '</div>';
+    }
+
+    /* Que hacer despues de superar un ejercicio. Antes el boton decia
+       "Siguiente ejercicio" y llevaba a la lista de TODOS los temas. */
+    function pintarSiguiente(sig) {
+        return htmlSiguientePaso(sig,
+            '{{ url_for('topic_exercises', topic_id=exercise.topic_id) if exercise else url_for('exercises') }}');
     }
 
     // ─── HELPERS ───────────────────────────────

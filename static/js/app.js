@@ -46,3 +46,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 5000);
     });
 });
+
+// ── Qué sigue después de superar un ejercicio ─────────────────
+// Lo usan el editor y los ejercicios de leer y de diagrama. `sig` lo calcula
+// el servidor (siguiente_paso en app.py): el siguiente ejercicio pendiente
+// del tema o, si ya no queda ninguno, la lección del tema siguiente.
+function htmlSiguientePaso(sig, urlTema) {
+    const esc = t => String(t == null ? '' : t)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    if (!sig) {
+        return '<a href="' + esc(urlTema) + '" class="btn btn-primary btn-sm siguiente-paso">Volver al tema →</a>';
+    }
+    if (sig.tipo === 'ejercicio') {
+        return '<a href="' + esc(sig.url) + '" class="btn btn-primary btn-sm siguiente-paso">'
+            + esc(sig.texto) + ' →</a>';
+    }
+    const titulo = sig.tipo === 'curso_terminado'
+        ? '🎓 ¡Terminaste todos los temas!'
+        : '🏁 ¡Terminaste el tema «' + esc(sig.tema) + '»!';
+    return '<div class="tema-terminado"><strong>' + titulo + '</strong>'
+        + '<a href="' + esc(sig.url) + '" class="btn btn-primary btn-sm">' + esc(sig.texto) + ' →</a></div>';
+}

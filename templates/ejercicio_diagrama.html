@@ -99,7 +99,14 @@ async function comprobar() {
                                + '<pre style="background:var(--bg-code,#0d1117); padding:0.7rem; border-radius:6px;"><code>' + esc(d.tu_salida) + '</code></pre>';
             if (d.salida_esperada) h += '<p style="font-size:0.85rem; margin-top:0.4rem;">Lo que imprime el del diagrama:</p>'
                                       + '<pre style="background:var(--bg-code,#0d1117); padding:0.7rem; border-radius:6px;"><code>' + esc(d.salida_esperada) + '</code></pre>';
+            if (d.resultado === 'correcto' || d.resultado === 'casi') {
+                h += '<div style="margin-top:0.9rem;">' + htmlSiguientePaso(d.siguiente,
+                     '{{ url_for('topic_exercises', topic_id=exercise.topic_id) }}') + '</div>';
+            }
             v.innerHTML = h;
+            // El boton de seguir quedaba por debajo del borde de la pantalla.
+            const ultimo = v.lastElementChild;
+            if (ultimo) ultimo.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
     } catch (e) {
         v.innerHTML = '<span style="color:var(--error);">Error de conexión.</span>';

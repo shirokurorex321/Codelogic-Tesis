@@ -95,7 +95,16 @@ async function comprobar() {
                    + '<pre style="background:var(--bg-code,#0d1117); padding:0.7rem; border-radius:6px;"><code>'
                    + d.salida_real.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</code></pre>';
             }
+            /* Al acertar, que no se quede sin camino: antes la unica salida
+               era "Volver". */
+            if (d.resultado !== 'incorrecto') {
+                h += '<div style="margin-top:0.9rem;">' + htmlSiguientePaso(d.siguiente,
+                     '{{ url_for('topic_exercises', topic_id=exercise.topic_id) }}') + '</div>';
+            }
             v.innerHTML = h;
+            // El boton de seguir quedaba por debajo del borde de la pantalla.
+            const ultimo = v.lastElementChild;
+            if (ultimo) ultimo.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             /* Falle o acierte, se le ofrece la traza: al que acierta le confirma
                el razonamiento, y al que falla le da dónde mirar. */
             document.getElementById('caja-escritorio').hidden = false;

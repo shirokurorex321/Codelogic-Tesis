@@ -1176,10 +1176,16 @@ FinAlgoritmo
   poder llegar siempre al Fin.""",
 
     "simbologia": True,
+    # Aqui se enlazaban el 61 (del diagrama al algoritmo) y el 54 (seguir un
+    # intercambio), pero los dos usan variables y asignaciones, que se ensenan
+    # en la leccion siguiente: se practicaba algo que aun no se habia visto.
+    # Los dos estan en Estructura Secuencial, que es donde tocan.
     "practica": """Esta lección no tiene ejercicios propios: lo que aprendes aquí lo
-usas en todos los demás. Para ver ya un diagrama de flujo de verdad y seguir
-un algoritmo paso a paso, prueba estos dos:""",
-    "practica_ejercicios": [61, 54],
+usas en todos los demás. Para escribir tu primer algoritmo te falta una pieza,
+guardar datos en variables, y es justo lo que viene en la lección siguiente.
+Cuando llegues a Estructura Secuencial encontrarás un ejercicio para seguir un
+algoritmo paso a paso y otro para pasar un diagrama de flujo a pseudocódigo.""",
+    "practica_ejercicios": [],
 }
 
 LECCIONES[12] = {  # Cómo resolver un problema
