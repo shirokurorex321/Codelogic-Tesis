@@ -17,6 +17,14 @@
     <pre class="leccion-codigo"><code>{{ leccion.sintaxis }}</code></pre>
 </div>
 
+{% if leccion.simbologia %}
+<div class="card">
+    <div class="card-header"><span class="card-title">Las figuras del diagrama de flujo</span></div>
+    <p style="margin-top:0;">Son las mismas con las que la plataforma dibuja tus diagramas (norma ISO 5807):</p>
+    {% include "_simbologia.html" %}
+</div>
+{% endif %}
+
 <div class="card">
     <div class="card-header"><span class="card-title">Un ejemplo completo</span></div>
     <pre class="leccion-codigo"><code>{{ leccion.ejemplo }}</code></pre>
@@ -47,6 +55,21 @@
     <a href="{{ url_for('topic_exercises', topic_id=tema.id) }}" class="btn btn-primary btn-lg">
         Ir a los ejercicios de {{ tema.name }}
     </a>
+    {% elif leccion.practica %}
+    <p>{{ leccion.practica }}</p>
+    {% if practica %}
+    <ul style="margin:.5rem 0 1rem; padding-left:1.2rem; line-height:1.9;">
+        {% for e in practica %}
+        <li><a href="{{ url_for('ejercicio_teoria', exercise_id=e.id) }}">{{ e.title }}</a>
+            <span style="opacity:.6; font-size:.85rem;">· {{ 'lectura' if e.tipo == 'leer' else 'diagrama' if e.tipo == 'diagrama' else e.difficulty }} · {{ e.topic.name }}</span></li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+    {% if siguiente %}
+    <a href="{{ url_for('aprender_tema', topic_id=siguiente.id) }}" class="btn btn-primary btn-lg">
+        Siguiente lección: {{ siguiente.name }} →
+    </a>
+    {% endif %}
     {% else %}
     <p>Este tema todavía no tiene ejercicios.</p>
     {% endif %}

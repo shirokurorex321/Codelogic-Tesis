@@ -536,10 +536,16 @@ Con esas cajas construyes expresiones: combinaciones de variables y
 operadores que el computador calcula hasta dejar un solo valor. Los
 operadores son de tres familias, y conviene no mezclarlas: los aritméticos
 dan números, los relacionales dan verdadero o falso, y los lógicos combinan
-varias condiciones en una sola.""",
+varias condiciones en una sola.
+
+Para ver el resultado de tus cálculos vas a usar dos instrucciones que se
+explican a fondo en el tema siguiente: Escribir muestra algo en la pantalla,
+y Leer le pide un dato al usuario y lo guarda en una variable.""",
 
     "sintaxis": """// Partimos de dos números concretos, para poder comprobar cada resultado
 Definir a, b Como Entero
+Definir suma, resta, producto, entera, resto Como Entero
+Definir division Como Real
 a <- 7
 b <- 2
 
@@ -551,13 +557,13 @@ division <- a / b          // 3.5   la división exacta, con decimales
 entera <- trunc(a / b)     // 3     se queda con la parte de delante de la coma
 resto <- a MOD b           // 1     lo que sobra al dividir
 
-// RELACIONALES: dan Verdadero o Falso
-a = b      // Falso       ¿son iguales?
-a <> b     // Verdadero   ¿son distintos?
-a > b      // Verdadero
-a < b      // Falso
-a >= b     // Verdadero
-a <= b     // Falso
+// RELACIONALES: dan Verdadero o Falso (aquí se muestran con Escribir)
+Escribir a = b      // Falso       ¿son iguales?
+Escribir a <> b     // Verdadero   ¿son distintos?
+Escribir a > b      // Verdadero
+Escribir a < b      // Falso
+Escribir a >= b     // Verdadero
+Escribir a <= b     // Falso
 
 // LÓGICOS: combinan valores Verdadero/Falso
 Definir edad Como Entero
@@ -565,9 +571,9 @@ Definir tieneLicencia Como Logico
 edad <- 20
 tieneLicencia <- Verdadero
 
-edad >= 18 Y tieneLicencia     // Verdadero   Y  exige las DOS
-edad < 12 O edad > 65          // Falso       O  se conforma con UNA
-NO(tieneLicencia)              // Falso       NO le da la vuelta""",
+Escribir edad >= 18 Y tieneLicencia     // Verdadero   Y  exige las DOS
+Escribir edad < 12 O edad > 65          // Falso       O  se conforma con UNA
+Escribir NO(tieneLicencia)              // Falso       NO le da la vuelta""",
 
     "ejemplo": """Algoritmo RevisarLosPuntos
     Definir puntos, faltan Como Entero
@@ -722,7 +728,11 @@ valores concretos, Segun ... Hacer (lo que también se llama Segun sea) queda
 mucho más claro que una escalera de Si encadenados. Y si una decisión depende de otra, se meten unas dentro de
 otras: eso son las condiciones anidadas.""",
 
-    "sintaxis": """// Un solo camino
+    "sintaxis": """Definir edad, numero, opcion Como Entero
+Definir nota Como Real
+Definir tieneLicencia Como Logico
+
+// Un solo camino
 Si edad >= 18 Entonces
     Escribir "Es mayor de edad"
 FinSi
@@ -732,6 +742,11 @@ Si nota >= 3 Entonces
     Escribir "Aprobó"
 Sino
     Escribir "Reprobó"
+FinSi
+
+// Varias condiciones a la vez: Y exige las dos, O se conforma con una
+Si edad >= 18 Y tieneLicencia Entonces
+    Escribir "Puede conducir"
 FinSi
 
 // Anidada: una decisión dentro de otra
@@ -823,7 +838,9 @@ Dentro de los ciclos viven dos patrones que vas a usar toda la vida: el
 contador, que suma de uno en uno para llevar la cuenta, y el acumulador,
 que va sumando valores para obtener un total.""",
 
-    "sintaxis": """// PARA: sabes cuántas vueltas
+    "sintaxis": """Definir i, j, numero, suma, edad, cuantos Como Entero
+
+// PARA: sabes cuántas vueltas
 Para i <- 1 Hasta 10 Con Paso 1 Hacer
     Escribir i
 FinPara
@@ -940,11 +957,20 @@ hasta 5 toca todos los compartimentos sin que escribas cinco líneas.
 Con el recorrido se construye todo lo demás: buscar un valor, calcular el
 mayor o el promedio, ordenarlos de menor a mayor. Y cuando necesitas guardar
 dos cosas de la misma persona (su nombre y su nota) usas dos vectores
-paralelos: la posición 3 de uno se corresponde con la posición 3 del otro.""",
+paralelos: la posición 3 de uno se corresponde con la posición 3 del otro.
+
+Hay operaciones que parecen sencillas y no lo son. Un vector no se estira
+ni se encoge, así que insertar o eliminar un elemento obliga a desplazar
+los demás una posición. Y para ordenarlo hay métodos clásicos: la burbuja
+(comparar cada elemento con su vecino e intercambiarlos si están al revés)
+y la selección (buscar el menor de los que quedan y ponerlo en su sitio).
+Los vas a construir tú en los ejercicios de este tema.""",
 
     "sintaxis": """// Declarar: primero el tipo, después el tamaño
 Definir notas Como Real
 Dimension notas[5]
+Definir i, posicion Como Entero
+Definir buscado, aux Como Real
 
 // Acceder a una posición concreta
 notas[1] <- 4.5
@@ -953,6 +979,11 @@ Escribir notas[1]
 // Llenar y recorrer: siempre con un ciclo
 Para i <- 1 Hasta 5 Con Paso 1 Hacer
     Leer notas[i]
+FinPara
+
+// Llenar al azar: Azar(5) da un entero de 0 a 4; con +1, de 1 a 5
+Para i <- 1 Hasta 5 Con Paso 1 Hacer
+    notas[i] <- Azar(5) + 1
 FinPara
 
 // Buscar (búsqueda lineal)
@@ -1034,3 +1065,212 @@ Si notas[i] > mayor Entonces
 },
 
 })
+
+
+# ─── Añadidas el 23/09/2026: lo que el temario pide y no tenía lección ───
+# 1.1 (definición, características, representación) + 1.2 (técnicas de
+# representación) abren el curso; 2.3 (estrategias de solución) cierra la
+# unidad 2. No tienen ejercicios propios: remiten a ejercicios de lectura y de
+# diagrama de otros temas ("practica_ejercicios").
+
+LECCIONES[11] = {  # Algoritmos y su representación
+    "que_es": """Un algoritmo es una lista de pasos ordenados que resuelve un problema. No
+es algo exclusivo de los computadores: una receta de cocina, las
+instrucciones para armar un mueble o la forma en que le explicas a alguien
+cómo llegar a tu casa son algoritmos.
+
+Para que una lista de pasos sea un algoritmo tiene que cumplir tres
+características:
+
+• Finito: termina. Tiene un último paso y no se queda repitiendo para siempre.
+• Preciso: cada paso dice exactamente qué hacer. «Échale un poco de sal» no es preciso; «échale 5 gramos de sal» sí.
+• Definido: si lo sigues dos veces con los mismos datos, llegas al mismo resultado.
+
+Un mismo algoritmo se puede escribir de varias formas. En lenguaje natural,
+con palabras corrientes, es fácil de leer pero se presta a malentendidos. En
+pseudocódigo se usa un puñado de palabras fijas —Algoritmo, Definir, Leer,
+Escribir, Si...— que se parecen a un lenguaje de programación, pero en
+español. Y en un diagrama de flujo se dibuja: cada clase de paso tiene su
+figura y las flechas marcan el orden.
+
+El pseudocódigo es más rápido de escribir y de corregir; el diagrama de
+flujo deja ver de un vistazo los caminos que puede tomar el algoritmo. Son
+dos maneras de escribir lo MISMO, y en esta plataforma vas a pasar de una a
+la otra en las dos direcciones.""",
+
+    "sintaxis": """// Todo algoritmo en pseudocódigo tiene la misma estructura
+Algoritmo PrecioConIva              // abre y le pone nombre (sin espacios)
+    Definir precio Como Real        // 1. se crean las variables
+    Escribir "Precio del producto:" // 2. las instrucciones, una por línea,
+    Leer precio                     //    que se ejecutan de arriba abajo
+    Escribir "Con IVA: ", precio * 1.19
+FinAlgoritmo                        // cierra: todo lo que se abre, se cierra
+
+// El mismo algoritmo en un diagrama de flujo: cada paso tiene su figura
+//   Óvalo ........... Inicio y Fin
+//   Tarjeta ......... Leer: un dato ENTRA desde el teclado
+//   Documento ....... Escribir: un resultado SALE a la pantalla
+//   Rectángulo ...... Un cálculo o una asignación (total <- precio * 2)
+//   Rombo ........... Una decisión (Si, Mientras): sale por Sí o por No
+//   Hexágono ........ La preparación de un ciclo Para
+//   Flechas ......... El orden en que se siguen los pasos""",
+
+    "ejemplo": """// En lenguaje natural:
+//   1. Pedir la base del rectángulo.
+//   2. Pedir la altura.
+//   3. Multiplicar la base por la altura.
+//   4. Mostrar el resultado.
+// El mismo algoritmo, en pseudocódigo:
+Algoritmo AreaDelRectangulo
+    Definir base, altura, area Como Real
+
+    Escribir "Base del rectángulo:"
+    Leer base
+    Escribir "Altura del rectángulo:"
+    Leer altura
+
+    area <- base * altura
+
+    Escribir "El área es: ", area
+FinAlgoritmo""",
+
+    "ejemplo_explicacion": """Algoritmo AreaDelRectangulo
+    Abre el algoritmo y le da un nombre que dice lo que hace. En el
+    diagrama de flujo corresponde al óvalo de Inicio.
+
+Definir base, altura, area Como Real
+    Antes de guardar un dato hay que crear su caja y decir qué cabe en
+    ella: Real, porque una medida puede tener decimales. En el diagrama no
+    se dibuja, porque es una preparación y no un paso que se ejecute.
+
+Leer base
+    El paso 1 del lenguaje natural. En el diagrama es una tarjeta: por
+    ahí ENTRA un dato desde el teclado.
+
+area <- base * altura
+    El paso 3: un cálculo. En el diagrama es un rectángulo. La flecha
+    apunta a la caja donde se guarda el resultado.
+
+Escribir "El área es: ", area
+    El paso 4. En el diagrama es un documento: por ahí SALE el resultado
+    a la pantalla.
+
+FinAlgoritmo
+    Cierra el algoritmo; en el diagrama, el óvalo de Fin. Los cuatro pasos
+    del lenguaje natural siguen ahí, pero ahora sin ninguna ambigüedad.""",
+
+    "errores": """• Escribir pasos ambiguos. «Calcula el total» no dice cómo;
+  «total <- precio * cantidad» sí. Si otra persona no puede seguirlo sin
+  preguntarte, todavía no es un algoritmo.
+
+• Un algoritmo que no termina. Si un paso se repite, tiene que existir una
+  condición que lo detenga.
+
+• Olvidar el FinAlgoritmo, o escribir instrucciones fuera de él. Todo lo
+  que el algoritmo hace va entre Algoritmo y FinAlgoritmo.
+
+• Usar la figura equivocada en el diagrama: un rombo para un cálculo o un
+  rectángulo para una pregunta. El rombo es SOLO para decisiones.
+
+• Dejar un camino sin salida en el diagrama. Desde el Inicio se tiene que
+  poder llegar siempre al Fin.""",
+
+    "simbologia": True,
+    "practica": """Esta lección no tiene ejercicios propios: lo que aprendes aquí lo
+usas en todos los demás. Para ver ya un diagrama de flujo de verdad y seguir
+un algoritmo paso a paso, prueba estos dos:""",
+    "practica_ejercicios": [61, 54],
+}
+
+LECCIONES[12] = {  # Cómo resolver un problema
+    "que_es": """Ya conoces las piezas: variables, decisiones y ciclos. Resolver un
+problema es otra cosa: es saber por dónde empezar cuando te dan un enunciado
+y una pantalla en blanco. Quien programa bien no empieza escribiendo: sigue
+cuatro pasos.
+
+• Análisis. Antes de escribir una sola línea, responde tres preguntas: ¿qué datos me dan (entradas)?, ¿qué tengo que mostrar (salidas)? y ¿cómo paso de unos a otros (proceso)?
+• Diseño. Con esas respuestas escribes el algoritmo, en pseudocódigo o en diagrama de flujo.
+• Prueba de escritorio. Sigues el algoritmo a mano con datos concretos y anotas en una tabla cuánto vale cada variable después de cada paso. Si al final sale lo que esperabas, funciona; si no, la tabla te dice en qué paso se torció.
+• Refinamiento. Lo mejoras: ¿qué pasa si el dato es 0, o negativo, o se sale del rango? ¿Sobra algún paso?
+
+De los cuatro, la prueba de escritorio es el más poderoso, y en el editor lo
+tienes a un botón: «Ejecutar paso a paso» hace esa tabla contigo.""",
+
+    "sintaxis": """// 1. ANÁLISIS: antes de escribir, tres preguntas
+//    Entradas:  ¿qué me dan?     -> tres notas
+//    Salidas:   ¿qué muestro?    -> el promedio y si aprobó
+//    Proceso:   ¿cómo llego?     -> sumar, dividir entre 3, comparar con 3
+//
+// 2. DISEÑO: el algoritmo (en pseudocódigo o en diagrama de flujo)
+//
+// 3. PRUEBA DE ESCRITORIO: seguirlo a mano con datos concretos
+//    Paso  Instrucción                nota1  nota2  nota3  promedio
+//    1     Leer nota1                  4.0     ·      ·       ·
+//    2     Leer nota2                  4.0    2.5     ·       ·
+//    3     Leer nota3                  4.0    2.5    3.5      ·
+//    4     promedio <- (...) / 3       4.0    2.5    3.5     3.33
+//    5     Si promedio >= 3            3.33 >= 3 es Verdadero: «Aprobó»
+//
+// 4. REFINAMIENTO: ¿y si...?
+//    ¿y si alguien escribe una nota de 7?  -> validar cada nota""",
+
+    "ejemplo": """Algoritmo PromedioDeTresNotas
+    Definir nota1, nota2, nota3, promedio Como Real
+
+    Escribir "Nota 1:"
+    Leer nota1
+    Escribir "Nota 2:"
+    Leer nota2
+    Escribir "Nota 3:"
+    Leer nota3
+
+    promedio <- (nota1 + nota2 + nota3) / 3
+
+    Escribir "Promedio: ", promedio
+    Si promedio >= 3 Entonces
+        Escribir "Aprobó"
+    Sino
+        Escribir "Reprobó"
+    FinSi
+FinAlgoritmo""",
+
+    "ejemplo_explicacion": """Definir nota1, nota2, nota3, promedio Como Real
+    Sale directamente del análisis: tres entradas y una salida calculada.
+    Real, porque las notas llevan decimales.
+
+Leer nota1
+    Las entradas, una por una y cada una después de su aviso. Refinamiento
+    posible: validar que la nota esté entre 0 y 5 con un Repetir ... Hasta
+    Que, para que un 7 tecleado por error no dé un promedio imposible.
+
+promedio <- (nota1 + nota2 + nota3) / 3
+    El proceso. Los paréntesis importan: sin ellos solo nota3 se dividiría
+    entre 3. La prueba de escritorio lo descubre enseguida: con 4.0, 2.5 y
+    3.5 saldría 7.67 en vez de 3.33.
+
+Si promedio >= 3 Entonces
+    La segunda salida. Pruébalo también con el caso límite: con un promedio
+    de exactamente 3 tiene que decir «Aprobó», y por eso es >= y no >.""",
+
+    "errores": """• Empezar a escribir sin analizar. Si no sabes qué entra y qué tiene
+  que salir, el algoritmo se escribe a ciegas y se reescribe tres veces.
+
+• Probar solo con un caso «bonito». Pruébalo también con los bordes: el 0,
+  un negativo, el valor justo del límite (una nota de 3.0 exacta).
+
+• Hacer la prueba de escritorio de memoria. Hay que anotar el valor de cada
+  variable después de cada paso: el error suele estar justo en el paso que
+  uno cree que no hace falta mirar.
+
+• No volver a probar después de corregir. Un arreglo puede romper otra
+  cosa: la prueba se repite entera.
+
+• Confundir lo que el algoritmo HACE con lo que tú QUERÍAS que hiciera. La
+  prueba de escritorio sigue lo que está escrito, no lo que tenías en la
+  cabeza.""",
+
+    "practica": """Esta lección no tiene ejercicios propios: los cuatro pasos se
+aplican en todos. Estos dos ejercicios de lectura son una prueba de
+escritorio pura: sigue el algoritmo con una tabla y di qué imprime.""",
+    "practica_ejercicios": [56, 55],
+}

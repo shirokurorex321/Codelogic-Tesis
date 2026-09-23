@@ -39,12 +39,13 @@
         <p>{{ t.tema.description }}</p>
 
         <div style="margin:.6rem 0 .35rem; height:6px; border-radius:99px; background:rgba(128,128,128,.2); overflow:hidden;">
-            <div style="height:100%; width:{{ t.porcentaje }}%; border-radius:99px;
+            <div style="height:100%; width:{{ 100 if (t.solo_leccion and t.completo) else t.porcentaje }}%; border-radius:99px;
                         background:{% if t.completo %}#22c55e{% else %}var(--primary,#6366f1){% endif %};"></div>
         </div>
 
         <div class="topic-meta">
-            <span>{{ t.hechos }} de {{ t.n_ejercicios }} ejercicio{{ 's' if t.n_ejercicios != 1 }} resuelto{{ 's' if t.hechos != 1 }}</span>
+            {% if t.solo_leccion %}<span>Lección sin ejercicios propios</span>
+            {% else %}<span>{{ t.hechos }} de {{ t.n_ejercicios }} ejercicio{{ 's' if t.n_ejercicios != 1 }} resuelto{{ 's' if t.hechos != 1 }}</span>{% endif %}
             <span>{% if t.leido %}Lección leída{% elif t.tiene_leccion %}Lección sin abrir{% endif %}</span>
         </div>
     </a>

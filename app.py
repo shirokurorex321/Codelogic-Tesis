@@ -1569,7 +1569,11 @@ def aprender():
             "n_ejercicios": len(ids),
             "hechos": hechos,
             "porcentaje": round(hechos / len(ids) * 100) if ids else 0,
-            "completo": bool(ids) and hechos == len(ids),
+            # Una leccion sin ejercicios propios (las de algoritmos y de
+            # resolver problemas) queda terminada al leerla. Sin esto el
+            # "sigue por aqui" se quedaba clavado en ella para siempre.
+            "completo": (hechos == len(ids)) if ids else (t.id in leidos),
+            "solo_leccion": not ids,
         })
 
     # Por donde seguir: el primer tema sin terminar. Asi el indice guia en vez
@@ -1613,9 +1617,13 @@ def aprender_tema(topic_id):
              .filter(Topic.semestre == tema.semestre)
              .order_by(Topic.order).all())
     pos = [t.id for t in todos].index(topic_id) if tema in todos else -1
+    # Ejercicios de otros temas que sirven para practicar esta leccion
+    # (lectura y diagrama), para las que no tienen ejercicios propios.
+    practica = [e for e in (db.session.get(Exercise, i) for i in leccion.get("practica_ejercicios", []))
+                if e and e.is_active and tema_permitido(e.topic)]
     log_activity("leer_leccion", {"topic_id": topic_id})
     return render_template(
-        "aprender_tema.html", tema=tema, leccion=leccion,
+        "aprender_tema.html", tema=tema, leccion=leccion, practica=practica,
         errores=_lista_errores(leccion.get("errores", "")),
         ejercicios=ejercicios,
         anterior=todos[pos - 1] if pos > 0 else None,
@@ -1625,7 +1633,9 @@ def aprender_tema(topic_id):
 @app.route("/exercises")
 @login_required
 def exercises():
-    topics = temas_visibles()
+    # Solo los temas que tienen ejercicios: una leccion sin practica propia
+    # salia como tarjeta con "0 ejercicios" que llevaba a una lista vacia.
+    topics = [t for t in temas_visibles() if t.exercises.filter_by(is_active=True).count()]
     return render_template("exercises.html", topics=topics)
 
 
