@@ -2941,7 +2941,19 @@ def admin_exercises():
         return redirect(url_for("admin_exercises"))
 
     topics = Topic.query.order_by(Topic.order).all()
-    exercises = Exercise.query.order_by(Exercise.created_at.desc()).all()
+    # En el mismo orden en que los practica el alumno: primer semestre y
+    # luego tercero, tema por tema, y dentro de cada tema la regla de
+    # ordenar_ejercicios (leer, escribir de facil a dificil, diagrama). La
+    # lista salia por fecha de creacion, la mas nueva arriba, con los temas
+    # mezclados, y parecia que el orden del curso no se habia aplicado.
+    por_tema = {}
+    for e in Exercise.query.all():
+        por_tema.setdefault(e.topic_id, []).append(e)
+    exercises = []
+    for t in sorted(topics, key=lambda t: (t.semestre or 9, t.order or 0)):
+        exercises += ordenar_ejercicios(por_tema.pop(t.id, []))
+    for resto in por_tema.values():          # sin tema valido: al final
+        exercises += ordenar_ejercicios(resto)
     return render_template("admin/exercises.html", topics=topics, exercises=exercises,
                            faltan_por_ejercicio={e.id: campos_que_faltan(e)
                                                  for e in exercises})
