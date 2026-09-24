@@ -161,7 +161,7 @@
                         <td><a href="{{ url_for('admin_exercise_detail', exercise_id=ex.id) }}">{{ ex.title }}</a></td>
                         <td><span class="sem-tag sem-tag-{{ ex.topic.semestre if ex.topic and ex.topic.semestre else 'x' }}">{{ ex.topic.semestre ~ 'er sem' if ex.topic and ex.topic.semestre else 'sin asignar' }}</span></td>
                         <td style="font-size:0.85rem;">{{ ex.topic.name if ex.topic else '-' }}</td>
-                        <td><span class="diff-badge diff-{{ ex.difficulty }}">{{ ex.difficulty }}</span></td>
+                        <td><span class="diff-badge diff-{{ ex.difficulty }}">{{ ex.difficulty | dificultad }}</span></td>
                         <td>
                             {% if falta %}
                             <span class="etiqueta-falta" title="{{ falta | join(', ') }}">falta {{ falta | length }}</span>

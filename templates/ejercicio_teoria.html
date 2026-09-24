@@ -5,7 +5,7 @@
 <div class="teoria-cab">
     <a href="{{ url_for('topic_exercises', topic_id=exercise.topic_id) }}"
        class="btn btn-outline btn-sm">← Volver a {{ exercise.topic.name }}</a>
-    <span class="diff-badge diff-{{ exercise.difficulty }}">{{ exercise.difficulty }}</span>
+    <span class="diff-badge diff-{{ exercise.difficulty }}">{{ exercise.difficulty | dificultad }}</span>
 </div>
 
 <div class="teoria">

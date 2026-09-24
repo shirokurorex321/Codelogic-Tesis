@@ -2260,6 +2260,7 @@ ol.md-ul { list-style: decimal; }
     border-radius: 0 8px 8px 0;
 }
 .lec-clave {
+    white-space: pre-wrap;   /* codigo de varias lineas: saltos y sangria */
     font-family: "JetBrains Mono", Consolas, monospace;
     font-size: .82rem; color: #7fd4ff;
     background: none; padding: 0; word-break: break-word;

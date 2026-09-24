@@ -45,11 +45,11 @@
 <div class="card">
     <div class="card-header"><span class="card-title">Ahora practica</span></div>
     {% if ejercicios %}
-    <p>Ya sabes cómo se hace. Estos son los ejercicios de este tema, del más sencillo al más difícil:</p>
+    <p>Ya sabes cómo se hace. Estos son los ejercicios de este tema, en el orden en que conviene hacerlos: primero leer un algoritmo, después escribir los tuyos, del más sencillo al más difícil.</p>
     <ul style="margin:.5rem 0 1rem; padding-left:1.2rem; line-height:1.9;">
         {% for e in ejercicios %}
         <li><a href="{{ url_for('ejercicio_teoria', exercise_id=e.id) }}">{{ e.title }}</a>
-            <span style="opacity:.6; font-size:.85rem;">· {{ e.difficulty }}</span></li>
+            <span style="opacity:.6; font-size:.85rem;">· {{ 'lectura · ' if e.tipo == 'leer' else 'diagrama · ' if e.tipo == 'diagrama' else '' }}{{ e.difficulty | dificultad }}</span></li>
         {% endfor %}
     </ul>
     <a href="{{ url_for('topic_exercises', topic_id=tema.id) }}" class="btn btn-primary btn-lg">
@@ -61,7 +61,7 @@
     <ul style="margin:.5rem 0 1rem; padding-left:1.2rem; line-height:1.9;">
         {% for e in practica %}
         <li><a href="{{ url_for('ejercicio_teoria', exercise_id=e.id) }}">{{ e.title }}</a>
-            <span style="opacity:.6; font-size:.85rem;">· {{ 'lectura' if e.tipo == 'leer' else 'diagrama' if e.tipo == 'diagrama' else e.difficulty }} · {{ e.topic.name }}</span></li>
+            <span style="opacity:.6; font-size:.85rem;">· {{ 'lectura' if e.tipo == 'leer' else 'diagrama' if e.tipo == 'diagrama' else e.difficulty | dificultad }} · {{ e.topic.name }}</span></li>
         {% endfor %}
     </ul>
     {% endif %}

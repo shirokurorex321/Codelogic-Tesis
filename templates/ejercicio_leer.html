@@ -5,7 +5,7 @@
 <a href="{{ url_for('topic_exercises', topic_id=exercise.topic_id) }}" class="btn btn-outline btn-sm mb-3">← Volver</a>
 
 <div class="card mb-3">
-    <span class="diff-badge diff-{{ exercise.difficulty }}">{{ exercise.difficulty }}</span>
+    <span class="diff-badge diff-{{ exercise.difficulty }}">{{ exercise.difficulty | dificultad }}</span>
     <h1 style="margin:0.5rem 0 1rem;">{{ exercise.title }}</h1>
 
     <div style="border-left:3px solid var(--primary); padding-left:1rem; margin-bottom:1.2rem;">

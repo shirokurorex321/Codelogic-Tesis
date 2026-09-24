@@ -968,6 +968,12 @@ def filtro_markdown_ia(texto):
     return Markup(html)
 
 
+@app.template_filter("dificultad")
+def filtro_dificultad(valor):
+    """La dificultad bien escrita: en la base es «basico», sin tilde."""
+    return {"basico": "básico"}.get(valor, valor or "")
+
+
 @app.template_filter("parrafos")
 def filtro_parrafos(texto):
     """Convierte texto plano en HTML estructurado.
@@ -998,9 +1004,12 @@ def filtro_parrafos(texto):
             continue
 
         lineas = parrafo.split("\n")
-        # ¿es un bloque de viñetas?
-        if all(l.strip().startswith(("•", "-", "*")) or l.startswith((" ", "\t"))
-               for l in lineas if l.strip()):
+        # ¿es un bloque de viñetas? Solo si EMPIEZA por una: un bloque de
+        # codigo con sangria («    cuantas <- cuantas + 1» y su explicacion
+        # debajo) se pintaba como una lista de viñetas.
+        if lineas[0].strip().startswith(("•", "-", "*")) and all(
+                l.strip().startswith(("•", "-", "*")) or l.startswith((" ", "\t"))
+                for l in lineas if l.strip()):
             actual = ""
             for l in lineas:
                 t = l.strip()
@@ -1018,13 +1027,30 @@ def filtro_parrafos(texto):
             continue
 
         cerrar_lista()
-        # ¿cabecera con líneas indentadas debajo? (ej: código + su explicación)
-        if len(lineas) > 1 and lineas[0].strip() and lineas[1].startswith((" ", "\t")):
-            cab = escape(lineas[0].strip())
-            cuerpo = " ".join(l.strip() for l in lineas[1:] if l.strip())
+        # ¿codigo con su explicacion debajo? La explicacion es el tramo final
+        # con MAS sangria; todo lo de antes es codigo, aunque sean varias
+        # lineas («suma <- 0» y «cuantas <- 0») o lleve su propia sangria
+        # (un Si dentro de un Sino). Antes solo se admitia UNA linea de
+        # codigo, y el resto se fundia con la explicacion en un parrafo:
+        # «suma <- 0 cuantas <- 0 Dos cajas en cero...».
+        sangrias = [len(l) - len(l.lstrip()) for l in lineas]
+        k = len(lineas)
+        while k > 0 and sangrias[k - 1] == max(sangrias):
+            k -= 1
+        if 0 < k < len(lineas) and max(sangrias) > min(sangrias[:k]):
+            base = min(sangrias[:k])
+            cab = escape("\n".join(l[base:].rstrip() for l in lineas[:k]))
+            cuerpo = " ".join(l.strip() for l in lineas[k:] if l.strip())
             bloques.append(
                 f'<div class="lec-item"><code class="lec-clave">{cab}</code>'
                 f'<span class="lec-desc">{escape(cuerpo)}</span></div>')
+        elif min(sangrias) > 0:
+            # Todas las lineas con la misma sangria y sin viñetas: una tablita
+            # alineada con espacios («=  igual a   <>  distinto de») o un trozo
+            # de codigo. Fundida en un parrafo, las columnas no se leian.
+            base = min(sangrias)
+            bloques.append('<pre class="leccion-codigo"><code>%s</code></pre>'
+                           % escape("\n".join(l[base:].rstrip() for l in lineas)))
         else:
             texto_p = " ".join(l.strip() for l in lineas if l.strip())
             bloques.append(f"<p>{escape(texto_p)}</p>")
@@ -2893,6 +2919,17 @@ def admin_dashboard():
     )
 
 
+
+def _texto_de_formulario(campo):
+    """Un campo del formulario de ejercicios, con saltos de linea normales.
+
+    El navegador envia los textarea con \r\n (el estilo de Windows). Se
+    guardaban asi, y el ejercicio 70 -creado desde este formulario- tenia su
+    solucion con \r\n mientras el resto usaba \n: dos textos iguales dejaban
+    de ser iguales al compararlos.
+    """
+    return request.form.get(campo, "").replace("\r\n", "\n").replace("\r", "\n").strip()
+
 @app.route("/admin/exercises", methods=["GET", "POST"])
 @login_required
 @role_required(*ROLES_DOCENCIA)
@@ -2905,7 +2942,7 @@ def admin_exercises():
         campos = ("title", "description", "hints", "concepto", "pasos",
                   "ejemplo_resuelto", "ejemplo_entrada", "ejemplo_salida",
                   "expected_pseudocode", "diagrama")
-        datos = {c: request.form.get(c, "").strip() for c in campos}
+        datos = {c: _texto_de_formulario(c) for c in campos}
         tipo = request.form.get("tipo", "escribir")
         datos["tipo"] = tipo if tipo in ("escribir", "leer", "diagrama") else "escribir"
         datos["topic_id"] = request.form.get("topic_id")
@@ -3035,7 +3072,7 @@ def admin_exercise_detail(exercise_id):
     ejercicio = Exercise.query.get_or_404(exercise_id)
 
     if request.method == "POST":
-        datos = {c: request.form.get(c, "").strip() for c in CAMPOS_EJERCICIO}
+        datos = {c: _texto_de_formulario(c) for c in CAMPOS_EJERCICIO}
         if not datos["title"] or not datos["description"]:
             flash("El título y el enunciado son obligatorios.", "error")
             return redirect(url_for("admin_exercise_detail", exercise_id=exercise_id))

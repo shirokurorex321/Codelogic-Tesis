@@ -67,7 +67,7 @@
             <p>{{ ex.description[:120] }}{% if ex.description|length > 120 %}...{% endif %}</p>
         </div>
         <div class="exercise-meta">
-            <span class="diff-badge diff-{{ ex.difficulty }}">{{ ex.difficulty }}</span>
+            <span class="diff-badge diff-{{ ex.difficulty }}">{{ ex.difficulty | dificultad }}</span>
             {% if ex.attempts > 0 %}
             <span style="font-size:0.8rem; color:var(--text-muted);">{{ ex.attempts }} intento{{ '' if ex.attempts == 1 else 's' }}</span>
             {% endif %}

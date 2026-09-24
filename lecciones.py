@@ -793,9 +793,9 @@ FinAlgoritmo""",
 
 Sino
     Si edad < 18 Entonces
-    Este Si vive DENTRO del Sino anterior, y solo se evalúa cuando la edad
-    ya se sabe válida. Fíjate en la sangría: cada nivel se mueve a la
-    derecha, y eso es lo que permite leer el camino de un vistazo.
+        Este Si vive DENTRO del Sino anterior, y solo se evalúa cuando la edad
+        ya se sabe válida. Fíjate en la sangría: cada nivel se mueve a la
+        derecha, y eso es lo que permite leer el camino de un vistazo.
 
 FinSi
 FinSi
@@ -1041,9 +1041,9 @@ Para i <- 2 Hasta 4 Con Paso 1 Hacer
 
 Si notas[i] > mayor Entonces
     mayor <- notas[i]
-    Si el de esta posición es más grande que el campeón actual, pasa a ser
-    el nuevo campeón. Al terminar el recorrido, mayor tiene el más grande
-    de todos.""",
+        Si el de esta posición es más grande que el campeón actual, pasa a ser
+        el nuevo campeón. Al terminar el recorrido, mayor tiene el más grande
+        de todos.""",
 
     "errores": """• Inicializar el mayor en 0 en vez de con el primer elemento. Con datos
   negativos el resultado sale mal.

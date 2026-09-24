@@ -7,7 +7,7 @@
 <div class="exercise-header">
     <div class="flex-between">
         <div>
-            <span class="diff-badge diff-{{ exercise.difficulty }}">{{ exercise.difficulty }}</span>
+            <span class="diff-badge diff-{{ exercise.difficulty }}">{{ exercise.difficulty | dificultad }}</span>
             <h2 style="margin-top:0.3rem;">{{ exercise.title }}</h2>
             <p>{{ exercise.description }}</p>
         </div>
