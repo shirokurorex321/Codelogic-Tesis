@@ -52,6 +52,9 @@
             <p class="pred-ayuda">Escríbelo tal y como crees que va a salir en pantalla,
                 una línea por cada cosa que <strong>calcule y muestre</strong>. No incluyas las líneas que piden datos (las de «Ingrese…»): esas solo acompañan a la lectura. No pasa nada si fallas: esto no
                 puntúa, y fallar aquí es justamente lo que enseña.</p>
+            <p class="pred-ayuda"><strong>Ojo:</strong> aquí no se escribe el algoritmo, solo lo que
+                saldría en la pantalla. Lo que cuenta son los valores: los textos que los acompañan
+                dependerán de cómo escribas tus mensajes.</p>
             <textarea id="pred-texto" rows="5" spellcheck="false"
                       placeholder="Escribe aquí tu predicción…"></textarea>
             <button type="button" class="btn btn-primary" id="pred-btn">Comprobar</button>
@@ -123,7 +126,17 @@
                    salida.textContent = d.error; btn.disabled=false;
                    btn.textContent="Comprobar"; return; }
       salida.hidden = false;
-      salida.className = "pred-resultado " + d.resultado;
+      /* Escribio el algoritmo en vez de la salida: se le explica y puede
+         volver a intentarlo. No se le ensena la respuesta. */
+      if(d.reintentar){
+        salida.className = "pred-resultado casi";
+        salida.innerHTML = `<p><b>${esc(d.mensaje)}</b></p>`;
+        btn.disabled = false; btn.textContent = "Comprobar";
+        texto.focus();
+        return;
+      }
+      /* «Casi» (los valores bien, los textos no) cuenta como acierto. */
+      salida.className = "pred-resultado " + (d.aceptada ? "correcto" : d.resultado);
       salida.innerHTML = `<p><b>${esc(d.mensaje)}</b></p>
         <p class="pred-etq">Lo que imprime de verdad:</p>
         <pre>${esc(d.salida_real)}</pre>`;

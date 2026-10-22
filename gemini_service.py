@@ -573,8 +573,16 @@ USAR_RESPALDO_OPENCODE = False
 
 # Errores que se arreglan solos esperando: saturacion momentanea del proveedor.
 # Un 400 o un fallo de clave NO estan aqui: repetirlos da exactamente lo mismo.
+#
+# Los cortes de red tambien son pasajeros. El 21/10/2026 la conexion con
+# Gemini se corto a mitad de una calificacion ("[Errno 104] Connection reset
+# by peer"); como no estaba en esta lista no se reintento, la entrega del
+# estudiante quedo sin nota y tuvo que enviarla otra vez.
 _TRANSITORIOS = ("429", "503", "502", "504", "timeout", "timed out",
-                 "unavailable", "overloaded", "temporarily", "resource_exhausted")
+                 "unavailable", "overloaded", "temporarily", "resource_exhausted",
+                 "connection reset", "errno 104", "connection aborted",
+                 "remote end closed", "server disconnected", "remoteprotocolerror",
+                 "broken pipe", "eof occurred", "connecterror", "readerror")
 
 
 def _es_transitorio(err) -> bool:

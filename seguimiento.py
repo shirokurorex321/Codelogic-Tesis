@@ -154,6 +154,8 @@ def _frase(accion, d, titulos, temas):
         return ("📤", "Respondió el diagrama %s: %s" % (ej, _RESULTADO.get(d.get("resultado"), "?")))
     if accion == "prediccion":
         return ("🔮", "Predijo la salida de %s: %s" % (ej, _RESULTADO.get(d.get("resultado"), "?")))
+    if accion == "prediccion_algoritmo":
+        return ("🔮", "Escribió el algoritmo en la predicción de %s (se le explicó qué va ahí)" % ej)
     if accion == "open_test":
         return ("🧪", "Abrió el %s" % d.get("test_type", "test"))
     if accion == "open_scale":

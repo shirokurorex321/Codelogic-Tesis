@@ -3862,6 +3862,30 @@ def _numeros(texto):
     return re.findall(r"-?\d+(?:\.\d+)?", texto or "")
 
 
+# Lineas que solo puede tener un algoritmo, nunca lo que sale en pantalla.
+# Se deja fuera "Si" y "Para": una salida puede empezar por "Si puede votar".
+_LINEA_DE_ALGORITMO = re.compile(
+    r"^\s*(algoritmo|finalgoritmo|proceso|finproceso|definir|dimension|leer|escribir|"
+    r"finsi|finpara|finmientras|finsegun|hasta\s+que)\b|<-|←", re.IGNORECASE)
+
+
+def _parece_algoritmo(texto):
+    """¿Escribio el algoritmo en la caja donde va lo que imprime?
+
+    Paso con la clase el 21/10/2026: un estudiante escribio dos veces su
+    algoritmo entero en la prediccion, se le marco «incorrecto» y vio la
+    respuesta sin haber entendido que se le pedia. Hacen falta dos lineas
+    tipicas de algoritmo para decidirlo, para no confundir una salida normal.
+    """
+    lineas = []
+    for linea in (texto or "").splitlines():
+        l = unicodedata.normalize("NFKD", linea)
+        l = "".join(c for c in l if not unicodedata.combining(c)).replace("_", " ")
+        if l.strip():
+            lineas.append(l)
+    return sum(1 for l in lineas if _LINEA_DE_ALGORITMO.search(l)) >= 2
+
+
 @app.route("/prediccion/<int:exercise_id>", methods=["POST"])
 @login_required
 def prediccion(exercise_id):
@@ -3882,6 +3906,22 @@ def prediccion(exercise_id):
     if len(prediccion_texto) > 2000:
         return jsonify({"error": "Respuesta demasiado larga."}), 400
 
+    # Si escribio el algoritmo, no se le corrige ni se le ensena la respuesta:
+    # se le explica que se pide y puede volver a intentarlo. Se anota aparte
+    # para que no cuente como una prediccion (ni desbloquee el editor).
+    if _parece_algoritmo(prediccion_texto) and not _parece_algoritmo(esperada):
+        log_activity("prediccion_algoritmo", {
+            "exercise_id": exercise_id,
+            "prediccion": prediccion_texto[:500],
+        })
+        return jsonify({
+            "resultado": "es_algoritmo",
+            "reintentar": True,
+            "mensaje": "Eso es un algoritmo, y aquí todavía no hay que escribirlo. "
+                       "Escribe solo lo que aparecería en la pantalla al ejecutarlo: "
+                       "los mensajes y resultados que muestre, una línea por cada uno.",
+        })
+
     if _normalizar_salida(prediccion_texto) == _normalizar_salida(esperada):
         resultado = "correcto"
     elif _numeros(prediccion_texto) == _numeros(esperada) and _numeros(esperada):
@@ -3889,20 +3929,30 @@ def prediccion(exercise_id):
         resultado = "casi"
     else:
         resultado = "incorrecto"
+    # «Casi» se da por bueno. Lo que se predice es la salida del programa que
+    # el estudiante TODAVIA no ha escrito, y los textos que acompañan a los
+    # numeros los decidira el al escribir sus mensajes: no hay forma de
+    # adivinar los de la solucion de referencia. El 21/10/2026 un estudiante
+    # acerto todos los valores tres veces seguidas y las tres vio «casi».
+    # En el registro se conserva el resultado original para el estudio.
+    aceptada = resultado in ("correcto", "casi")
 
     log_activity("prediccion", {
         "exercise_id": exercise_id,
         "resultado": resultado,
+        "aceptada": aceptada,
         "prediccion": prediccion_texto[:500],
     })
 
     return jsonify({
         "resultado": resultado,
+        "aceptada": aceptada,
         "salida_real": esperada,
         "mensaje": {
             "correcto": "Correcto. Tu idea de lo que hace el programa encaja con lo que hace.",
-            "casi": "Casi: los números están bien, el texto no coincide del todo. "
-                    "Compara con la salida real y fíjate en qué cambia.",
+            "casi": "¡Bien! Los valores son justo los que tienen que salir. Los textos "
+                    "que los acompañan dependerán de cómo escribas tus mensajes, así que "
+                    "esos no cuentan aquí.",
             "incorrecto": "No coincide. Mira la salida real y vuelve al ejemplo "
                           "línea por línea: ahí está lo que se te escapó.",
         }[resultado],
