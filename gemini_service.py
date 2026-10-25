@@ -716,6 +716,42 @@ def _respetar_nombres(code: str, pseudocode: str) -> str:
     return code
 
 
+# "a, b, c = map(int, input().split())" y sus variantes: leen varios datos de
+# UNA linea. La plataforma pide los datos uno por linea (asi los escribe el
+# estudiante en la prueba de escritorio), y con esa forma el programa se cae
+# con "not enough values to unpack". El modelo la usa pocas veces (1 de 118
+# conversiones el 22/10/2026), pero cuando lo hace el estudiante cree que su
+# algoritmo esta mal. Se pasa a un input() por variable, como Leer a, b, c.
+_RE_LECTURA_EN_UNA_LINEA = re.compile(
+    r"^(?P<sang>[ \t]*)(?P<vars>[A-Za-z_]\w*(?:[ \t]*,[ \t]*[A-Za-z_]\w*)+)[ \t]*=[ \t]*"
+    r"(?:"
+    r"(?:list\()?map\([ \t]*(?P<t1>int|float|str)[ \t]*,[ \t]*input\((?P<p1>[^()]*)\)\.split\([^()]*\)[ \t]*\)\)?"
+    r"|input\((?P<p2>[^()]*)\)\.split\([^()]*\)"
+    r"|\[[ \t]*(?P<t3>int|float|str)\([ \t]*\w+[ \t]*\)[ \t]+for[ \t]+\w+[ \t]+in[ \t]+input\((?P<p3>[^()]*)\)\.split\([^()]*\)[ \t]*\]"
+    r")[ \t]*(?P<com>#.*)?$", re.MULTILINE)
+
+
+def _leer_uno_por_linea(codigo: str, idioma: str) -> str:
+    """Cambia las lecturas de varios datos en una linea por un input() por dato."""
+    if idioma != "python" or not codigo or "split(" not in codigo:
+        return codigo
+
+    def cambiar(m):
+        tipo = m.group("t1") or m.group("t3")
+        aviso = (m.group("p1") or m.group("p2") or m.group("p3") or "").strip()
+        lineas = []
+        for i, var in enumerate(v.strip() for v in m.group("vars").split(",")):
+            lectura = "input(%s)" % (aviso if i == 0 else "")
+            if tipo and tipo != "str":
+                lectura = "%s(%s)" % (tipo, lectura)
+            lineas.append("%s%s = %s" % (m.group("sang"), var, lectura))
+        if m.group("com"):
+            lineas[0] += "  " + m.group("com")
+        return "\n".join(lineas)
+
+    return _RE_LECTURA_EN_UNA_LINEA.sub(cambiar, codigo)
+
+
 def convert_pseudocode(pseudocode: str, target_language: str) -> dict:
     """Convierte pseudocódigo a un lenguaje de programación."""
     language_names = {
@@ -742,7 +778,8 @@ Genera ÚNICAMENTE el código en {lang_name}, sin markdown, sin explicaciones, s
     cached = cache_get("convert", key)
     if cached:
         # Tambien a lo que ya estaba en cache, que se guardo antes de esto.
-        return {**cached, "code": _respetar_nombres(cached.get("code", ""), pseudocode),
+        return {**cached, "code": _leer_uno_por_linea(_respetar_nombres(cached.get("code", ""), pseudocode),
+                                                      target_language),
                 "cached": True}
 
     try:
@@ -757,6 +794,7 @@ Genera ÚNICAMENTE el código en {lang_name}, sin markdown, sin explicaciones, s
 
         code = _respetar_constantes(code, pseudocode, target_language)
         code = _respetar_nombres(code, pseudocode)
+        code = _leer_uno_por_linea(code, target_language)
 
         # "language" hace falta para poder comprobar, antes de cachear, que el
         # codigo generado esta completo (ver _respuesta_util).
