@@ -1521,8 +1521,15 @@ def api_leer(exercise_id):
         return jsonify({"success": False, "error": "La respuesta es demasiado larga."}), 400
 
     esperada = exercise.ejemplo_salida or ""
+    motivo = None
     if _normalizar_salida(respuesta) == _normalizar_salida(esperada):
         resultado, nota = "correcto", 100.0
+    elif _solo_cambian_las_lineas(respuesta, esperada):
+        # Lo que sale es justo eso, pero partido en otras lineas. El 24/10/2026
+        # un estudiante escribio "excelente Fin del proceso" en una linea mas
+        # de 15 veces y siempre recibio "Todavia no": habia seguido bien el
+        # algoritmo y no sabia que cada Escribir sale en su propia linea.
+        resultado, nota, motivo = "casi", 70.0, "lineas"
     elif _numeros(respuesta) == _numeros(esperada) and _numeros(esperada):
         # Los numeros cuadran pero el texto no: siguio bien el algoritmo.
         resultado, nota = "casi", 70.0
@@ -1539,8 +1546,10 @@ def api_leer(exercise_id):
         time_spent_seconds=int(datos.get("segundos") or 0)))
     db.session.commit()
 
-    log_activity("leer_respuesta", {"exercise_id": exercise_id,
-                                    "resultado": resultado, "intento": intentos + 1})
+    detalle = {"exercise_id": exercise_id, "resultado": resultado, "intento": intentos + 1}
+    if motivo:
+        detalle["motivo"] = motivo
+    log_activity("leer_respuesta", detalle)
     mensajes = {
         "correcto": "Exacto. Seguiste el algoritmo paso a paso y llegaste a lo que hace.",
         "casi": "Los números están bien: seguiste bien la lógica. Mira el texto que "
@@ -1549,6 +1558,10 @@ def api_leer(exercise_id):
                       "escritorio y sigue el algoritmo línea por línea, viendo cómo "
                       "cambia cada variable.",
     }
+    if motivo == "lineas":
+        mensajes["casi"] = ("Seguiste bien el algoritmo: eso es lo que imprime. Solo un detalle: "
+                            "cada Escribir sale en su propia línea, así que escribe cada mensaje "
+                            "en una línea aparte, en el mismo orden.")
     return jsonify({"success": True, "resultado": resultado,
                     "mensaje": mensajes[resultado],
                     "salida_real": esperada if resultado != "incorrecto" else None,
@@ -3856,6 +3869,14 @@ def _normalizar_salida(texto):
         if l:
             lineas.append(l)
     return "\n".join(lineas)
+
+
+def _solo_cambian_las_lineas(respuesta, esperada):
+    """Mismo texto, en el mismo orden, pero repartido en otras lineas."""
+    r, e = _normalizar_salida(respuesta), _normalizar_salida(esperada)
+    if not e or r == e:
+        return False
+    return " ".join(r.split()) == " ".join(e.split())
 
 
 def _numeros(texto):
