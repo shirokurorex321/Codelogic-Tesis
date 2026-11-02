@@ -14,6 +14,8 @@ if hasattr(sys.stdout, "reconfigure"):
 from datetime import datetime, timezone, timedelta
 import unicodedata
 from sqlalchemy import func
+from sqlalchemy.dialects.mysql import insert as mysql_insert
+from sqlalchemy.exc import OperationalError, IntegrityError
 from flask import (
     Flask, render_template, request, redirect, url_for,
     flash, jsonify, session, current_app, g, abort
@@ -320,16 +322,36 @@ def guardar_borrador():
         except (TypeError, ValueError):
             return jsonify({"success": False, "error": "Ejercicio no válido."}), 400
     ahora = datetime.now(timezone.utc)
-    b = _borrador(exercise_id)
-    if b is None:
-        b = Borrador(user_id=current_user.id, clave=_clave_borrador(exercise_id),
-                     pseudocodigo=texto, actualizado=ahora)
-        db.session.add(b)
-    else:
-        b.pseudocodigo = texto
-        b.actualizado = ahora
-    db.session.commit()
+    _escribir_borrador(current_user.id, _clave_borrador(exercise_id), texto, ahora)
     return jsonify({"success": True, "guardado": ahora.timestamp()})
+
+
+def _escribir_borrador(user_id, clave, texto, ahora):
+    """Inserta o actualiza el borrador en una sola sentencia.
+
+    El editor a veces manda dos guardados casi a la vez (al dejar de teclear y
+    al salir de la pagina). Antes se leia la fila y luego se escribia: si el
+    otro guardado se colaba en medio, MariaDB (con innodb_snapshot_isolation)
+    rechazaba la escritura con el error 1020, o los dos intentaban crear la
+    fila y uno chocaba con la clave unica. Del 24 al 29/10/2026 fallaron asi
+    42 guardados. Ahora es un INSERT ... ON DUPLICATE KEY UPDATE y, si aun
+    asi choca, se reintenta en una transaccion nueva (con una foto nueva de
+    la base): gana el ultimo guardado, que es lo que el estudiante espera.
+    """
+    stmt = mysql_insert(Borrador.__table__).values(
+        user_id=user_id, clave=clave, pseudocodigo=texto, actualizado=ahora)
+    stmt = stmt.on_duplicate_key_update(
+        pseudocodigo=stmt.inserted.pseudocodigo,
+        actualizado=stmt.inserted.actualizado)
+    for intento in range(3):
+        try:
+            db.session.execute(stmt)
+            db.session.commit()
+            return
+        except (OperationalError, IntegrityError):
+            db.session.rollback()
+            if intento == 2:
+                raise
 
 
 # ─── HELPERS ────────────────────────────────────────────────────────
