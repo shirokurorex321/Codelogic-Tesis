@@ -85,7 +85,7 @@
                             <form method="POST" action="{{ url_for('docente_clave_provisional', user_id=f.id) }}"
                                   data-confirmar="¿Devolverle a {{ f.nombre }} la clave provisional del curso? Al entrar tendrá que poner una suya.">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button class="btn btn-outline btn-sm" title="Devolverle la clave provisional">🔑</button>
+                                <button class="btn btn-outline btn-sm" title="Devolverle la clave provisional" style="white-space:nowrap;">🔑 Reset clave</button>
                             </form>
                             <form method="POST" action="{{ url_for('docente_activar', user_id=f.id) }}"
                                   data-confirmar="¿{{ 'Desactivar' if f.activo else 'Activar' }} la cuenta de {{ f.nombre }}?">
