@@ -106,6 +106,48 @@ def _anadir_al_final(linea, palabra):
     return "%s %s" % (linea.rstrip(), palabra)
 
 
+def _falta_en_para(bajo):
+    """Lo que le falta a la cabecera de un Para: "hasta", "inicial", "final" o
+    "paso"; None si esta completa o si no se puede saber.
+
+    La conversion es tolerante y completaba sola lo que faltaba: el 19/11/2026,
+    «Para i <- 1 Hasta Con Paso 1 Hacer» paso el revisor sin aviso, la
+    conversion se invento el valor final y la prueba de escritorio corrio como
+    si el algoritmo estuviera bien. Solo se avisa de lo que falta sin duda: un
+    «Para Cada x De v Hacer» no lleva Hasta, y sin flecha no se sabe donde
+    empieza el valor inicial, asi que ahi se calla.
+    """
+    resto = re.sub(r"^\s*para(?![a-z])", "", bajo).strip()
+    if re.match(r"cada(?![a-z])", resto):
+        return None
+    flecha = re.search("<-|←|=", resto)
+    hasta = re.search(r"(?<![a-z])hasta(?![a-z])", resto)
+    if not hasta:
+        return "hasta" if flecha else None
+    if flecha and flecha.start() < hasta.start() and not re.search(r"\w", resto[flecha.end():hasta.start()]):
+        return "inicial"
+    tras = resto[hasta.end():]
+    if not re.search(r"\w", re.split(r"(?<![a-z])(?:con\s+paso|hacer)(?![a-z])", tras, 1)[0]):
+        return "final"
+    paso = re.search(r"(?<![a-z])con\s+paso(?![a-z])", tras)
+    if paso and not re.search(r"\w", re.split(r"(?<![a-z])hacer(?![a-z])", tras[paso.end():], 1)[0]):
+        return "paso"
+    return None
+
+
+_FALTA_EN_PARA = {
+    "hasta": ("A este Para le falta Hasta con el valor final.",
+              "Un Para se escribe así: Para i <- 1 Hasta 10 Hacer."),
+    "inicial": ("A este Para le falta el valor inicial después de la flecha.",
+                "Escribe desde qué valor empieza la variable, por ejemplo: Para i <- 1 Hasta 10 Hacer."),
+    "final": ("A este Para le falta el valor final después de Hasta.",
+              "Escribe hasta qué valor llega la variable, por ejemplo: Para i <- 1 Hasta 10 Hacer."),
+    "paso": ("A este Para le falta el valor del paso después de Con Paso.",
+             "Escribe de cuánto en cuánto avanza, por ejemplo Con Paso 2. Si avanza de uno en uno, "
+             "puedes quitar Con Paso."),
+}
+
+
 # Palabras que empiezan una instruccion y son largas y sin ambiguedad: si
 # aparecen PEGADAS al final de otra palabra, lo que hay es un salto de linea
 # que se perdio. Se dejan fuera "si", "sino" y "para" a proposito: aparecen
@@ -458,6 +500,12 @@ def revisar(pseudocodigo):
                     "problema": "A este Para le falta Hacer.",
                     "sugerencia": "Todo Para termina con Hacer.",
                     "corregida": _anadir_al_final(linea, "Hacer")})
+            if abre == "para":
+                falta = _falta_en_para(bajo)
+                if falta:
+                    problema, sugerencia = _FALTA_EN_PARA[falta]
+                    problemas.append({"linea": n, "texto": linea,
+                                      "problema": problema, "sugerencia": sugerencia})
             if abre == "mientras" and "hacer" not in bajo:
                 problemas.append({
                     "linea": n, "texto": linea,

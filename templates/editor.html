@@ -1116,8 +1116,27 @@ async function generarTraza() {
     // explica y lo que se envía. `convertedCode` guarda aparte lo que
     // devolvió la IA, solo para poder restaurarlo.
 
+    // textContent no cuenta los saltos que mete el navegador al pulsar Enter
+    // dentro del panel (un <br>, o un <div> donde no hay plaintext-only), así
+    // que la línea nueva se pegaba a la anterior al ejecutar (prueba del
+    // 19/11/2026). Se recorre el panel y cada <br> o bloque cuenta como salto.
+    function textoDelPanel(el) {
+        let texto = '';
+        (function recorrer(nodo) {
+            for (const hijo of nodo.childNodes) {
+                if (hijo.nodeType === Node.TEXT_NODE) { texto += hijo.nodeValue; continue; }
+                if (hijo.nodeType !== Node.ELEMENT_NODE) continue;
+                if (hijo.tagName === 'BR') { texto += '\n'; continue; }
+                const bloque = hijo.tagName === 'DIV' || hijo.tagName === 'P';
+                if (bloque && texto && !texto.endsWith('\n')) texto += '\n';
+                recorrer(hijo);
+            }
+        })(el);
+        return texto;
+    }
+
     function getCode(lang) {
-        return document.getElementById('code-' + lang).textContent;
+        return textoDelPanel(document.getElementById('code-' + lang));
     }
 
     // Para enviar la solución: el placeholder empieza por "//" y no es
