@@ -1,0 +1,13 @@
+[Unit]
+Description=CodeLogic IUP — Respaldo diario del codigo
+
+[Timer]
+# 15 minutos despues del respaldo de la base, para no solapar escrituras
+# en el mismo disco.
+OnCalendar=*-*-* 03:45:00
+# Si el equipo estaba apagado a esa hora, se ejecuta al encender.
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

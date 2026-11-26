@@ -1,0 +1,21 @@
+[Unit]
+Description=CodeLogic IUP — Respaldo del codigo (git + copia plana)
+# No depende de mariadb: el codigo se respalda aunque la base este caida.
+RequiresMountsFor=/mnt/respaldos
+
+[Service]
+Type=oneshot
+User=codelogic
+Group=codelogic
+# git consulta HOME para ~/.gitconfig. Sin esta linea, con ProtectHome=yes
+# avisa por cada ejecucion aunque el repositorio traiga su propia config.
+Environment=HOME=/opt/codelogic
+ExecStart=/opt/codelogic/respaldo-codigo.sh
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
+# git escribe dentro de .git, asi que la carpeta de la app tiene que ser
+# escribible pese a ProtectSystem=strict.
+ReadWritePaths=/opt/codelogic/app
+ReadWritePaths=/mnt/respaldos/codelogic-codigo

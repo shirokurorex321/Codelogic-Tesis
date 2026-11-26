@@ -1,0 +1,74 @@
+[Unit]
+Description=CodeLogic IUP — Plataforma de aprendizaje de programación
+Documentation=file:/opt/codelogic/app/README.md
+After=network-online.target mariadb.service
+Wants=network-online.target
+Requires=mariadb.service
+
+[Service]
+Type=notify
+User=codelogic
+Group=codelogic
+WorkingDirectory=/opt/codelogic/app
+
+# 1 worker + hilos a propósito:
+#  - flask-limiter con storage memory:// cuenta por proceso; con N workers el
+#    límite real se multiplicaría por N.
+#  - la carga es de espera de red (APIs de IA), que los hilos resuelven bien.
+ExecStart=/opt/codelogic/venv/bin/gunicorn \
+    --workers 1 \
+    --threads 48 \
+    --timeout 120 \
+    --graceful-timeout 30 \
+    --bind 127.0.0.1:5000 \
+    --access-logfile - \
+    --error-logfile - \
+    --capture-output \
+    app:app
+
+Restart=always
+RestartSec=5
+KillMode=mixed
+TimeoutStopSec=30
+
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+
+# ─── ENDURECIMIENTO ────────────────────────────────────────────────
+# Calibrado, no maximizado: bubblewrap necesita crear namespaces de
+# usuario/montaje/red. Por eso NO se usan RestrictNamespaces= ni
+# SystemCallFilter=, que romperían el sandbox del ejecutor de código.
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+# /home inaccesible: aísla la app de /home/shiro (que sí tiene sudo y grupo lxd)
+ProtectHome=yes
+ProtectSystem=strict
+ReadWritePaths=/opt/codelogic/app/instance
+ReadWritePaths=/opt/codelogic/backups
+
+# ProtectKernelTunables y ProtectKernelLogs NO se pueden activar: montan sobre
+# /proc/sys y /proc/kmsg, y el kernel prohíbe montar un /proc nuevo dentro de un
+# user namespace cuando el /proc original tiene submontajes que lo tapan
+# → bwrap falla con "Can't mount proc". Verificado el 2026-07-29.
+# Pérdida real mínima: el servicio corre como codelogic (sin privilegios) con
+# NoNewPrivileges, así que no puede escribir tunables del kernel de todos modos.
+# ProtectKernelTunables=yes
+# ProtectKernelLogs=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+# ProtectHostname=yes  # ❌ en combinación con las demás rompe el montaje de /proc en bwrap (verificado 2026-07-29)
+ProtectProc=invisible
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+LockPersonality=yes
+RemoveIPC=yes
+
+# Techo de recursos: deja RAM de sobra para Minecraft y el sistema
+MemoryMax=3G
+TasksMax=512
+
+[Install]
+WantedBy=multi-user.target

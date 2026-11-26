@@ -1,0 +1,12 @@
+[Unit]
+Description=CodeLogic IUP — Reintento periodico del precalentado de cache
+
+[Timer]
+# Cada 20 min. El plan gratuito deja pasar unas 4 llamadas por desbloqueo,
+# asi que las 72 conversiones tardan horas en completarse. Cuando esten
+# todas, la ejecucion no hace ni una llamada a la API: solo lee la cache.
+OnBootSec=10min
+OnUnitActiveSec=20min
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,16 @@
+[Unit]
+Description=CodeLogic IUP — Precalentar la cache de IA (a goteo)
+After=mariadb.service
+Requires=mariadb.service
+
+[Service]
+Type=oneshot
+User=codelogic
+Group=codelogic
+WorkingDirectory=/opt/codelogic/app
+Environment=HOME=/opt/codelogic
+ExecStart=/opt/codelogic/venv/bin/python -u /opt/codelogic/app/precalentar_cache.py
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict

@@ -1,166 +1,67 @@
-# ⟨/⟩ CodeLogic IUP
+# CodeLogic IUP
 
-**Plataforma web con conversión de pseudocódigo y retroalimentación con IA**  
-Institución Universitaria del Putumayo — Trabajo de Grado 2026
+Plataforma web para el aprendizaje introductorio de programación. Los estudiantes escriben algoritmos en
+pseudocódigo y la plataforma los revisa, muestra su prueba de escritorio y su diagrama de flujo, los convierte a
+Python, C++ y PHP y da retroalimentación con inteligencia artificial. El docente sigue el avance de la clase y
+administra los ejercicios.
 
----
+Trabajo de grado de Daniel Alejandro Rosero Gómez y Brayan Aldahir Torres Yandul, programa de Ingeniería de Sistemas,
+Institución Universitaria del Putumayo, 2026. Asesor: Jhoni Ricardo Cerón Chaves.
 
-## Descripción
+## Documentación
 
-CodeLogic IUP es una plataforma web educativa que permite a los estudiantes de primer semestre:
+- [Manual de usuario](docs/Manual-de-usuario-CodeLogic.pdf): uso de la plataforma por estudiantes, docentes y
+  administradores.
+- [Manual del programador](docs/Manual-del-programador-CodeLogic.pdf): arquitectura, instalación, configuración,
+  base de datos, rutas, despliegue, respaldos, seguridad y mantenimiento.
 
-1. **Escribir pseudocódigo** en un editor web interactivo
-2. **Convertir automáticamente** a Python, C++ y PHP usando IA (Google Gemini)
-3. **Recibir retroalimentación inmediata** sobre errores lógicos y de estructura
-4. **Practicar con ejercicios guiados** organizados por tema
-
-## Stack Tecnológico
+## Tecnologías
 
 | Componente | Tecnología |
 |---|---|
-| Backend | Python 3 + Flask |
-| Base de datos | MySQL/MariaDB (producción) o SQLite (desarrollo) |
-| IA | OpenCode Zen (primario) + Google Gemini (fallback) |
-| Frontend | HTML + CSS + JavaScript |
-| Hosting | Linux + Cloudflare Tunnel |
+| Aplicación | Python 3 y Flask, servida con Gunicorn |
+| Base de datos | MariaDB en producción; SQLite para desarrollo |
+| Inteligencia artificial | API de Google Gemini, con caché de respuestas |
+| Ejecución de código | Entorno aislado con bubblewrap (Python, C++ y PHP) |
+| Interfaz | Plantillas Jinja2, CSS y JavaScript; diagramas con Mermaid |
+| Publicación | Servidor propio con Ubuntu Server y túnel de Cloudflare |
 
-## Instalación en Windows (desarrollo)
-
-```powershell
-# 1. Instalar Python (si no está)
-winget install -e --id Python.Python.3.13 --scope user
-
-# 2. (Opcional) PHP y C++ para el módulo de ejecución
-winget install -e --id PHP.PHP.8.4
-winget install -e --id BrechtSanders.WinLibs.POSIX.UCRT
-
-# 3. Arrancar (crea el venv e instala dependencias la primera vez)
-run.bat
-```
-
-En Windows la app usa **SQLite** automáticamente (`DB_ENGINE=sqlite` en `.env`):
-no necesitas instalar MySQL. La base de datos queda en `instance/codelogic.db`.
-
-La ejecución de código corre **sin sandbox** en Windows (solo desarrollo local):
-se habilita con `EXECUTOR_ALLOW_UNSAFE=true` en `.env`. **No expongas esta
-instancia a internet con túnel**; para eso usa el despliegue Linux con bubblewrap.
-
-## Instalación Rápida (Linux, producción)
+## Instalación para desarrollo
 
 ```bash
-# 1. Clonar o copiar el proyecto
-cd pseudocode-platform
-
-# 2. Ejecutar el instalador
-chmod +x install.sh setup_db.sh setup_tunnel.sh
-bash install.sh
-```
-
-El instalador te guiará paso a paso.
-
-## Instalación Manual
-
-```bash
-# 1. Crear entorno virtual
+sudo apt install -y python3 python3-venv git bubblewrap g++ php-cli
+git clone <dirección de este repositorio> codelogic
+cd codelogic
 python3 -m venv venv
-source venv/bin/activate
-
-# 2. Instalar dependencias
-pip install -r requirements.txt
-
-# 3. Configurar variables de entorno
-cp .env.example .env
-# Editar .env con tus datos (DB y API key de Gemini)
-
-# 4. Configurar MySQL
-bash setup_db.sh
-
-# 5. Iniciar la aplicación
-python3 app.py
+venv/bin/pip install -r requirements.txt
+cp .env.example .env          # completar: SECRET_KEY, DB_ENGINE=sqlite, ADMIN_EMAIL, ADMIN_PASSWORD...
+venv/bin/python -c "import app"        # crea las tablas, la semilla y la cuenta docente
+venv/bin/python importar_contenido.py   # carga los 12 temas y 62 ejercicios del curso de 2026
+venv/bin/python app.py                  # http://127.0.0.1:5000
 ```
 
-## Obtener API Key de Gemini (Gratis)
+Sin `GEMINI_API_KEY` la plataforma funciona y las funciones de inteligencia artificial avisan que no están
+disponibles. La instalación en producción (MariaDB, systemd, túnel y respaldos) está en el manual del programador y
+en la carpeta `despliegue/`.
 
-1. Ve a [Google AI Studio](https://aistudio.google.com/apikey)
-2. Inicia sesión con tu cuenta de Google
-3. Crea una API key
-4. Cópiala en tu archivo `.env` como `GEMINI_API_KEY`
+## Estructura
 
-## Exponer con Cloudflare Tunnel
+| Archivo o carpeta | Contenido |
+|---|---|
+| `app.py` | Aplicación Flask: rutas, seguridad, reglas de acceso y semillas iniciales |
+| `config.py` | Configuración leída del `.env` |
+| `models.py` | Modelo de datos (11 tablas) |
+| `gemini_service.py` | Conversión, diagramas, retroalimentación y calificación con IA; caché y costos |
+| `revisar.py`, `alcance.py` | Revisor de sintaxis y alcance del ejercicio, sin IA |
+| `traza.py`, `a_pseudo.py` | Prueba de escritorio y su traducción a las líneas del pseudocódigo |
+| `executor.py` | Ejecución en el entorno aislado |
+| `seguimiento.py` | Panel del docente |
+| `lecciones.py`, `questions.py` | Lecciones e instrumentos del estudio |
+| `importar_contenido.py`, `datos/` | Contenido del curso para una instalación nueva |
+| `templates/`, `static/` | Páginas, estilos y JavaScript |
+| `despliegue/` | Unidades de systemd y guiones de respaldo del servidor |
 
-```bash
-# En una terminal separada (mientras la app está corriendo):
-bash setup_tunnel.sh
-```
+## Datos y secretos
 
-Esto genera una URL pública temporal como `https://abc123.trycloudflare.com`
-
-## Usuarios por Defecto
-
-| Rol | Correo | Contraseña |
-|---|---|---|
-| Docente | docente@iup.edu.co | admin123 |
-
-Los estudiantes se registran desde la página principal.
-
-## Estructura del Proyecto
-
-```
-pseudocode-platform/
-├── app.py                 # Aplicación Flask principal
-├── config.py              # Configuración
-├── models.py              # Modelos de base de datos
-├── gemini_service.py      # Integración con Gemini AI
-├── requirements.txt       # Dependencias Python
-├── .env.example           # Template de variables de entorno
-├── install.sh             # Script de instalación
-├── setup_db.sh            # Script de configuración de BD
-├── setup_tunnel.sh        # Script de túnel Cloudflare
-├── static/
-│   ├── css/style.css      # Estilos
-│   └── js/app.js          # JavaScript general
-└── templates/
-    ├── base.html           # Template base
-    ├── index.html          # Página de inicio
-    ├── login.html          # Inicio de sesión
-    ├── register.html       # Registro
-    ├── dashboard.html      # Panel del estudiante
-    ├── editor.html         # Editor de pseudocódigo
-    ├── exercises.html      # Lista de temas
-    ├── topic_exercises.html # Ejercicios por tema
-    └── admin/
-        ├── dashboard.html  # Panel del docente
-        ├── exercises.html  # Gestión de ejercicios
-        ├── students.html   # Gestión de estudiantes
-        └── logs.html       # Logs de actividad
-```
-
-## Funcionalidades
-
-### Para Estudiantes
-- Editor de pseudocódigo con placeholder de ejemplo
-- Conversión a Python, C++ y PHP (individual o simultánea)
-- Retroalimentación de IA contextualizada
-- Ejercicios organizados por tema y dificultad
-- Sistema de pistas
-- Seguimiento de progreso
-
-### Para Docentes
-- Dashboard con estadísticas
-- Crear y gestionar ejercicios
-- Asignar estudiantes a grupos experimentales (A/B)
-- Exportar logs de actividad en JSON para R/SPSS
-- Ver actividad de estudiantes
-
-### Para la Investigación
-- Registro automático de toda la actividad (logs)
-- Almacenamiento de pretest/postest
-- Escalas de autoeficacia
-- Métricas: intentos, tiempo, errores, retroalimentaciones consultadas
-- Exportación de datos para análisis estadístico
-
----
-
-**Autores:** Daniel Alejandro Rosero Gómez & Brayan Aldahir Torres Yandul  
-**Asesor:** Jhoni Ricardo Cerón Chaves  
-**Institución Universitaria del Putumayo — 2026**
+El archivo `.env`, con las claves de la base, de la API y del correo, nunca entra al repositorio (`.gitignore`).
+El repositorio no contiene datos de estudiantes: `datos/contenido_curso.json` solo tiene los temas y los ejercicios.
