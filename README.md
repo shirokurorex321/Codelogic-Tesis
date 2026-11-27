@@ -16,6 +16,9 @@ Institución Universitaria del Putumayo, 2026. Asesor: Jhoni Ricardo Cerón Chav
   base de datos, rutas, despliegue, respaldos, seguridad y mantenimiento.
 - [Manual de instalación](docs/Manual-de-instalacion-CodeLogic.pdf): instalación paso a paso en un servidor Linux,
   publicación con HTTPS, respaldos, actualización e instalación para desarrollo.
+- [Carta de autorización de publicación](<docs/entrega/Carta de autorización de publicación.pdf>) y
+  [formato F-INV-050 de entrega de la tesis](<docs/entrega/F-INV-050 Entrega tesis de grado.pdf>): formatos
+  institucionales de la entrega del trabajo de grado, en Word y PDF, en la carpeta `docs/entrega`.
 
 ## Tecnologías
 
