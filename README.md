@@ -14,6 +14,8 @@ Institución Universitaria del Putumayo, 2026. Asesor: Jhoni Ricardo Cerón Chav
   administradores.
 - [Manual del programador](docs/Manual-del-programador-CodeLogic.pdf): arquitectura, instalación, configuración,
   base de datos, rutas, despliegue, respaldos, seguridad y mantenimiento.
+- [Manual de instalación](docs/Manual-de-instalacion-CodeLogic.pdf): instalación paso a paso en un servidor Linux,
+  publicación con HTTPS, respaldos, actualización e instalación para desarrollo.
 
 ## Tecnologías
 
@@ -34,14 +36,15 @@ git clone <dirección de este repositorio> codelogic
 cd codelogic
 python3 -m venv venv
 venv/bin/pip install -r requirements.txt
-cp .env.example .env          # completar: SECRET_KEY, DB_ENGINE=sqlite, ADMIN_EMAIL, ADMIN_PASSWORD...
+cp .env.example .env          # completar: SECRET_KEY, DB_ENGINE=sqlite, SESSION_COOKIE_SECURE=false,
+                              # ADMIN_EMAIL y ADMIN_PASSWORD
 venv/bin/python -c "import app"        # crea las tablas, la semilla y la cuenta docente
 venv/bin/python importar_contenido.py   # carga los 12 temas y 62 ejercicios del curso de 2026
 venv/bin/python app.py                  # http://127.0.0.1:5000
 ```
 
 Sin `GEMINI_API_KEY` la plataforma funciona y las funciones de inteligencia artificial avisan que no están
-disponibles. La instalación en producción (MariaDB, systemd, túnel y respaldos) está en el manual del programador y
+disponibles. La instalación en producción (MariaDB, systemd, túnel y respaldos) está en el manual de instalación y
 en la carpeta `despliegue/`.
 
 ## Estructura
