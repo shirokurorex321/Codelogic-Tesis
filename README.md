@@ -32,7 +32,7 @@ Institución Universitaria del Putumayo, 2026. Asesor: Jhoni Ricardo Cerón Chav
 
 ```bash
 sudo apt install -y python3 python3-venv git bubblewrap g++ php-cli
-git clone <dirección de este repositorio> codelogic
+git clone https://github.com/shirokurorex321/Codelogic-Tesis.git codelogic
 cd codelogic
 python3 -m venv venv
 venv/bin/pip install -r requirements.txt
